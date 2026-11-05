@@ -22,11 +22,7 @@ All settings are on the **Settings** tab of the sidebar. They are grouped into t
 | About | Version, sources, reset |
 
 ## API keys
-1. Create a free account at themoviedb.org and request an API key (Settings > API). Enter the **API key (v3)** under *Settings > API keys > TMDB*.
-2. Optional: request a free key at omdbapi.com and enter it under *OMDb*. This adds IMDb and Rotten Tomatoes ratings.
-3. Press **Save and check**. A green "key valid" line confirms the key.
-
-Without keys the app still works, but shows only what your playlist provides.
+Step-by-step instructions for the free TMDB and OMDb keys are in the [README](../README.md#your-own-api-keys-optional). Enter them under *Settings > API keys* and press **Save and check**. Without keys the app uses the information of your Xtream provider.
 
 ## Typing on a TV
 Use the phone import: *Playlists > Enter from phone* shows an address; open it on a phone in the same Wi-Fi and type the login there.
