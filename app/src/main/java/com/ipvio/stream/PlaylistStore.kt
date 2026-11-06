@@ -128,6 +128,26 @@ object PlaylistStore {
     var catOrder by mutableStateOf<Map<String, Int>>(emptyMap())
     val lists = mutableStateListOf<PL>()
     var active by mutableIntStateOf(0)
+
+    // ------------------------------------------------------------------ mehrere Playlists gleichzeitig (Runde 20)
+    /** Weitere Playlists, die zusätzlich zur aktiven gezeigt werden (Schlüssel = Hash der Adresse, siehe [MultiLogic]). */
+    var multi by mutableStateOf<Set<Int>>(emptySet())
+        private set
+    /** Zusammengeführte Liste aller gezeigten Quellen (mit den in „Alle“ ausgeblendeten Doppelten). */
+    var merged by mutableStateOf(MultiLogic.Merged(emptyList(), emptySet(), emptyMap()))
+        private set
+    /** Namen der gezeigten Quellen: 0 = aktive Playlist, dann die weiteren. */
+    var sourceNames by mutableStateOf<List<String>>(emptyList())
+        private set
+    /** Hinweis, wenn eine weitere Playlist nicht geladen werden konnte. */
+    var extraError by mutableStateOf<String?>(null)
+    private class Extra(val items: List<Item>, val epg: List<String>, val order: Map<String, Int>)
+    private val extras = LinkedHashMap<String, Extra>()
+    @Volatile private var primaryItems: List<Item> = emptyList()
+    @Volatile private var primaryUrl: String? = null
+    private var primaryEpg: List<String> = emptyList()
+    private var primaryOrder: Map<String, Int> = emptyMap()
+    private var epgSig = 0L
     private var inited = false
     private val loadLock = Mutex()
     @Volatile private var job: Job? = null
@@ -209,6 +229,7 @@ object PlaylistStore {
         val old = p.getString("url", null)
         if (lists.isEmpty() && old != null) lists.add(PL(hostOf(old), old))
         active = p.getInt("active", 0).coerceIn(0, maxOf(lists.size - 1, 0))
+        multi = MultiLogic.decodeKeys(p.getString("multi", null))
         if (enc == null && lists.isNotEmpty()) persist(c)   // Übernahme der alten Klartext-Liste (nach dem Setzen von "active")
     }
 
@@ -225,7 +246,7 @@ object PlaylistStore {
     private fun persist(c: Context) {
         val a = JSONArray()
         for (l in lists) a.put(JSONObject().put("name", l.name).put("url", l.url))
-        val e = prefs(c).edit().putInt("active", active).remove("url")
+        val e = prefs(c).edit().putInt("active", active).putString("multi", MultiLogic.encodeKeys(multi)).remove("url")
         val token = Secrets.encrypt(a.toString())
         if (token != null) e.putString("lists_enc", token).remove("lists")
         else e.putString("lists", a.toString()).remove("lists_enc")
@@ -257,7 +278,36 @@ object PlaylistStore {
         runCatching { pending(c)?.let { writePending(c, it.copy(state = LoadLogic.FAILED, msg = msg)) } }
     }
 
-    fun hostOf(url: String): String = try { android.net.Uri.parse(url).host ?: "Playlist" } catch (e: Exception) { "Playlist" }
+    /** Playlists für die Übertragung auf ein anderes Gerät (Klartext – nur über den Code-geschützten Weg). */
+    fun exportLists(c: Context): JSONArray {
+        ensure(c)
+        val a = JSONArray()
+        for (l in lists) a.put(JSONObject().put("name", l.name).put("url", l.url))
+        return a
+    }
+
+    /** Übertragene Playlists ergänzen (vorhandene Adressen bleiben, wie sie sind). Ohne aktive Liste wird die erste aktiv. */
+    fun importLists(c: Context, a: JSONArray) {
+        ensure(c)
+        for (i in 0 until a.length()) {
+            val o = a.optJSONObject(i) ?: continue
+            val u = PlaylistLogic.normalizeUrl(o.optString("url")) ?: continue
+            if (u.startsWith("file://")) continue   // Dateien liegen nur auf dem alten Gerät
+            if (lists.none { it.url == u }) lists.add(PL(o.optString("name").ifBlank { hostOf(u) }, u))
+        }
+        active = active.coerceIn(0, maxOf(lists.size - 1, 0))
+        persist(c)
+        // Sofort auf die Platte (die App startet gleich neu)
+        prefs(c).edit().commit()
+    }
+
+    fun hostOf(url: String): String {
+        if (url.startsWith("file://")) return url.substringAfterLast('/').substringBeforeLast('.').ifBlank { "Playlist" }
+        return try {
+            val u = StalkerLogic.parse(url)?.portal ?: url
+            android.net.Uri.parse(u).host ?: "Playlist"
+        } catch (e: Exception) { "Playlist" }
+    }
 
     fun savedUrl(c: Context): String? { ensure(c); return lists.getOrNull(active)?.url }
 
@@ -275,6 +325,8 @@ object PlaylistStore {
         ensure(c)
         if (i !in lists.indices) return
         deleteFiles(c, lists[i].url)
+        extras.remove(lists[i].url)
+        multi = multi - key(lists[i].url)
         lists.removeAt(i)
         active = active.coerceIn(0, maxOf(lists.size - 1, 0))
         persist(c)
@@ -312,6 +364,7 @@ object PlaylistStore {
     private fun tmp(f: File) = File(f.path + ".tmp")
 
     private fun deleteFiles(c: Context, url: String) {
+        if (url.startsWith("file://")) runCatching { File(java.net.URI(url)).takeIf { it.path.contains("/imports/") }?.delete() }
         val main = listOf(cacheFile(c, url), gzFile(c, url), rawFile(c, url), partFile(c, url), infoFile(c, url), Catchup.file(c, url))
         (main + main.map { tmp(it) }).forEach { runCatching { it.delete() } }
     }
@@ -405,6 +458,104 @@ object PlaylistStore {
      * Liegt noch eine fertig geladene, aber nicht eingelesene Datei vor (Absturz/Stromausfall beim Einlesen), wird sie verwendet.
      */
     private fun download(c: Context, u: String): Pair<File, Charset> {
+        // Hochgeladene Datei (Handy-Seite oder Dateiauswahl): liegt schon auf dem Gerät
+        if (u.startsWith("file://")) {
+            val f = File(java.net.URI(u))
+            if (!f.exists() || f.length() == 0L) throw PlaylistError("Die Playlist-Datei ist nicht mehr da. Bitte erneut hochladen.")
+            phase = "Playlist wird gelesen …"
+            return f to Charsets.UTF_8
+        }
+        StalkerLogic.parse(u)?.let { return downloadStalker(c, u, it) }
+        val acct = XtreamLogic.fromUrl(u) ?: return downloadList(c, u)
+        // Hat get.php bei diesem Zugang schon einmal versagt, gleich die Schnittstelle nehmen
+        if (useApi(c, u)) return downloadApi(c, u, acct)
+        val got = try {
+            downloadList(c, u)
+        } catch (e: PlaylistError) {
+            return apiInstead(c, u, acct, e)
+        }
+        val head = runCatching { got.first.inputStream().use { s -> val b = ByteArray(512); val k = s.read(b); if (k > 0) String(b, 0, k, got.second) else "" } }.getOrDefault("")
+        if (XtreamLogic.looksLikeM3u(head)) return got
+        // 200, aber keine Liste (Fehlerseite, leere Antwort): Schnittstelle versuchen
+        got.first.delete(); infoFile(c, u).delete()
+        return apiInstead(c, u, acct, PlaylistError("Der Server hat keine gültige Playlist geliefert."))
+    }
+
+    private fun apiKey(u: String) = "xt_api_" + key(u)
+    private fun useApi(c: Context, u: String) = prefs(c).getBoolean(apiKey(u), false)
+
+    /** get.php hat versagt: über player_api.php laden und das für diesen Zugang merken. Scheitert auch das, zählt der klarere Fehler. */
+    private fun apiInstead(c: Context, u: String, acct: XtreamLogic.Acct, first: PlaylistError): Pair<File, Charset> {
+        if (cancelled()) throw CancellationException("abgebrochen")
+        return try {
+            val r = downloadApi(c, u, acct)
+            prefs(c).edit().putBoolean(apiKey(u), true).apply()
+            r
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: PlaylistError) {
+            throw if (e.message?.startsWith("Zugang abgelehnt") == true) e else first
+        } catch (e: IOException) {
+            throw first
+        } catch (e: Exception) {
+            throw first
+        }
+    }
+
+    /** Schnittstellen-Zugriff für die Folgen einer Serie, die erst beim Öffnen geladen werden ([LazySeries]). */
+    internal fun xtreamApi(): XtreamApi = XtreamApi(client, UA)
+
+    /** Liste über die Schnittstelle des Anbieters aufbauen (siehe [XtreamApi]) und wie einen fertigen Download ablegen. */
+    private fun downloadApi(c: Context, u: String, acct: XtreamLogic.Acct): Pair<File, Charset> {
+        val raw = rawFile(c, u)
+        val info = infoFile(c, u)
+        val part = partFile(c, u)
+        val pi = LoadLogic.PartInfo.decode(runCatching { info.readText() }.getOrNull())?.takeIf { it.urlHash == key(u) }
+        if (pi != null && raw.exists() && raw.length() > 0 && System.currentTimeMillis() - raw.lastModified() < RAW_MAX_AGE) {
+            return raw to Charsets.UTF_8
+        }
+        raw.delete(); part.delete()
+        bytesRead = 0L; totalBytes = -1L; downloadDone = false
+        val api = XtreamApi(client, UA)
+        api.onPhase = { phase = it }
+        api.check = { if (cancelled()) throw CancellationException("abgebrochen") }
+        val counter = CountingOut(FileOutputStream(part)) { bytesRead = it }
+        try {
+            val n = OutputStreamWriter(BufferedOutputStream(counter, 1 shl 16), Charsets.UTF_8).use { w -> api.write(acct, w) }
+            if (n == 0) throw PlaylistError("Keine Sender in der Playlist gefunden.")
+        } catch (e: Throwable) {
+            part.delete()
+            throw e
+        }
+        info.writeText(LoadLogic.PartInfo(key(u), null, null, "UTF-8").encode())
+        if (!part.renameTo(raw)) throw IOException("Datei konnte nicht umbenannt werden")
+        return raw to Charsets.UTF_8
+    }
+
+    /** Stalker-Portal: Liste über die Schnittstelle des Portals aufbauen (siehe [StalkerApi]). */
+    private fun downloadStalker(c: Context, u: String, src: StalkerLogic.Source): Pair<File, Charset> {
+        val raw = rawFile(c, u)
+        val info = infoFile(c, u)
+        val part = partFile(c, u)
+        val pi = LoadLogic.PartInfo.decode(runCatching { info.readText() }.getOrNull())?.takeIf { it.urlHash == key(u) }
+        if (pi != null && raw.exists() && raw.length() > 0 && System.currentTimeMillis() - raw.lastModified() < RAW_MAX_AGE) return raw to Charsets.UTF_8
+        raw.delete(); part.delete()
+        bytesRead = 0L; totalBytes = -1L; downloadDone = false
+        val counter = CountingOut(FileOutputStream(part)) { bytesRead = it }
+        try {
+            OutputStreamWriter(BufferedOutputStream(counter, 1 shl 16), Charsets.UTF_8).use { w ->
+                StalkerApi.write(src, w, { phase = it }, { if (cancelled()) throw CancellationException("abgebrochen") })
+            }
+        } catch (e: Throwable) {
+            part.delete()
+            throw e
+        }
+        info.writeText(LoadLogic.PartInfo(key(u), null, null, "UTF-8").encode())
+        if (!part.renameTo(raw)) throw IOException("Datei konnte nicht umbenannt werden")
+        return raw to Charsets.UTF_8
+    }
+
+    private fun downloadList(c: Context, u: String): Pair<File, Charset> {
         val raw = rawFile(c, u)
         val info = infoFile(c, u)
         val part = partFile(c, u)
@@ -564,7 +715,7 @@ object PlaylistStore {
     private fun epgFor(u: String, fromList: List<String>): List<String> {
         val urls = ArrayList(fromList)
         XTREAM.find(u)?.let { urls.add("${it.groupValues[1]}/xmltv.php?username=${it.groupValues[2]}&password=${it.groupValues[3]}") }
-        return urls
+        return urls.distinct()
     }
 
     /** Die komprimierte Kopie ist fertig: übernehmen und die große Rohdatei löschen. */
@@ -578,14 +729,176 @@ object PlaylistStore {
         c: Context, u: String, items: List<Item>, epg: List<String>, order: Map<String, Int>,
         counts: Map<String, Int>, bytes: Map<String, Long>, hidden: Set<String>
     ) {
-        epgUrls = epg
-        catOrder = order
         langCounts = counts
         langBytes = bytes
         shownHidden = hidden
-        setItems(items, shownOf(items))
-        Catchup.start(c, u, items)
-        Xmltv.start(c, epg, items)
+        primaryItems = items; primaryUrl = u; primaryEpg = epg; primaryOrder = order
+        rebuild(c)
+    }
+
+    /** Weitere gezeigte Playlists (ohne die aktive), in der Reihenfolge der Liste. */
+    fun extraUrls(c: Context): List<String> {
+        ensure(c)
+        return lists.filterIndexed { i, pl -> i != active && key(pl.url) in multi }.map { it.url }
+    }
+
+    fun isShown(i: Int): Boolean = i == active || (i in lists.indices && key(lists[i].url) in multi)
+
+    /** Position der Playlist [i] unter den gezeigten Quellen (0 = aktive, dann die weiteren in Listenreihenfolge), -1 = nicht gezeigt. */
+    fun shownIndex(i: Int): Int {
+        if (i !in lists.indices) return -1
+        if (i == active) return 0
+        if (!isShown(i)) return -1
+        return 1 + lists.indices.count { it != active && it < i && isShown(it) }
+    }
+
+    /**
+     * Playlist wechseln (Live TV, ohne Einstellungen): macht [i] zur aktiven Playlist und zeigt sofort den Zwischenspeicher
+     * der neuen Playlist; danach wird vom Server erneuert. Die alte Anzeige wird verworfen, sonst bliebe sie sichtbar.
+     */
+    suspend fun switchTo(c: Context, i: Int) {
+        ensure(c)
+        if (i !in lists.indices) return
+        if (loadLock.isLocked) return   // es läuft gerade ein Laden: nicht dazwischenfunken
+        activate(c, i)
+        primaryItems = emptyList(); primaryUrl = null
+        merged = MultiLogic.Merged(emptyList(), emptySet(), emptyMap()); sourceNames = emptyList()
+        setItems(emptyList())
+        load(c, lists[i].url, false)
+    }
+
+    /** Playlist zusätzlich zeigen (oder nicht mehr). Danach [applyMulti] aufrufen. */
+    fun setShown(c: Context, i: Int, on: Boolean) {
+        ensure(c)
+        if (i !in lists.indices || i == active) return
+        val k = key(lists[i].url)
+        multi = if (on) multi + k else multi - k
+        persist(c)
+    }
+
+    /** Liste aus der aktiven und den geladenen weiteren Playlists bilden und anzeigen (Hintergrund-Thread). */
+    private fun rebuild(c: Context) {
+        val u = primaryUrl ?: return
+        val urls = extraUrls(c)
+        extras.keys.retainAll(urls.toSet())
+        val ex = urls.mapNotNull { url -> extras[url]?.let { url to it } }
+        val names = listOf(nameOf(u)) + ex.map { nameOf(it.first) }
+        val m = MultiLogic.merge(listOf(primaryItems) + ex.map { it.second.items }, names)
+        val vis = m.visible()
+        val epg = (primaryEpg + ex.flatMap { it.second.epg }).distinct()
+        twins = if (m.shadow.isEmpty()) emptyMap() else HashMap<String, Item>().also { t -> for (it in m.items) if (it.id in m.shadow) t.putIfAbsent("${it.src}|" + it.mk, it) }
+        merged = m
+        sourceNames = names
+        epgUrls = epg
+        catOrder = MultiLogic.mergeOrder(listOf(primaryOrder) + ex.map { it.second.order })
+        setItems(vis, shownOf(vis))
+        Catchup.startAll(c, listOf(u to primaryItems) + ex.map { it.first to it.second.items })
+        // TV-Programm nur neu holen, wenn sich Adressen oder Sender geändert haben
+        val es = epg.hashCode().toLong() * 31 + sig(vis.filter { it.kind == Kind.LIVE })
+        if (es != epgSig) { epgSig = es; Xmltv.start(c, epg, vis) }
+    }
+
+    private fun restartCatchup(c: Context) {
+        val u = primaryUrl ?: return
+        Catchup.startAll(c, listOf(u to primaryItems) + extraUrls(c).mapNotNull { url -> extras[url]?.let { url to it.items } })
+    }
+
+    private fun nameOf(u: String): String = lists.firstOrNull { it.url == u }?.name ?: hostOf(u)
+
+    @Volatile private var twins: Map<String, Item> = emptyMap()
+
+    /** Gleicher Film aus Quelle [k], der in „Alle“ ausgeblendet ist (für den Quellen-Filter), sonst null. */
+    fun twin(i: Item, k: Int): Item? = if (i.kind == Kind.MOVIE) twins["$k|" + i.mk] else null
+
+    /** Gehört der Titel zur Quelle [k]? */
+    fun inSource(i: Item, k: Int): Boolean = merged.inSource(i, k)
+
+    /** Titel einer Quelle (0 = aktive Playlist), mit Jugendschutz-Filter. */
+    fun bySource(k: Int): List<Item> {
+        val m = merged
+        return shownOf(m.items.filter { m.inSource(it, k) })
+    }
+
+    /** Weitere Playlists laden: [network] = vom Server (sonst aus dem Zwischenspeicher, nur fehlende vom Server). */
+    private suspend fun loadExtras(c: Context, network: Boolean) {
+        val urls = extraUrls(c)
+        extraError = null
+        if (urls.isEmpty()) { if (extras.isNotEmpty()) { extras.clear(); rebuild(c) }; return }
+        heavy = false
+        var changed = false
+        for (url in urls) {
+            if (!network && extras.containsKey(url)) continue
+            if (cancelled()) throw CancellationException("abgebrochen")
+            if (Mem.heapTight(0.6)) { extraError = "Zu wenig Speicher für eine weitere Playlist auf diesem Gerät."; break }
+            phase = "Weitere Playlist wird geladen: " + nameOf(url)
+            val r = try {
+                loadExtra(c, url, network)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Server nicht erreichbar: alten Stand nehmen, wenn es einen gibt
+                val old = if (network) runCatching { loadExtra(c, url, false) }.getOrNull() else null
+                if (old == null) extraError = nameOf(url) + ": " + (if (e is ParseStop) MSG_TOO_BIG else PlaylistLogic.friendlyError(e))
+                old
+            } catch (e: OutOfMemoryError) {
+                extraError = nameOf(url) + ": " + MSG_TOO_BIG
+                null
+            }
+            if (r != null) { extras[url] = r; changed = true }
+        }
+        if (changed || extras.keys.any { it !in urls }) rebuild(c)
+    }
+
+    private suspend fun loadExtra(c: Context, u: String, network: Boolean): Extra? {
+        val hidden = LangFilter.hidden
+        if (!network) {
+            val head = readHeader(c, u)
+            if (head != null && (head.hidden == null || head.hidden == hidden)) {
+                readCache(c, u, hidden)?.let { if (it.items.isNotEmpty()) return Extra(it.items, it.epg, it.order) }
+            }
+            val gz = gzFile(c, u)
+            if (gz.exists()) {
+                val b = build(c, gz, true, Charsets.UTF_8, false, null)
+                val p = b.parsed
+                if (p.items.isNotEmpty()) {
+                    val epg = head?.epg?.takeIf { it.isNotEmpty() } ?: epgFor(u, p.epgUrls)
+                    val order = head?.order ?: emptyMap()
+                    writeCache(c, u, p.items, epg, order, p.counts, p.bytes, b.hidden)
+                    Catchup.saveParsed(c, u, p.catchup)
+                    return Extra(p.items, epg, order)
+                }
+            }
+        }
+        val (src, cs) = downloadWithRetry(c, u)
+        val gzTmp = tmp(gzFile(c, u))
+        val b = build(c, src, false, cs, false, gzTmp)
+        val p = b.parsed
+        if (p.counts.isEmpty()) throw PlaylistError("Keine Sender in der Playlist gefunden.")
+        val urls = epgFor(u, p.epgUrls)
+        val order = fetchOrder(u)
+        writeCache(c, u, p.items, urls, order, p.counts, p.bytes, b.hidden)
+        Catchup.saveParsed(c, u, p.catchup)
+        commitGz(c, u, gzTmp)
+        return Extra(p.items, urls, order)
+    }
+
+    /**
+     * Auswahl „gleichzeitig zeigen“ geändert: fehlende Playlists laden (Zwischenspeicher, sonst Server) und neu zusammenführen.
+     * false = gerade beschäftigt.
+     */
+    suspend fun applyMulti(c: Context): Boolean {
+        ensure(c)
+        if (primaryUrl == null) return true
+        if (!loadLock.tryLock()) return false
+        try {
+            job = currentCoroutineContext()[Job]
+            loading = true; error = null
+            withContext(Dispatchers.IO) { loadExtras(c, network = false) }
+            return true
+        } finally {
+            loading = false; heavy = false; job = null
+            loadLock.unlock()
+        }
     }
 
     private enum class Local { OK, NONE, FAILED }
@@ -676,12 +989,14 @@ object PlaylistStore {
             val r = withContext(Dispatchers.IO) { fromLocal(c, u, allowGz = skipNetworkWhenCached, ask = ask) }
             usedCache = r == Local.OK
         }
+        // Weitere gleichzeitig gezeigte Playlists gleich aus dem Zwischenspeicher dazunehmen (schneller Start)
+        if (usedCache) withContext(Dispatchers.IO) { runCatching { loadExtras(c, network = false) }.onFailure { if (it is CancellationException) throw it } }
         if (usedCache && skipNetworkWhenCached) {
             if (save) finishSave(c, u)
             return true
         }
         error = null
-        val before = sig(rawChannels)
+        val before = sig(primaryItems)
         heavy = true
         if (loadStarted == 0L) loadStarted = System.currentTimeMillis()
         val ok = withContext(Dispatchers.IO) {
@@ -701,7 +1016,9 @@ object PlaylistStore {
                 commitGz(c, u, gzTmp)
                 val list = parsed.items
                 if (sig(list) != before || !usedCache || b.hidden != shownHidden) show(c, u, list, urls, order, parsed.counts, parsed.bytes, b.hidden)
-                else { epgUrls = urls; catOrder = order; langCounts = parsed.counts; langBytes = parsed.bytes; Catchup.start(c, u, list) }
+                else { primaryEpg = urls; primaryOrder = order; langCounts = parsed.counts; langBytes = parsed.bytes; restartCatchup(c) }
+                // Weitere gezeigte Playlists ebenfalls vom Server erneuern
+                loadExtras(c, network = true)
                 if (save) finishSave(c, u)
                 askNext = false
                 true
@@ -751,7 +1068,8 @@ object PlaylistStore {
             if (Mem.heapTight(0.45)) setItems(emptyList())
             val r = withContext(Dispatchers.IO) { fromLocal(c, u, allowGz = true, ask = false) }
             when (r) {
-                Local.OK -> {}
+                // Weitere Playlists mit der neuen Sprachauswahl neu einlesen
+                Local.OK -> { extras.clear(); withContext(Dispatchers.IO) { runCatching { loadExtras(c, network = false) }.onFailure { if (it is CancellationException) throw it } } }
                 Local.NONE -> return loadInner(c, u, false, false, false, false).let { true }
                 Local.FAILED -> {
                     // Neue Auswahl passt nicht: alte Auswahl wiederherstellen (und, falls schon freigegeben, wieder einlesen)
@@ -819,6 +1137,8 @@ object PlaylistStore {
     fun clear(c: Context) {
         ensure(c)
         lists.forEach { deleteFiles(c, it.url) }
+        extras.clear(); multi = emptySet(); primaryItems = emptyList(); primaryUrl = null
+        merged = MultiLogic.Merged(emptyList(), emptySet(), emptyMap()); sourceNames = emptyList()
         lists.clear(); persist(c); setItems(emptyList()); langCounts = emptyMap(); langBytes = emptyMap()
     }
 }
@@ -830,6 +1150,16 @@ private class CountingStream(inp: InputStream, private val onCount: (Long) -> Un
     override fun read(): Int { val b = super.read(); if (b >= 0) add(1); return b }
     override fun read(b: ByteArray, off: Int, len: Int): Int { val r = super.read(b, off, len); if (r > 0) add(r.toLong()); return r }
     private fun add(k: Long) { n += k; if (n - last >= 131072) { last = n; onCount(n) } }
+    override fun close() { onCount(n); super.close() }
+}
+
+/** Zählt die geschriebenen Bytes (Fortschritt beim Aufbau über die Schnittstelle), meldet höchstens alle 256 KB. */
+private class CountingOut(out: OutputStream, private val onCount: (Long) -> Unit) : java.io.FilterOutputStream(out) {
+    private var n = 0L
+    private var last = 0L
+    override fun write(b: Int) { out.write(b); add(1) }
+    override fun write(b: ByteArray, off: Int, len: Int) { out.write(b, off, len); add(len.toLong()) }
+    private fun add(k: Long) { n += k; if (n - last >= 262_144) { last = n; onCount(n) } }
     override fun close() { onCount(n); super.close() }
 }
 

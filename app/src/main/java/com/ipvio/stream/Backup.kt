@@ -13,7 +13,9 @@ object Backup {
     private val NAMES = listOf(
         "ipvio_general", "ipvio_settings", "ipvio_lib", "ipvio_quality", "ipvio_hist", "ipvio_watch",
         "ipvio_catfavs", "ipvio_variants", "ipvio_guide", "ipvio_browse", "ipvio_cat", "ipvio_lang",
-        "ipvio_chlists", "ipvio_tracks", "ipvio_eprog"
+        "ipvio_chlists", "ipvio_tracks", "ipvio_eprog",
+        // Runde 20: Live-Puffer/Aufnahmen, Seitenleiste, Handy, Updates
+        "ipvio_livetv", "ipvio_side", "ipvio_mobile", "ipvio_upd"
     )
 
     /** Größer wird eine echte Sicherung nie; größere Dateien werden gar nicht erst gelesen. */
@@ -28,6 +30,17 @@ object Backup {
 
     /** Schreibt die Sicherung und gibt die Datei zurück (oder null bei Fehler). */
     fun export(c: Context): File? = runCatching {
+        val f = file(c)
+        f.parentFile?.mkdirs()
+        f.writeText(exportText(c, false) ?: return null)
+        f
+    }.getOrNull()
+
+    /**
+     * Sicherung als Text. [withPlaylists] = auch die Playlists mit Zugangsdaten (nur für die Übertragung auf ein
+     * anderes eigenes Gerät im WLAN oder in das eigene Google Drive; in der Datei auf dem Gerät nie).
+     */
+    fun exportText(c: Context, withPlaylists: Boolean): String? = runCatching {
         val root = JSONObject().put("v", 1).put("at", System.currentTimeMillis())
         val files = JSONObject()
         for (n in fileNames(c)) {
@@ -47,17 +60,21 @@ object Backup {
             files.put(n, o)
         }
         root.put("files", files)
-        val f = file(c)
-        f.parentFile?.mkdirs()
-        f.writeText(root.toString())
-        f
+        if (withPlaylists) root.put("playlists", PlaylistStore.exportLists(c))
+        root.toString()
     }.getOrNull()
 
     /** Liest die Sicherung zurück. Gibt die Zahl der wiederhergestellten Dateien zurück, -1 bei Fehler. */
     fun restore(c: Context): Int = runCatching {
         val f = file(c)
         if (!f.exists() || f.length() > MAX_BYTES) return -1
-        val root = JSONObject(f.readText())
+        restoreText(c, f.readText())
+    }.getOrDefault(-1)
+
+    /** Sicherung aus Text einspielen (WLAN, Google Drive). Playlists darin werden ergänzt, nicht ersetzt. */
+    fun restoreText(c: Context, text: String): Int = runCatching {
+        if (text.length > MAX_BYTES) return -1
+        val root = JSONObject(text)
         if (root.optInt("v", 0) != 1) return -1
         val files = root.getJSONObject("files")
         var count = 0
@@ -80,6 +97,7 @@ object Backup {
             e.commit()
             count++
         }
+        root.optJSONArray("playlists")?.let { PlaylistStore.importLists(c, it) }
         count
     }.getOrDefault(-1)
 }

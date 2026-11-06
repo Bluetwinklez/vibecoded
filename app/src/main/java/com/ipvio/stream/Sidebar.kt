@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -123,6 +124,12 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
                 line(.5f, .5f, .5f, .28f)
                 line(.5f, .5f, .66f, .6f)
             }
+            10 -> { // Sport: Ball mit Nähten
+                val c = Offset(.5f * s, .5f * s)
+                drawCircle(color, radius = .36f * s, center = c, style = sw)
+                drawArc(color, 200f, 140f, false, topLeft = Offset(.14f * s, .02f * s), size = Size(.72f * s, .5f * s), style = sw)
+                drawArc(color, 20f, 140f, false, topLeft = Offset(.14f * s, .48f * s), size = Size(.72f * s, .5f * s), style = sw)
+            }
             else -> {
                 for (y in listOf(.26f, .5f, .74f)) line(.12f, y, .88f, y)
             }
@@ -134,58 +141,135 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
 private val SidebarBg: Color get() = lerp(Look.bg, Color.Black, 0.25f)
 private val SidebarInk = Color(0xFFCFCFD6)
 
+/** Lage und Stil der Seitenleiste (Runde 20): links, rechts oder oben; nur Symbole oder immer mit Text. */
+object SidebarPrefs {
+    const val LEFT = 0
+    const val RIGHT = 1
+    const val TOP = 2
+    val POS_NAMES = listOf("Links", "Rechts", "Oben")
+    var pos by mutableIntStateOf(LEFT)
+        private set
+    /** Immer mit Text (sonst nur Symbole, Texte beim Hineingehen). */
+    var labels by mutableStateOf(false)
+        private set
+
+    fun init(c: android.content.Context) {
+        val p = Profiles.sp(c, "ipvio_side")
+        pos = p.getInt("pos", LEFT).coerceIn(LEFT, TOP)
+        labels = p.getBoolean("labels", false)
+    }
+
+    fun set(c: android.content.Context, pos: Int = this.pos, labels: Boolean = this.labels) {
+        this.pos = pos.coerceIn(LEFT, TOP); this.labels = labels
+        Profiles.sp(c, "ipvio_side").edit().putInt("pos", this.pos).putBoolean("labels", labels).apply()
+    }
+
+    fun align(): Alignment = when (pos) { RIGHT -> Alignment.CenterEnd; TOP -> Alignment.TopCenter; else -> Alignment.CenterStart }
+}
+
+/** Höhe der Leiste oben. */
+val TopBarH: androidx.compose.ui.unit.Dp get() = dpx(68)
+
+/** Platz für die Seitenleiste am Inhalt (links, rechts oder oben). */
+fun Modifier.sidebarPad(): Modifier = when (SidebarPrefs.pos) {
+    SidebarPrefs.RIGHT -> this.padding(end = DS.SidebarW)
+    SidebarPrefs.TOP -> this.padding(top = TopBarH)
+    else -> this.padding(start = DS.SidebarW)
+}
+
+/** Abstand links bis zum Inhalt (nur bei der Leiste links). */
+val SideStart: androidx.compose.ui.unit.Dp get() = if (SidebarPrefs.pos == SidebarPrefs.LEFT) DS.SidebarW else 0.dp
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: FocusRequester, onFocusIn: (Boolean) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }   // = Seitenleiste hat den Fokus
+    var focusIn by remember { mutableStateOf(false) }   // = Seitenleiste hat den Fokus
+    val pos = SidebarPrefs.pos
+    val expanded = focusIn || SidebarPrefs.labels
     val fm = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val visible = AppSettings.menuOrder.filter { it !in AppSettings.menuHidden }
     val activeVisible = tab in visible
-    val w by animateDpAsState(if (expanded) DS.SidebarOpenW else DS.SidebarW, if (Look.motion == 0) snap() else tween(220), label = "sideW")
+    // Zurück in den Inhalt: die Richtung weg von der Leiste
+    val outKey = when (pos) { SidebarPrefs.RIGHT -> Key.DirectionLeft; SidebarPrefs.TOP -> Key.DirectionDown; else -> Key.DirectionRight }
+    val onPick: (Int) -> Unit = { id ->
+        AppNav.focusTab = id
+        HeaderFocus.returnTo = null
+        onTab(id)
+        scope.launch {
+            delay(200)
+            // Solange die Seitenleiste den Fokus noch hat, weiter versuchen: erst das Ziel des Inhalts,
+            // dann "in den Inhalt". Ein einzelner Versuch scheitert, wenn die Liste noch lädt.
+            var n = 0
+            while (focusIn && n < 14) {
+                val ok = ContentFocus.tab == id && runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
+                if (ok) AppNav.focusTab = -1
+                if (!ok && n >= 4) runCatching {
+                    fm.moveFocus(when (pos) { SidebarPrefs.RIGHT -> FocusDirection.Left; SidebarPrefs.TOP -> FocusDirection.Down; else -> FocusDirection.Right })
+                }
+                delay(100)
+                n++
+            }
+        }
+    }
+    val group = Modifier
+        .focusProperties { enterTo { if (activeVisible) activeFocus else FocusRequester.Default } }
+        // Zurück zum zuletzt markierten Element im Inhalt (nicht zum Element neben dem Menüpunkt)
+        .onPreviewKeyEvent { ev ->
+            if (ev.type == KeyEventType.KeyDown && ev.key == outKey) {
+                ContentMemory.restore() || runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
+            } else false
+        }
+        .focusGroup()
+        .onFocusChanged { focusIn = it.hasFocus; onFocusIn(it.hasFocus) }
+
+    if (pos == SidebarPrefs.TOP) {
+        // Leiste oben: Symbole mit Text nebeneinander
+        Row(
+            modifier.fillMaxWidth().height(TopBarH).background(SidebarBg)
+                .drawBehind { drawLine(Color(0x1AFFFFFF), Offset(0f, size.height - 1f), Offset(size.width, size.height - 1f), 1f) }
+                .then(group)
+                // Viele Menüpunkte: Leiste lässt sich seitlich verschieben (der markierte Punkt rückt ins Bild)
+                .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(horizontal = dpx(28)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(dpx(8))
+        ) {
+            Box(Modifier.size(dpx(40)), contentAlignment = Alignment.Center) { BrandMark(Modifier.fillMaxSize()) }
+            Spacer(Modifier.width(dpx(18)))
+            visible.forEach { id ->
+                SideItem(id, MENU_LABELS[id], id == tab, true, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier, horizontal = true) { onPick(id) }
+            }
+        }
+        return
+    }
+
+    val right = pos == SidebarPrefs.RIGHT
+    val w by animateDpAsState(if (expanded) DS.SidebarOpenW else DS.SidebarCollapsedW, if (Look.motion == 0) snap() else tween(220), label = "sideW")
     Box(modifier.fillMaxHeight()) {
-        // Aufgeklappt: Inhalt dahinter abdunkeln, damit die Texte gut lesbar sind
-        if (expanded) Box(
-            Modifier.width(w + dpx(260)).fillMaxHeight()
-                .background(Brush.horizontalGradient(0f to Color(0xF2000000), 0.55f to Color(0xB3000000), 1f to Color.Transparent))
+        // Aufgeklappt (nur bei „nur Symbole“): Inhalt dahinter abdunkeln, damit die Texte gut lesbar sind
+        if (focusIn && !SidebarPrefs.labels) Box(
+            Modifier.width(w + dpx(260)).fillMaxHeight().align(if (right) Alignment.CenterEnd else Alignment.CenterStart)
+                .background(
+                    if (right) Brush.horizontalGradient(0f to Color.Transparent, 0.45f to Color(0xB3000000), 1f to Color(0xF2000000))
+                    else Brush.horizontalGradient(0f to Color(0xF2000000), 0.55f to Color(0xB3000000), 1f to Color.Transparent)
+                )
         )
         Column(
-            Modifier.width(w).fillMaxHeight()
+            Modifier.width(w).fillMaxHeight().align(if (right) Alignment.CenterEnd else Alignment.CenterStart)
                 .background(SidebarBg)
-                .drawBehind { drawLine(Color(0x1AFFFFFF), Offset(size.width - 1f, 0f), Offset(size.width - 1f, size.height), 1f) }
-                .focusProperties { enterTo { if (activeVisible) activeFocus else FocusRequester.Default } }
-                // Rechts: zurück zum zuletzt markierten Element im Inhalt (nicht zum Element neben dem Menüpunkt)
-                .onPreviewKeyEvent { ev ->
-                    if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionRight) {
-                        ContentMemory.restore() || runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
-                    } else false
+                .drawBehind {
+                    val x = if (right) 0f else size.width - 1f
+                    drawLine(Color(0x1AFFFFFF), Offset(x, 0f), Offset(x, size.height), 1f)
                 }
-                .focusGroup()
-                .onFocusChanged { expanded = it.hasFocus; onFocusIn(it.hasFocus) }
+                .then(group)
                 .padding(start = dpx(16), end = dpx(16), top = dpx(22))
         ) {
             Box(Modifier.padding(start = dpx(6)).size(dpx(48)), contentAlignment = Alignment.Center) { BrandMark(Modifier.fillMaxSize()) }
             Spacer(Modifier.height(dpx(34)))
             Column(verticalArrangement = Arrangement.spacedBy(dpx(10))) {
                 visible.forEach { id ->
-                    SideItem(id, MENU_LABELS[id], id == tab, expanded, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier) {
-                        AppNav.focusTab = id
-                        HeaderFocus.returnTo = null
-                        onTab(id)
-                        scope.launch {
-                            delay(200)
-                            // Solange die Seitenleiste den Fokus noch hat, weiter versuchen: erst das Ziel des Inhalts,
-                            // dann "nach rechts". Ein einzelner Versuch scheitert, wenn die Liste noch lädt.
-                            var n = 0
-                            while (expanded && n < 14) {
-                                val ok = ContentFocus.tab == id && runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
-                                if (ok) AppNav.focusTab = -1
-                                if (!ok && n >= 4) runCatching { fm.moveFocus(FocusDirection.Right) }
-                                delay(100)
-                                n++
-                            }
-                        }
-                    }
+                    SideItem(id, MENU_LABELS[id], id == tab, expanded, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier) { onPick(id) }
                 }
             }
         }
@@ -193,13 +277,13 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
 }
 
 @Composable
-private fun SideItem(id: Int, label: String, active: Boolean, expanded: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun SideItem(id: Int, label: String, active: Boolean, expanded: Boolean, modifier: Modifier, horizontal: Boolean = false, onClick: () -> Unit) {
     var f by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(dpx(12))
     // Aktiv: Symbol in der Designfarbe auf getönter Fläche. Fokus: weiße Fläche, dunkle Schrift (eindeutig „markiert“).
     val ink = if (f) DS.FocusInk else if (active) Accent1 else SidebarInk
     Row(
-        modifier.fillMaxWidth().height(dpx(56)).clip(shape)
+        (if (horizontal) modifier.height(dpx(48)) else modifier.fillMaxWidth().height(dpx(56))).clip(shape)
             .background(
                 if (f) SolidColor(DS.FocusFill)
                 else if (active) SolidColor(Accent1.copy(alpha = .16f))
@@ -207,7 +291,7 @@ private fun SideItem(id: Int, label: String, active: Boolean, expanded: Boolean,
             )
             .onFocusChanged { f = it.isFocused }
             .clickable(onClick = onClick)
-            .padding(start = dpx(17)),
+            .padding(start = dpx(17), end = if (horizontal) dpx(17) else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MenuIcon(id, ink, Modifier.size(dpx(26)))

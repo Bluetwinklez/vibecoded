@@ -35,7 +35,12 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     val pend = remember { PlaylistStore.pending(ctx) }
     val pendX = remember { pend?.let { LoadLogic.xtreamParts(it.url) } }
     var xtream by remember { mutableStateOf(pendX != null) }
-    var url by remember { mutableStateOf(if (pend != null && pendX == null) pend.url else "") }
+    // Runde 20: Stalker-Portal (Portal-Adresse + MAC-Adresse)
+    val pendS = remember { pend?.url?.let { StalkerLogic.parse(it) } }
+    var stalker by remember { mutableStateOf(pendS != null) }
+    var portal by remember { mutableStateOf(pendS?.portal ?: "") }
+    var mac by remember { mutableStateOf(pendS?.mac ?: "00:1A:79:") }
+    var url by remember { mutableStateOf(if (pend != null && pendX == null && pendS == null) pend.url else "") }
     var host by remember { mutableStateOf(pendX?.first ?: "") }
     var user by remember { mutableStateOf(pendX?.second ?: "") }
     var pass by remember { mutableStateOf(pendX?.third ?: "") }
@@ -46,6 +51,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
         PhoneImport { inp ->
             Handler(Looper.getMainLooper()).post {
                 val u = if (inp.isXtream) PlaylistStore.xtreamUrl(inp.host, inp.user, inp.pass) else inp.url
+                stalker = false
                 if (inp.isXtream) { xtream = true; host = inp.host; user = inp.user; pass = inp.pass } else { xtream = false; url = inp.url }
                 if (u == null) PlaylistStore.error = "Angaben unvollständig: Server, Benutzername und Passwort nötig."
                 else scope.launch { if (PlaylistStore.load(ctx, u, true)) onDone() }
@@ -54,10 +60,22 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     }
     var serving by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
+        // Runde 20: Playlist-Datei vom Handy hochladen, Absturzbericht am Handy lesen
+        receiver.uploadDir = ImportFiles.tmpDir(ctx)
+        receiver.saveUpload = { name, f -> ImportFiles.save(ctx, name, f) }
+        receiver.crash = { ImportFiles.crashText(ctx) }
         serving = receiver.start()
         onDispose { receiver.stop() }
     }
     val canCancel = PlaylistStore.lists.isNotEmpty() || PlaylistStore.channels.isNotEmpty()
+    val pickFile = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val u = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ImportFiles.fromUri(ctx, uri) }
+            if (u == null) PlaylistStore.error = "Das ist keine gültige M3U-Datei."
+            else if (PlaylistStore.load(ctx, u, true)) onDone()
+        }
+    }
     BackHandler(enabled = canCancel) { PlaylistStore.clearPending(ctx); onDone() }
 
     // Beim letzten Mal mitten im Laden unterbrochen: automatisch weitermachen, ohne etwas neu einzugeben
@@ -95,14 +113,26 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
             }
             Text("Playlist hinzufügen", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FocusButton("M3U-Link", Modifier.focusRequester(startFocus), primary = !xtream) { xtream = false }
-                FocusButton("Xtream-Login", primary = xtream) { xtream = true }
+                FocusButton("M3U-Link", Modifier.focusRequester(startFocus), primary = !xtream && !stalker) { xtream = false; stalker = false }
+                FocusButton("Xtream-Login", primary = xtream && !stalker) { xtream = true; stalker = false }
+                FocusButton("Stalker-Portal", primary = stalker) { stalker = true; xtream = false }
             }
-            if (!xtream) {
+            if (stalker) {
+                Field(portal, { portal = it }, "Portal-Adresse (z. B. http://portal.tld:8080/c/)")
+                Field(mac, { mac = it }, "MAC-Adresse (z. B. 00:1A:79:12:34:56)")
+                Text("Sender und Filme werden geladen (Serien noch nicht). Die MAC-Adresse bekommst du von deinem Anbieter.", color = Muted, fontSize = 15.sp)
+            } else if (!xtream) {
                 Field(url, { url = it }, "http://…/playlist.m3u")
-                FocusButton("Aus Zwischenablage einfügen") {
-                    val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cm.primaryClip?.getItemAt(0)?.text?.let { url = it.toString() }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FocusButton("Aus Zwischenablage einfügen") {
+                        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.primaryClip?.getItemAt(0)?.text?.let { url = it.toString() }
+                    }
+                    // Runde 20: M3U-Datei vom Gerät (USB-Stick, Downloads …); auf Geräten ohne Dateiauswahl über die Handy-Seite
+                    FocusButton("Datei vom Gerät") {
+                        try { pickFile.launch(arrayOf("*/*")) }
+                        catch (e: Exception) { PlaylistStore.error = "Auf diesem Gerät gibt es keine Dateiauswahl. Lade die Datei über die Handy-Seite rechts hoch." }
+                    }
                 }
             } else {
                 Field(host, { host = it }, "Server (z. B. http://server.tld:8080)")
@@ -114,8 +144,8 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FocusButton(if (PlaylistStore.loading) "Lade…" else "Hinzufügen", primary = true) {
                     if (PlaylistStore.loading) return@FocusButton
-                    val finalUrl = if (xtream) PlaylistStore.xtreamUrl(host, user, pass) else url
-                    if (finalUrl == null) PlaylistStore.error = "Angaben unvollständig: Server, Benutzername und Passwort nötig."
+                    val finalUrl = if (stalker) StalkerLogic.source(portal, mac)?.encode() else if (xtream) PlaylistStore.xtreamUrl(host, user, pass) else url
+                    if (finalUrl == null) PlaylistStore.error = if (stalker) "Angaben unvollständig: Portal-Adresse und MAC-Adresse (z. B. 00:1A:79:12:34:56) nötig." else "Angaben unvollständig: Server, Benutzername und Passwort nötig."
                     else scope.launch { if (PlaylistStore.load(ctx, finalUrl, true)) onDone() }
                 }
                 if (canCancel) FocusButton("Abbrechen") { PlaylistStore.clearPending(ctx); onDone() }
@@ -147,10 +177,16 @@ private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
         } else {
             Step(1, "Handy mit demselben WLAN verbinden wie dieses Gerät.")
             Step(2, "Im Browser des Handys diese Adresse öffnen:")
-            Box(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(DS.RadiusM)).background(Bg).padding(horizontal = 18.dp, vertical = 12.dp)
-            ) {
-                Text(address, color = Accent2, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(DS.RadiusM)).background(Bg).padding(horizontal = 18.dp, vertical = 12.dp)
+                ) {
+                    Text(address, color = Accent2, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, raw = true)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    QrImage(address, 130.dp)
+                    Text("QR-Code scannen", color = Muted, fontSize = 13.sp)
+                }
             }
             Step(3, "Den Code von hier eingeben:")
             Row(
@@ -161,7 +197,7 @@ private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
                 Text("Code", color = Muted, fontSize = 18.sp)
                 Text(code, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 4.sp)
             }
-            Step(4, "Zugangsdaten eintragen und senden. Die Playlist wird danach automatisch geladen.")
+            Step(4, "Zugangsdaten eintragen oder eine M3U-Datei hochladen und senden. Die Playlist wird danach automatisch geladen.")
         }
     }
 }

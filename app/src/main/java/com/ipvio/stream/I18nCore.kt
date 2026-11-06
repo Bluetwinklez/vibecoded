@@ -2,16 +2,17 @@ package com.ipvio.stream
 
 /**
  * Übersetzungskern (ohne Android, testbar). Quelltexte sind die deutschen Oberflächentexte.
- * Zeilenformat: de ¦ en ¦ tr ¦ bs ¦ hr ¦ sr ¦ es ¦ fr ¦ it   (hr/sr leer = wie bs; andere leer = wie en)
+ * Zeilenformat: de ¦ en ¦ tr ¦ bs ¦ hr ¦ sr ¦ es ¦ fr ¦ it ¦ nl   (hr/sr leer = wie bs; andere leer = wie en)
  * Platzhalter: {0} beliebiger Text, {#0} Zahl. Ein Zeilenumbruch wird als \n geschrieben.
  */
 object I18nCore {
-    val CODES = listOf("de", "en", "tr", "bs", "hr", "sr", "es", "fr", "it")
-    val NATIVE = listOf("Deutsch", "English", "Türkçe", "Bosanski", "Hrvatski", "Srpski", "Español", "Français", "Italiano")
+    val CODES = listOf("de", "en", "tr", "bs", "hr", "sr", "es", "fr", "it", "nl")
+    val NATIVE = listOf("Deutsch", "English", "Türkçe", "Bosanski", "Hrvatski", "Srpski", "Español", "Français", "Italiano", "Nederlands")
 
-    private class Pat(val re: Regex, val tr: Array<String>, val numeric: BooleanArray)
+    private class Pat(val src: String, val re: Regex, val tr: Array<String>, val numeric: BooleanArray)
 
     private val exact = HashMap<String, Array<String>>()
+    private val byDe = HashMap<String, Array<String>>()
     private val pats = ArrayList<Pat>()
     private val memo = Array(CODES.size) { java.util.concurrent.ConcurrentHashMap<String, String>() }
     private val PH = Regex("""\{(#?)(\d)\}""")
@@ -48,10 +49,24 @@ object I18nCore {
                 }
                 sb.append(Regex.escape(de.substring(last))).append("$")
                 // Platzhalter-Nummern in Reihenfolge des Auftretens (0,1,2 …)
-                pats.add(Pat(Regex(sb.toString(), RegexOption.DOT_MATCHES_ALL), row, numeric.toBooleanArray()))
+                pats.removeAll { it.src == de }
+                pats.add(Pat(de, Regex(sb.toString(), RegexOption.DOT_MATCHES_ALL), row, numeric.toBooleanArray()))
             } else exact[de] = row
+            byDe[de] = row
         }
         pats.sortByDescending { it.re.pattern.length }
+        for (m in memo) m.clear()
+    }
+
+    /** Ergänzt eine einzelne Sprachspalte (Zeilen "Deutsch¦Übersetzung") zu bereits geladenen Zeilen. */
+    @Synchronized
+    fun loadColumn(li: Int, vararg blocks: String) {
+        for (b in blocks) for (line in b.lineSequence()) {
+            if (line.isBlank() || line.startsWith("#")) continue
+            val p = line.split('¦').map { it.trim().replace("\\n", "\n") }
+            if (p.size < 2 || p[1].isEmpty()) continue
+            byDe[p[0]]?.set(li, p[1])
+        }
         for (m in memo) m.clear()
     }
 

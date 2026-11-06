@@ -34,8 +34,10 @@ object NewEpisodes {
     }
 
     /** Favoriten-Serien prüfen (nach dem Laden der Playlist und wenn sich die Favoriten ändern). */
-    fun check(c: Context, favSeries: List<Item>) {
+    fun check(c: Context, favSeries0: List<Item>) {
         init(c)
+        // Serien mit Platzhalter kennen ihre Folgen noch nicht: kein Vergleich (sonst falsche Meldungen)
+        val favSeries = favSeries0.filter { !XtreamLogic.isLazy(it) }
         if (favSeries.isEmpty()) return
         val r = NewEpisodeLogic.detect(known, favSeries.map { s -> NewEpisodeLogic.Show(s.id, s.title, s.episodes.map { it.season to it.num }) })
         val ids = favSeries.map { it.id }.toSet()

@@ -93,7 +93,9 @@ object DS {
     val PageY = 28.dp
     /** Breite der Seitenleiste (wie im Entwurf immer mit Texten: 230 von 1658 Entwurfs-Pixeln). */
     /** Platz der eingeklappten Seitenleiste (Runde 14: nur Symbole, klappt beim Hineingehen über den Inhalt auf). */
-    val SidebarW: Dp get() = dpx(92)
+    val SidebarW: Dp get() = if (SidebarPrefs.labels) SidebarOpenW else SidebarCollapsedW
+    /** Eingeklappte Seitenleiste (nur Symbole). */
+    val SidebarCollapsedW: Dp get() = dpx(92)
     /** Breite der aufgeklappten Seitenleiste. */
     val SidebarOpenW: Dp get() = dpx(250)
 

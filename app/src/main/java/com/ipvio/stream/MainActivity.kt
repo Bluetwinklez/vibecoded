@@ -40,7 +40,11 @@ class MainActivity : ComponentActivity() {
         val pick = Profiles.needsPicker(this)
         if (!pick) AppSettings.init(this)
         General.init(this)
+        SidebarPrefs.init(this)
         Config.init(this)
+        LiveSettings.init(this)
+        Recorder.attach(this)
+        MobilePrefs.apply(this)
         // Frischer Start (nicht nur gedrehter/neu erstellter Bildschirm): "Zuletzt Geschautes beim Start fortsetzen" darf wieder greifen.
         // Der Prozess lebt nach Beenden oft weiter; das Merker-Flag blieb deshalb vom ersten Start stehen und nichts wurde mehr geöffnet.
         if (savedInstanceState == null) General.startupHandled = false
@@ -175,8 +179,14 @@ private fun AppContent() {
     val states = listOf(
         rememberLazyListState(), rememberLazyListState(), rememberLazyListState(),
         rememberLazyListState(), rememberLazyListState(), rememberLazyListState(), rememberLazyListState(),
-        rememberLazyListState(), rememberLazyListState(), rememberLazyListState()
+        rememberLazyListState(), rememberLazyListState(), rememberLazyListState(), rememberLazyListState()
     )
+
+    // Neue App-Version auf GitHub? Einmal am Tag still prüfen; ein Fund erscheint in der Glocke oben rechts.
+    LaunchedEffect(Unit) {
+        delay(8_000)   // erst nach dem Start, die Playlist hat Vorrang
+        runCatching { AppUpdate.autoCheck(ctx) }
+    }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { General.cleanupLegacy(ctx) }
@@ -223,7 +233,7 @@ private fun AppContent() {
         var playUrl = url
         var alts = emptyList<Variant>()
         var note: String? = null
-        if (item.kind == Kind.MOVIE) {
+        if (item.kind == Kind.MOVIE && !item.id.startsWith("rec:")) {
             // Gleicher Film in anderen Qualitäten (eigene Einträge des Anbieters): passend zum Gerät wählen, Rest zum Ausweichen
             val list = Sources.alternatives(item, all)
             if (list.size > 1) {
@@ -345,8 +355,14 @@ private fun AppContent() {
                         liveAll.filter { it.group == g }
                     }
                 } else emptyList()
-                val seriesItem = remember(p.itemId, all) {
-                    if (p.live || p.archive != null) null else all.firstOrNull { it.id == p.itemId }
+                val seriesBase = remember(p.itemId, all) {
+                    if (p.live || p.archive != null) null else all.firstOrNull { it.id == p.itemId }?.let { LazySeries.full(it) }
+                }
+                // Serie mit Platzhalter (z. B. Fortsetzen von der Startseite): Folgen im Hintergrund holen, der Player nutzt sie sofort danach
+                val seriesItem by produceState(seriesBase, seriesBase) {
+                    value = seriesBase
+                    val b = seriesBase
+                    if (b != null && LazySeries.isStub(b)) LazySeries.load(ctx, b)?.let { value = it }
                 }
                 // Neuer Start von außen (z. B. Erinnerung „Umschalten“) während der Wiedergabe: Player neu aufbauen
                 key(p) {
@@ -389,7 +405,7 @@ private fun AppContent() {
             else -> Box(Modifier.fillMaxSize().screenEnter(tab)) { HomeScreen(
                 tab = tab, onTab = { goTab(it) }, states = states,
                 onOpen = open,
-                onPlayNow = { i -> LastFocus.pending = i.id; if (i.kind == Kind.SERIES) pushTop(i) else { if (i.kind != Kind.LIVE) pushTop(i); start(i, i.title, i.url) } },
+                onPlayNow = { i -> LastFocus.pending = i.id; if (i.kind == Kind.SERIES) pushTop(i) else { if (i.kind != Kind.LIVE && !i.id.startsWith("rec:")) pushTop(i); start(i, i.title, i.url) } },
                 onResume = { e, i ->
                     LastFocus.pending = i.id
                     if (i.kind != Kind.LIVE) pushTop(i)

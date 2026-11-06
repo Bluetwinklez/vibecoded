@@ -75,9 +75,56 @@ private const val EP_PANE = 1
 /** Bis zu dieser Länge wird die Beschreibung immer ganz angezeigt (kein „Mehr lesen“). */
 private const val FULL_TEXT_CHARS = 800
 
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+/**
+ * Detailseite. Serien mit Platzhalter (Folgen werden erst beim Öffnen geladen, siehe [LazySeries]) holen ihre Folgen zuerst;
+ * solange das läuft, zeigt die Seite einen Spinner, bei einem Fehler „Erneut versuchen“.
+ */
 @Composable
 fun DetailScreen(
+    item: Item, all: List<Item>, onPlay: (String, String, Long) -> Unit,
+    onPerson: (PersonRef) -> Unit, onOpenItem: (Item) -> Unit, onBack: () -> Unit,
+    embedded: Boolean = false, autoFocus: Boolean = true, onTopUp: (() -> Unit)? = null,
+    showActions: Boolean = true
+) {
+    val ctx = LocalContext.current
+    var tryNo by remember(item.id) { mutableIntStateOf(0) }
+    // Kino-Vorschau ohne Knöpfe (nur Infos) braucht die Folgen nicht
+    val need = LazySeries.isStub(item) && showActions
+    var full by remember(item.id) { mutableStateOf(LazySeries.full(item).takeIf { it !== item }) }
+    var failed by remember(item.id) { mutableStateOf(false) }
+    if (need && full == null) {
+        LaunchedEffect(item.id, tryNo) {
+            failed = false
+            val r = LazySeries.load(ctx, item)
+            if (r != null) full = r else failed = true
+        }
+        BackHandler(enabled = !embedded, onBack = onBack)
+        val retry = remember { FocusRequester() }
+        LaunchedEffect(failed) { if (failed && !embedded) { delay(120); runCatching { retry.requestFocus() } } }
+        Box(Modifier.fillMaxSize().background(Bg), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (!failed) {
+                    Spinner(Accent2, Modifier.size(48.dp))
+                    Text("Folgen werden geladen …", color = Muted, fontSize = 18.sp)
+                } else {
+                    Text(item.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("Die Folgen konnten nicht geladen werden. Verbindung oder Zugang prüfen.", color = Muted, fontSize = 17.sp)
+                    PillButton("Erneut versuchen", Modifier.focusRequester(retry)) { tryNo++ }
+                    if (!embedded) PillButton("Zurück", light = true) { onBack() }
+                }
+            }
+        }
+        return
+    }
+    DetailScreenFull(
+        if (need) full ?: item else item, all, onPlay, onPerson, onOpenItem, onBack,
+        embedded, autoFocus, onTopUp, showActions
+    )
+}
+
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+private fun DetailScreenFull(
     item: Item, all: List<Item>, onPlay: (String, String, Long) -> Unit,
     onPerson: (PersonRef) -> Unit, onOpenItem: (Item) -> Unit, onBack: () -> Unit,
     // Kino-Ansicht: eingebettet unter der Titelreihe (kein eigener Zurück-Knopf, kein automatischer Fokus, Hoch am Kopf gibt weiter)
@@ -594,7 +641,7 @@ fun DetailScreen(
                             DetailPill("Abbrechen") { jumpOpen = false; jumpText = "" }
                         }
                         LazyColumn(Modifier.fillMaxWidth().weight(1f), state = epListState, contentPadding = PaddingValues(bottom = dpx(40))) {
-                            itemsIndexed(shown, key = { _, ep -> "e${ep.season}_${ep.num}" }) { j, ep ->
+                            itemsIndexed(shown, key = { j0, ep -> "e${ep.season}_${ep.num}_$j0" }) { j, ep ->
                                 val i = (group?.from ?: 0) + j
                                 val em = metaOf(ep)
                                 val v = pick(ep)

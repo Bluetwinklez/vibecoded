@@ -115,7 +115,7 @@ fun SearchScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().padding(start = DS.SidebarW)) {
+        Box(Modifier.fillMaxSize().sidebarPad()) {
             LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(bottom = 48.dp)) {
                 item { Spacer(Modifier.height(24.dp)) }
                 item {
@@ -204,7 +204,7 @@ fun SearchScreen(
         Sidebar(
             tab,
             { id -> if (id == tab) scope.launch { state.scrollToItem(0) }; onTab(id) },
-            Modifier.align(Alignment.CenterStart), sideFocus
+            Modifier.align(SidebarPrefs.align()), sideFocus
         ) { inSidebar = it }
     }
 }

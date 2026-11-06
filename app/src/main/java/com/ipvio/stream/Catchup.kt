@@ -59,7 +59,7 @@ object Catchup {
     fun urlFor(item: Item, e: EpgEntry, now: Long = System.currentTimeMillis() / 1000): String? {
         val i = of(item) ?: return null
         if (!CatchupLogic.canPlay(i, e.start, e.end, now)) return null
-        return CatchupLogic.url(i, item.url, e.start, e.end, now, zone)
+        return CatchupLogic.url(i, item.url, e.start, e.end, now, zoneFor(item.url))
     }
 
     fun file(c: Context, url: String) = File(c.filesDir, "pl_" + url.trim().hashCode() + ".cu")
@@ -113,29 +113,62 @@ object Catchup {
     fun delete(c: Context, url: String) { runCatching { file(c, url).delete() } }
 
     /** Die Playlist wird angezeigt: Archiv-Angaben übernehmen; bei Xtream-Servern höchstens einmal am Tag nachfragen. */
-    fun start(c: Context, url: String, items: List<Item>) {
+    fun start(c: Context, url: String, items: List<Item>) = startAll(c, listOf(url to items))
+
+    /**
+     * Mehrere Playlists gleichzeitig (Runde 20): Angaben aller Quellen zusammen. Jede Quelle behält ihre Zeitzone
+     * (Archiv-Links rechnen in der Zeit des jeweiligen Servers).
+     */
+    fun startAll(c: Context, sources: List<Pair<String, List<Item>>>) {
         val app = c.applicationContext
         job?.cancel()
-        // Gespeicherte Angaben sofort (kleine Datei; der TV-Guide braucht sie gleich beim Einlesen des Programms)
-        val s = read(app, url)
-        val live = HashMap<String, String>()
-        for (it in items) if (it.kind == Kind.LIVE) live[it.id] = it.url
-        apply(CatchupLogic.merge(live, s.xt, s.m3u), s.tz)
-        val x = live.values.firstNotNullOfOrNull { CatchupLogic.xtreamLive(it) } ?: return
-        if (System.currentTimeMillis() - s.xtAt < REFRESH_MS) return
-        job = scope.launch {
-            val api = "${x.host}/player_api.php?username=${x.user}&password=${x.pass}"
-            val tz = fetchZone(api) ?: s.tz
-            val xt = fetchArchive("$api&action=get_live_streams")
-            if (xt == null) {
-                // Kein Xtream-Server oder gerade nicht erreichbar: in 6 Stunden noch einmal fragen, nicht bei jedem Start
-                write(app, url, Saved(s.m3u, s.xt, s.tz, System.currentTimeMillis() - REFRESH_MS + 6 * 3600_000L))
-                return@launch
-            }
-            val ns = Saved(s.m3u, xt, tz, System.currentTimeMillis())
-            write(app, url, ns)
-            apply(CatchupLogic.merge(live, xt, s.m3u), tz)
+        class Src(val url: String, val saved: Saved, val live: HashMap<String, String>, val x: XtreamLive?)
+        val srcs = sources.map { (url, items) ->
+            val s = read(app, url)
+            val live = HashMap<String, String>()
+            for (it in items) if (it.kind == Kind.LIVE) live[it.id] = it.url
+            Src(url, s, live, live.values.firstNotNullOfOrNull { CatchupLogic.xtreamLive(it) })
         }
+        val parts = srcs.map { CatchupLogic.merge(it.live, it.saved.xt, it.saved.m3u) }.toMutableList()
+        val tzs = srcs.map { it.saved.tz }.toMutableList()
+        fun publish() {
+            val all = HashMap<String, CatchupInfo>()
+            for (p in parts) all.putAll(p)
+            val z = HashMap<String, TimeZone>()
+            srcs.forEachIndexed { i, s -> val t = tzs[i]; val h = s.x?.host; if (t != null && h != null) z[h] = TimeZone.getTimeZone(t) }
+            zones = z
+            apply(all, tzs.firstOrNull())
+        }
+        publish()
+        val due = srcs.indices.filter { srcs[it].x != null && System.currentTimeMillis() - srcs[it].saved.xtAt >= REFRESH_MS }
+        if (due.isEmpty()) return
+        job = scope.launch {
+            for (i in due) {
+                val s = srcs[i]; val x = s.x ?: continue
+                val api = "${x.host}/player_api.php?username=${x.user}&password=${x.pass}"
+                val tz = fetchZone(api) ?: s.saved.tz
+                val xt = fetchArchive("$api&action=get_live_streams")
+                if (xt == null) {
+                    // Kein Xtream-Server oder gerade nicht erreichbar: in 6 Stunden noch einmal fragen, nicht bei jedem Start
+                    write(app, s.url, Saved(s.saved.m3u, s.saved.xt, s.saved.tz, System.currentTimeMillis() - REFRESH_MS + 6 * 3600_000L))
+                    continue
+                }
+                write(app, s.url, Saved(s.saved.m3u, xt, tz, System.currentTimeMillis()))
+                parts[i] = CatchupLogic.merge(s.live, xt, s.saved.m3u)
+                tzs[i] = tz
+                publish()
+            }
+        }
+    }
+
+    /** Zeitzone je Server (Host), bei mehreren Playlists. */
+    @Volatile private var zones: Map<String, TimeZone> = emptyMap()
+
+    /** Zeitzone für die Archiv-Adresse dieses Senders. */
+    private fun zoneFor(url: String): TimeZone {
+        if (zones.isEmpty()) return zone
+        val host = CatchupLogic.xtreamLive(url)?.host ?: return zone
+        return zones[host] ?: zone
     }
 
     private fun apply(m: Map<String, CatchupInfo>, tz: String?) {

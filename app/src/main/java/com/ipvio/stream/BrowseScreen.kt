@@ -49,6 +49,8 @@ class BrowseState(val req: BrowseReq) {
     var year by mutableStateOf("Alle")
     var genre by mutableStateOf<String?>(null)
     var country by mutableStateOf<String?>(null)
+    /** Quelle bei mehreren Playlists: -1 = alle, sonst Index in [PlaylistStore.sourceNames]. */
+    var source by mutableIntStateOf(-1)
     var focused by mutableIntStateOf(0)
     /** Stand der Genre-Erkennung, mit dem sortiert wurde. Neue Infos sortieren erst auf Wunsch neu (kein Umsortieren unter dem Cursor). */
     var ver by mutableIntStateOf(Classifier.version)
@@ -58,7 +60,7 @@ class BrowseState(val req: BrowseReq) {
     internal var lastFacets: Pair<Int, Facets>? = null
 }
 
-internal data class BrowseKey(val sort: Int, val minRi: Int, val year: String, val genre: String?, val country: String?, val ver: Int)
+internal data class BrowseKey(val sort: Int, val minRi: Int, val year: String, val genre: String?, val country: String?, val ver: Int, val source: Int = -1)
 
 /** Auswahl für die Filter (Genres, Länder, Jahre) – aus den Titeln der Liste. */
 internal class Facets(val genres: List<String>, val countries: List<Pair<String, String>>, val years: List<String>)
@@ -121,9 +123,16 @@ private fun facetsOf(items: List<Item>): Facets {
     )
 }
 
+/** Nur Titel einer Quelle; doppelte Filme werden durch die Fassung dieser Quelle ersetzt. */
+private fun ofSource(items: List<Item>, k: Int): List<Item> {
+    if (k < 0) return items
+    val seen = HashSet<String>()
+    return items.mapNotNull { i -> (if (PlaylistStore.inSource(i, k)) i else PlaylistStore.twin(i, k))?.takeIf { seen.add(it.id) } }
+}
+
 private fun filterAndSort(items: List<Item>, k: BrowseKey): List<Item> {
     val minR = RATING_VALUES[k.minRi]
-    val f = items.filter { i ->
+    val f = ofSource(items, k.source).filter { i ->
         val m = MetaRepo.cached(i)
         val r = m?.score() ?: 0.0
         r >= minR &&
@@ -180,7 +189,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
     val countries = facets?.countries.orEmpty()
     val yearOptions = listOf("Alle") + DECADES + facets?.years.orEmpty()
 
-    val key = BrowseKey(state.sort, state.minRi, state.year, state.genre, state.country, ver)
+    val key = BrowseKey(state.sort, state.minRi, state.year, state.genre, state.country, ver, state.source)
     val listOrNull by produceState(state.lastList?.takeIf { state.lastKey == key }, req, key) {
         value = withContext(Dispatchers.Default) { filterAndSort(req.items, key) }.also { state.lastKey = key; state.lastList = it }
     }
@@ -217,7 +226,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                 if (e.type == KeyEventType.KeyDown && e.key == Key.Menu) { runCatching { filterFocus.requestFocus() }; true } else false
             }
     ) {
-        Column(Modifier.fillMaxSize().padding(start = DS.SidebarW).padding(horizontal = 32.dp, vertical = DS.PageY)) {
+        Column(Modifier.fillMaxSize().sidebarPad().padding(horizontal = 32.dp, vertical = DS.PageY)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(req.title, color = Color.White, fontSize = spx(34), fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 Text(if (ready) "${list.size} Titel" else "Lade …", color = Muted, fontSize = 16.sp)
@@ -265,9 +274,16 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                             state.country = if (it == 0) null else countries[it - 1].first
                         }
                     }
+                    // Mehrere Playlists gleichzeitig: nach Quelle filtern
+                    val srcNames = PlaylistStore.sourceNames
+                    if (srcNames.size > 1) item {
+                        val so = listOf("Alle") + srcNames
+                        DropdownPill("Quelle", if (state.source < 0) "Alle" else srcNames.getOrElse(state.source) { "Alle" }, so, state.source + 1,
+                            active = state.source >= 0, icon = FIcon.Grid) { state.source = it - 1 }
+                    }
                     item {
                         FilterPill("Zurücksetzen", false, icon = FIcon.Reset) {
-                            state.minRi = 0; state.year = "Alle"; state.genre = null; state.country = null; state.sort = req.sort.coerceIn(0, 8)
+                            state.minRi = 0; state.year = "Alle"; state.genre = null; state.country = null; state.source = -1; state.sort = req.sort.coerceIn(0, 8)
                         }
                     }
                     // Ansicht und Raster: selten gebraucht, deshalb ganz am Ende
@@ -294,7 +310,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                 if (ready && list.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     EmptyState(AIcon.Sliders, "Keine Treffer", "Mit diesen Filtern gibt es hier keine Titel.", action = "Filter zurücksetzen") {
                         runCatching { filterFocus.requestFocus() }
-                        state.minRi = 0; state.year = "Alle"; state.genre = null; state.country = null; state.sort = req.sort.coerceIn(0, 8)
+                        state.minRi = 0; state.year = "Alle"; state.genre = null; state.country = null; state.source = -1; state.sort = req.sort.coerceIn(0, 8)
                     }
                 }
                 if (!ready) {
@@ -344,7 +360,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                 }
             }
         }
-        Sidebar(tab, onGoTab, Modifier.align(Alignment.CenterStart), sideFocus) { inSidebar = it }
+        Sidebar(tab, onGoTab, Modifier.align(SidebarPrefs.align()), sideFocus) { inSidebar = it }
     }
 }
 

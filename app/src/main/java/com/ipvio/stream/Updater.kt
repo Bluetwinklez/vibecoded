@@ -25,7 +25,10 @@ class UpdateWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         // App offen: wie bisher laden, damit die Oberfläche den neuen Stand zeigt.
         // App geschlossen: nur den Zwischenspeicher erneuern – nichts im Arbeitsspeicher, kein TV-Programm-Download.
         val ok = if (PlaylistStore.hasData) PlaylistStore.load(c, url, false, ask = false) && PlaylistStore.error == null
-        else PlaylistStore.refreshCacheOnly(c, url)
+        else PlaylistStore.refreshCacheOnly(c, url).also { ok0 ->
+            // Weitere gleichzeitig gezeigte Playlists ebenfalls erneuern
+            if (ok0) for (u in PlaylistStore.extraUrls(c)) runCatching { PlaylistStore.refreshCacheOnly(c, u) }
+        }
         if (ok) General.markRefreshed(c)
         return Result.success()
     }

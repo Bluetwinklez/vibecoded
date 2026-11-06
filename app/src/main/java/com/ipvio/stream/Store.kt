@@ -38,7 +38,7 @@ object SubStyle {
     val EDGES = listOf("Kein", "Schatten", "Kontur")
 }
 
-val MENU_LABELS = listOf("Home", "Filme", "Serien", "Live TV", "Suche", "Einstellungen", "EPG", "Favoriten", "Meine Liste", "Verlauf")
+val MENU_LABELS = listOf("Home", "Filme", "Serien", "Live TV", "Suche", "Einstellungen", "EPG", "Favoriten", "Meine Liste", "Verlauf", "Sport")
 
 object AppSettings {
     var ipvioFilter by mutableStateOf(false)
@@ -469,7 +469,9 @@ object WatchStore {
      * Was „Fortsetzen“ abspielt: Titel und eine AKTUELLE Adresse aus der geladenen Playlist
      * (Anbieter ändern Adressen beim Aktualisieren; die gespeicherte wäre dann tot).
      */
-    fun target(c: Context, item: Item, e: Entry): Pair<String, String> {
+    fun target(c: Context, item0: Item, e: Entry): Pair<String, String> {
+        // Serie mit Platzhalter: sind die Folgen schon geladen (Serie geöffnet), nimmt Fortsetzen diese
+        val item = LazySeries.full(item0)
         if (item.kind != Kind.SERIES) return e.title to item.url.ifBlank { e.url }
         var s = e.season; var n = e.ep
         if (s == 0 && n == 0) ResumeLogic.seasonEp(e.title)?.let { s = it.first; n = it.second }

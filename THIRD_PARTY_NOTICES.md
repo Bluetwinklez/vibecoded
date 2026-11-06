@@ -7,7 +7,7 @@ IPVIO Stream itself is licensed under the GNU General Public License v3 (see `LI
 | Component | License |
 |---|---|
 | AndroidX (Activity, Compose UI/Foundation, Work) | Apache License 2.0 |
-| AndroidX Media3 (ExoPlayer, HLS, UI) | Apache License 2.0 |
+| AndroidX Media3 (ExoPlayer, HLS, DASH, UI) | Apache License 2.0 |
 | Jellyfin Media3 FFmpeg decoder (`org.jellyfin.media3:media3-ffmpeg-decoder`) | GNU GPL v3 (contains FFmpeg) |
 | OkHttp (Square) | Apache License 2.0 |
 | Coil (`io.coil-kt:coil-compose`) | Apache License 2.0 |

@@ -218,3 +218,8 @@ fun playbackErrorText(code: Int, status: Int, live: Boolean): String = when {
         code == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "Der Stream ist fehlerhaft oder wird nicht unterstützt."
     else -> "Wiedergabe nicht möglich."
 }
+
+object PlayerLogic {
+    /** Hinweis, wenn ein Stream ein Format hat, das der Player nicht öffnen kann (statt eines Absturzes). */
+    const val MSG_FORMAT = "Dieses Stream-Format wird nicht unterstützt."
+}

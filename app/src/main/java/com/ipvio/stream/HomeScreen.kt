@@ -252,7 +252,8 @@ fun HomeScreen(
             // Nur ein Profil: direkt zur Profil-Seite der Einstellungen (vorher: Einstellungen allgemein)
             onProfile = { if (Profiles.list.size > 1) picker = true else { SettingsNav.openPage = SettingsNav.PROFILES; onTab(MenuLogic.SETTINGS) } },
             tabs = navTabs,
-            showView = tab in 0..2 || tab == MenuLogic.FAVS || tab == MenuLogic.MYLIST || tab == MenuLogic.VERLAUF,
+            // Runde 20: Ansicht-Knopf entfällt (steht jetzt in Einstellungen > Ansicht), oben rechts nur Glocke und Profil
+            showView = false,
             // Ohne großes Bild (noch keine Titelbilder): der erste Reiter ist das Ziel aus der Seitenleiste
             firstIsContent = isVod && ready.isEmpty()
         )
@@ -408,9 +409,9 @@ fun HomeScreen(
     Box(Modifier.fillMaxSize()) {
         if (bbTab && bbA > 0.01f) BillboardBackdrop(bbItem, Modifier.fillMaxSize().graphicsLayer { alpha = bbA })
         if (bbTab && bbA > 0.01f) bbItem?.let { bi ->
-            BillboardInfo(bi, Modifier.padding(start = DS.SidebarW + dpx(56), top = dpx(64)).graphicsLayer { alpha = bbA; translationY = (1f - bbA) * 20.dp.toPx() })
+            BillboardInfo(bi, Modifier.padding(start = SideStart + dpx(56), top = dpx(64) + (if (SidebarPrefs.pos == SidebarPrefs.TOP) TopBarH else 0.dp)).graphicsLayer { alpha = bbA; translationY = (1f - bbA) * 20.dp.toPx() })
         }
-        BoxWithConstraints(Modifier.fillMaxSize().padding(start = DS.SidebarW)) {
+        BoxWithConstraints(Modifier.fillMaxSize().sidebarPad()) {
             // Kartenbreiten und Höhe des großen Bildes aus dem verfügbaren Platz (wie im Entwurf: alles auf einen Blick)
             val grid = remember(maxWidth, Design.k, General.cardSize) { cardGrid(maxWidth - RowPadX * 2) }
             // Entwurf: großes Bild 420 px hoch (Start), 345 px (Filme/Serien)
@@ -440,7 +441,8 @@ fun HomeScreen(
                         }
                     }
                 }
-                tab == 3 -> LiveTab(live, liveP, favLive, onOpen)
+                tab == 3 -> LiveTab(live, liveP, favLive, onOpen, onPlayNow)
+                tab == MenuLogic.SPORT -> SportTab(live) { ch, l -> ZapContext.list = l; ZapContext.key = null; onOpen(ch) }
                 // Markierte Reihe bleibt in der unteren Hälfte stehen (PivotSpec); darüber werden Reihen ausgeblendet, damit oben
                 // Titel und Infos des markierten Titels frei stehen (Billboard)
                 else -> CompositionLocalProvider(
@@ -625,7 +627,7 @@ fun HomeScreen(
         Sidebar(
             tab,
             { id -> scope.launch { states.getOrNull(id)?.scrollToItem(0) }; onTab(id) },
-            Modifier.align(Alignment.CenterStart), sideFocus
+            Modifier.align(SidebarPrefs.align()), sideFocus
         ) { inSidebar = it }
     }
 }

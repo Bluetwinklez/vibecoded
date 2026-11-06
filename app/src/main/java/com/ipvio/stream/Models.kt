@@ -128,7 +128,9 @@ data class Item(
     val quality: String? = null,
     val tvgId: String? = null,
     /** Sprache laut Kennzeichnung des Anbieters (Kürzel aus [LangTagLogic], "?" = ohne Kennung). */
-    val lang: String = LangTagLogic.UNKNOWN
+    val lang: String = LangTagLogic.UNKNOWN,
+    /** Quelle bei mehreren gleichzeitig gezeigten Playlists: 0 = Haupt-Playlist, 1 … = weitere (siehe [MultiLogic]). */
+    val src: Int = 0
 ) {
     // Schlüssel für den Metadaten-Cache: einmal pro Titel berechnet statt bei jedem Sortiervergleich neu.
     // Eigenes Feld statt "by lazy": spart bei 100.000+ Titeln zwei Hilfsobjekte je Titel.

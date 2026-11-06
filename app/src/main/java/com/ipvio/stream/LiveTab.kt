@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,15 +48,36 @@ object LiveMemory {
 /** Eingabe eines Namens (neue Senderliste, Umbenennen). */
 private class NameAsk(val title: String, val initial: String, val onSave: (String) -> Unit)
 
+/** Gewählte Quelle im Live TV bei mehreren Playlists (-1 = alle), gilt für die laufende Sitzung. */
+object LiveSource {
+    var k by mutableIntStateOf(-1)
+}
+
 @Composable
-fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>, onOpen: (Item) -> Unit) {
+fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: List<Item>, onOpen: (Item) -> Unit, onPlayNow: (Item) -> Unit = onOpen) {
     val ctx = LocalContext.current
+    // Mehrere Playlists: Quelle mit einem Druck wechseln (Alle → Playlist 1 → Playlist 2 → …)
+    val srcNames = PlaylistStore.sourceNames
+    var plOpen by remember { mutableStateOf(false) }
+    var plBack by remember { mutableStateOf(false) }
+    val plFocus = remember { FocusRequester() }
+    // Nach dem Schließen der Auswahl den Fokus zurück auf die Zeile holen (sonst bleibt er im Nichts hängen)
+    LaunchedEffect(plBack) { if (plBack) { plBack = false; runCatching { plFocus.requestFocus() } } }
+    val plScope = rememberCoroutineScope()
+    val srcK = if (LiveSource.k in srcNames.indices && srcNames.size > 1) LiveSource.k else -1
+    val live = remember(liveAll, srcK) { if (srcK < 0) liveAll else liveAll.filter { it.src == srcK } }
+    val groups = remember(groupsAll, srcK) {
+        if (srcK < 0) groupsAll else LinkedHashMap<String, List<Item>>().also { m ->
+            for ((g, l) in groupsAll) { val f = l.filter { it.src == srcK }; if (f.isNotEmpty()) m[g] = f }
+        }
+    }
+    val favs = remember(favsAll, srcK) { if (srcK < 0) favsAll else favsAll.filter { it.src == srcK } }
     CatFavs.init(ctx)
     ChannelLists.init(ctx)
     // Zuletzt gewählte Kategorie / Liste (Runde 14): nach dem Zurück aus dem Player und nach einem Neustart wieder dieselbe
     var sel by remember {
         val saved = LiveMemory.sel(ctx)?.takeIf { k ->
-            (k == FAV_CAT && favs.isNotEmpty()) || k == "ALL" || k in groups || ChannelLists.byKey(k) != null
+            (k == FAV_CAT && favs.isNotEmpty()) || k == "ALL" || k in groups || ChannelLists.byKey(k) != null || k == "REC"
         }
         mutableStateOf(saved ?: if (favs.isNotEmpty()) FAV_CAT else "ALL")
     }
@@ -63,11 +85,14 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
     val myLists = ChannelLists.lists.toList()
     val byId = remember(live) { live.associateBy { it.id } }
     // Reihenfolge: Favoriten, eigene Senderlisten, „Neue Senderliste“, alle Sender, Kategorien
-    val names = listOf("GUIDE", FAV_CAT) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + favCats + groups.keys.filter { it !in favCats }
+    // Aufnahmen (Runde 20): eigene Kategorie, sobald es welche gibt
+    val recs = remember(Recorder.active.size, sel == "REC") { Recorder.list(ctx).map { Recorder.itemOf(it) } }
+    val names = (if (PlaylistStore.lists.size > 1) listOf("PL") else emptyList()) + listOf("GUIDE", FAV_CAT) + (if (recs.isNotEmpty()) listOf("REC") else emptyList()) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + favCats + groups.keys.filter { it !in favCats }
     val curList = ChannelLists.byKey(sel)
     val list = when {
         sel == FAV_CAT -> favs
         sel == "ALL" -> live
+        sel == "REC" -> recs
         curList != null -> ChannelListLogic.resolve(curList, byId)
         else -> groups[sel].orEmpty()
     }
@@ -126,6 +151,48 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
                         }
                         return@itemsIndexed
                     }
+                    if (n == "PL") {
+                        // Playlist wählen (Runde 22): „Alle“ (bei mehreren gezeigten), eine der gezeigten Quellen filtern
+                        // oder eine andere Playlist aktivieren und laden – ohne in die Einstellungen zu gehen.
+                        val pls = PlaylistStore.lists.toList()
+                        val multiView = srcNames.size > 1
+                        val opts = (if (multiView) listOf(Lang.tr("Alle Playlists")) else emptyList()) + pls.map { it.name }
+                        val off = if (multiView) 1 else 0
+                        val curIdx = if (multiView && srcK < 0) 0 else {
+                            val si = if (multiView) srcK else 0
+                            val pi = pls.indices.firstOrNull { PlaylistStore.shownIndex(it) == si } ?: PlaylistStore.active
+                            pi + off
+                        }
+                        val lbl = Lang.tr("Playlist") + ": " + (opts.getOrNull(curIdx) ?: "")
+                        Box {
+                            CatRow(lbl, -1, false, Modifier.focusRequester(plFocus), onFocus = {}, onRight = { runCatching { firstChan.requestFocus() } }, onFav = {}, icon = AIcon.Download, raw = true) { plOpen = true }
+                            if (plOpen) OptionPopup(opts, curIdx, { plOpen = false; plBack = true }) { pick ->
+                                plOpen = false; plBack = true
+                                if (multiView && pick == 0) LiveSource.k = -1
+                                else {
+                                    val pi = pick - off
+                                    val si = PlaylistStore.shownIndex(pi)
+                                    if (si >= 0) { if (multiView) LiveSource.k = si }
+                                    else {
+                                        LiveSource.k = -1
+                                        plScope.launch { PlaylistStore.switchTo(ctx, pi) }
+                                    }
+                                }
+                                // Gewählte Kategorie gibt es in der anderen Playlist vielleicht nicht: dann „Alle Sender“
+                                sel = "ALL"
+                            }
+                        }
+                        return@itemsIndexed
+                    }
+                    if (n == "SRC") {
+                        val lbl = Lang.tr("Quelle") + ": " + (if (srcK < 0) Lang.tr("Alle") else srcNames[srcK])
+                        CatRow(lbl, -1, false, Modifier, onFocus = {}, onRight = { runCatching { firstChan.requestFocus() } }, onFav = {}, icon = AIcon.Sliders, raw = true) {
+                            LiveSource.k = if (srcK + 1 >= srcNames.size) -1 else srcK + 1
+                            // Gewählte Kategorie gibt es in der anderen Quelle vielleicht nicht: dann „Alle Sender“
+                            if (sel != FAV_CAT && sel != "ALL" && ChannelLists.byKey(sel) == null) sel = "ALL"
+                        }
+                        return@itemsIndexed
+                    }
                     if (n == "NEW") {
                         CatRow("Neue Senderliste", -1, false, Modifier, onFocus = {}, onRight = { runCatching { firstChan.requestFocus() } }, onFav = {}, icon = AIcon.Plus) { newList(null) }
                         return@itemsIndexed
@@ -133,17 +200,20 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
                     val label = when {
                         n == FAV_CAT -> "Favoriten"
                         n == "ALL" -> "Alle Sender"
+                        n == "REC" -> "Aufnahmen"
                         ml != null -> ml.name
                         else -> n
                     }
                     val icon = when {
                         n == FAV_CAT || n in CatFavs.list -> AIcon.Star
+                        n == "REC" -> AIcon.Download
                         ml != null -> AIcon.Lists
                         else -> null
                     }
                     val count = when {
                         n == FAV_CAT -> favs.size
                         n == "ALL" -> live.size
+                        n == "REC" -> recs.size
                         ml != null -> ChannelListLogic.resolve(ml, byId).size
                         else -> groups[n]?.size ?: 0
                     }
@@ -153,7 +223,7 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
                             label, count, n == sel,
                             if (n == sel) Modifier.focusRequester(ContentFocus.req) else Modifier,
                             onFocus = { sel = n }, onRight = { runCatching { firstChan.requestFocus() } },
-                            onFav = { if (ml != null) listMenu = true else if (n != FAV_CAT && n != "ALL") CatFavs.toggle(ctx, n) },
+                            onFav = { if (ml != null) listMenu = true else if (n != FAV_CAT && n != "ALL" && n != "REC") CatFavs.toggle(ctx, n) },
                             icon = icon, raw = ml != null
                         ) { runCatching { firstChan.requestFocus() } }
                         // Menü einer eigenen Liste: umbenennen, löschen
@@ -203,7 +273,7 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
                     }
                 ) else LazyColumn(state = chanState, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 40.dp)) {
                     // In eigenen Listen wandert der Fokus beim Verschieben mit dem Sender mit (Schlüssel = Sender)
-                    itemsIndexed(list, key = if (curList != null) { _, ch -> ch.id } else null) { i, ch ->
+                    itemsIndexed(list, key = if (curList != null) { ix, ch -> ch.id + "#" + ix } else null) { i, ch ->
                         ChannelLine(
                             ch, (if (i == 0) Modifier.focusRequester(firstChan) else Modifier)
                                 .then(if (ch.id == restoreId) Modifier.focusRequester(restoreReq) else Modifier), curList,
@@ -214,7 +284,8 @@ fun LiveTab(live: List<Item>, groups: Map<String, List<Item>>, favs: List<Item>,
                                 val has = ch.id in addList.ids
                                 if (has) ChannelLists.remove(ctx, addList.id, ch.id) else ChannelLists.add(ctx, addList.id, ch.id)
                                 Toast.makeText(ctx, (if (has) Lang.tr("Entfernt: ") else Lang.tr("Hinzugefügt: ")) + ch.title, Toast.LENGTH_SHORT).show()
-                            } else { ZapContext.list = list; ZapContext.key = sel; LiveMemory.setSel(ctx, sel); onOpen(ch) }
+                            } else if (sel == "REC") onPlayNow(ch)   // Aufnahme: wie ein Film abspielen (spulbar)
+                            else { ZapContext.list = list; ZapContext.key = sel; LiveMemory.setSel(ctx, sel); onOpen(ch) }
                         }
                     }
                 }

@@ -5,7 +5,7 @@ package com.ipvio.stream
  * Garantien: Jeder Bereich kommt genau einmal vor, "Start" (0) und "Einstellungen" (5) können nie ausgeblendet werden.
  */
 object MenuLogic {
-    const val COUNT = 10
+    const val COUNT = 11
     const val HOME = 0
     const val SEARCH = 4
     const val SETTINGS = 5
@@ -15,8 +15,10 @@ object MenuLogic {
     const val MYLIST = 8
     /** Runde 15 (Nachtrag 17): Verlauf – zuletzt Angesehenes, Filme und Serien getrennt. */
     const val VERLAUF = 9
+    /** Runde 20: Sport – laufende und kommende Sport-Sendungen, Sportsender. */
+    const val SPORT = 10
     /** Wie im Entwurf: Home, Live TV, Filme, Serien, EPG, Favoriten, Meine Liste, (Suche), Einstellungen. */
-    val DEFAULT_ORDER = listOf(0, 3, 1, 2, EPG, FAVS, MYLIST, VERLAUF, SEARCH, 5)
+    val DEFAULT_ORDER = listOf(0, 3, 1, 2, SPORT, EPG, FAVS, MYLIST, VERLAUF, SEARCH, 5)
     /**
      * Suche steht oben im Kopf, nicht in der Seitenleiste: standardmäßig ausgeblendet.
      * EPG (Runde 14, Wunsch des Nutzers): ebenfalls ausgeblendet – der TV-Guide ist über Live TV erreichbar.

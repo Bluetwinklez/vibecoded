@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.launch
 
 /** Ziele in der Kopfzeile, die andere Teile direkt ansteuern (z. B. „Alle anzeigen“ der ersten Reihe: Hoch = Profil). */
 object HeaderFocus {
@@ -228,23 +229,39 @@ private fun ChoiceChip(label: String, selected: Boolean, modifier: Modifier, onC
 
 @Composable
 private fun BellButton(onReminder: (Reminder) -> Unit, onNewEpisode: (String) -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var open by remember { mutableStateOf(false) }
+    var upStatus by remember { mutableStateOf("") }
     val list = Reminders.list.sortedBy { it.start }
     val news = NewEpisodes.list.toList()
+    val upd = AppUpdate.available
     Box {
         RoundHeaderButton(AIcon.Bell, onClick = { open = true }) {
-            // Punkt in der Designfarbe, sobald Erinnerungen gesetzt sind oder neue Folgen da sind
-            if (list.isNotEmpty() || news.isNotEmpty()) Box(Modifier.padding(start = dpx(22), bottom = dpx(22)).size(dpx(9)).clip(CircleShape).background(if (news.isNotEmpty()) Color(0xFFFF5A5F) else Accent1))
+            // Punkt: rot bei neuen Folgen oder einem App-Update, sonst in der Designfarbe, sobald Erinnerungen gesetzt sind
+            if (list.isNotEmpty() || news.isNotEmpty() || upd != null) Box(Modifier.padding(start = dpx(22), bottom = dpx(22)).size(dpx(9)).clip(CircleShape).background(if (news.isNotEmpty() || upd != null) Color(0xFFFF5A5F) else Accent1))
         }
         if (open) {
-            if (list.isEmpty() && news.isEmpty()) OptionPopup(listOf("Keine Benachrichtigungen"), -1, { open = false }, listOf(AIcon.BellOff)) { open = false }
+            if (list.isEmpty() && news.isEmpty() && upd == null) OptionPopup(listOf("Keine Benachrichtigungen"), -1, { open = false }, listOf(AIcon.BellOff)) { open = false }
             else {
-                // Neue Folgen von Favoriten-Serien zuerst, dann die Erinnerungen an Sendungen
-                val labels = news.map { it.title + "  ·  " + Lang.tr(NewEpisodeLogic.text(it)) } +
+                // Zuerst ein App-Update, dann neue Folgen von Favoriten-Serien, dann die Erinnerungen an Sendungen
+                val up = if (upd != null) listOf(Lang.tr("Update verfügbar: Version {0}").replace("{0}", upd.name) + (if (upStatus.isNotEmpty()) "  ·  " + Lang.tr(upStatus) else "")) else emptyList()
+                val labels = up + news.map { it.title + "  ·  " + Lang.tr(NewEpisodeLogic.text(it)) } +
                     list.map { dayLabel(it.start) + "  " + hhmm(it.start) + "  ·  " + it.title + "  ·  " + it.chTitle }
-                val icons = news.map { AIcon.Sparkle } + list.map { AIcon.Bell }
-                OptionPopup(labels, -1, { open = false }, icons) { i ->
+                val icons = up.map { AIcon.Sparkle } + news.map { AIcon.Sparkle } + list.map { AIcon.Bell }
+                OptionPopup(labels, -1, { open = false }, icons) { i0 ->
                     open = false
+                    if (upd != null && i0 == 0) {
+                        scope.launch {
+                            AppUpdate.downloadAndInstall(ctx, upd) { st ->
+                                upStatus = st
+                                if (!st.startsWith("Lade")) android.widget.Toast.makeText(ctx, Lang.tr(st), android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        android.widget.Toast.makeText(ctx, Lang.tr("Update wird geladen …"), android.widget.Toast.LENGTH_SHORT).show()
+                        return@OptionPopup
+                    }
+                    val i = i0 - up.size
                     if (i < news.size) onNewEpisode(news[i].id) else onReminder(list[i - news.size])
                 }
             }

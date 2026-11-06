@@ -127,6 +127,8 @@ fun SectionHeader(title: String) {
 
 /** Untertitel einer Serienkarte: „5 Staffeln · 62 Folgen“. */
 fun seriesInfo(item: Item): String {
+    // Serie mit Platzhalter: Staffeln und Folgen sind noch nicht bekannt (werden beim Öffnen geladen)
+    if (XtreamLogic.isLazy(item)) return ""
     val sc = seasonCount(item)
     val ec = item.episodes.size
     val a = if (sc == 1) "1 Staffel" else "$sc Staffeln"

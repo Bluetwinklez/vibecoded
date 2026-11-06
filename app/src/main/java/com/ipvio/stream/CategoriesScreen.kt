@@ -110,7 +110,7 @@ fun CategoriesScreen(
             }
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Bg.copy(alpha = .97f), Bg.copy(alpha = .6f)))))
         }
-        Column(Modifier.fillMaxSize().padding(start = DS.SidebarW).padding(horizontal = 32.dp, vertical = DS.PageY)) {
+        Column(Modifier.fillMaxSize().sidebarPad().padding(horizontal = 32.dp, vertical = DS.PageY)) {
             Text(req.title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(10.dp))
             Box(Modifier.onFocusChanged { inPills = it.hasFocus }) {
@@ -145,7 +145,7 @@ fun CategoriesScreen(
                 else TileMode(entries, catSort, firstFocus, onPick)
             }
         }
-        Sidebar(tab, onGoTab, Modifier.align(Alignment.CenterStart), sideFocus) { inSidebar = it }
+        Sidebar(tab, onGoTab, Modifier.align(SidebarPrefs.align()), sideFocus) { inSidebar = it }
     }
 }
 

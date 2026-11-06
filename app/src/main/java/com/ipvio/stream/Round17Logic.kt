@@ -14,6 +14,30 @@ object TechText {
 object UpdateLogic {
     fun isNewer(current: Long, remote: Long): Boolean = remote > current
 
+    /** Zahlen einer Versionsangabe: „v1.2.3“ → [1, 2, 3], „1.1-beta“ → [1, 1]. */
+    fun parts(v: String): List<Int> =
+        v.trim().trimStart('v', 'V').split('.', '-', '_', ' ').map { it.takeWhile(Char::isDigit) }.takeWhile { it.isNotEmpty() }.map { it.toIntOrNull() ?: 0 }
+
+    /** Ist [remote] (z. B. Tag „v1.2“ eines GitHub-Release) neuer als die installierte Version [current] („1.1“)? */
+    fun isNewerName(current: String, remote: String): Boolean {
+        val a = parts(current); val b = parts(remote)
+        if (b.isEmpty()) return false
+        for (i in 0 until maxOf(a.size, b.size)) {
+            val x = a.getOrElse(i) { 0 }; val y = b.getOrElse(i) { 0 }
+            if (y != x) return y > x
+        }
+        return false
+    }
+
+    /** APK eines GitHub-Release: (Name, Download-Adresse); bevorzugt „IPVIO-Stream.apk“, sonst die erste APK. */
+    fun pickApk(assets: List<Pair<String, String>>): String? {
+        val apks = assets.filter { it.first.endsWith(".apk", ignoreCase = true) && it.second.startsWith("https://") }
+        return (apks.firstOrNull { it.first.equals("IPVIO-Stream.apk", true) } ?: apks.firstOrNull { it.first.contains("ipvio", true) } ?: apks.firstOrNull())?.second
+    }
+
+    /** Einmal am Tag automatisch suchen. */
+    fun due(lastCheck: Long, now: Long): Boolean = now - lastCheck >= 20 * 3_600_000L || now < lastCheck
+
     /** Die APK-Adresse darf relativ zur Update-Adresse angegeben sein. */
     fun resolve(base: String, apk: String): String =
         if (apk.startsWith("http://") || apk.startsWith("https://")) apk

@@ -46,7 +46,7 @@ private class Cat(val icon: AIcon, val title: String, val sub: String)
 private val CATS = listOf(
     Cat(AIcon.Gear, "Allgemein", "Start, Beenden, Autostart"),
     Cat(AIcon.Globe, "Sprache & Region", "Sprache, Uhrzeit, Zeitzone"),
-    Cat(AIcon.Grid, "Ansicht", "Kartengröße, Raster"),
+    Cat(AIcon.Grid, "Ansicht", "Kartengröße, Seitenleiste, Raster"),
     Cat(AIcon.Sparkle, "Design", "Farben, Schrift, Animationen"),
     Cat(AIcon.Lists, "Menü", "Reihenfolge und Einträge"),
     Cat(AIcon.Play, "Player", "Spulen, Intro, Qualität, defekte Links"),
@@ -59,7 +59,8 @@ private val CATS = listOf(
     Cat(AIcon.Lock, "Jugendschutz", "PIN, Inhalte ab 18"),
     Cat(AIcon.Storage, "Speicher", "Cache, Verlauf, Fortsetzen"),
     Cat(AIcon.Pulse, "Diagnose", "Status und Fehlersuche"),
-    Cat(AIcon.Info, "Über IPVIO Stream", "Version, Quellen, Zurücksetzen")
+    Cat(AIcon.Info, "Über IPVIO Stream", "Version, Quellen, Zurücksetzen"),
+    Cat(AIcon.HeartFilled, "Spende", "Unterstütze IPVIO Stream")
 )
 
 /** Direkt eine Seite der Einstellungen öffnen (z. B. Profil-Kreis oben bei nur einem Profil: Seite „Profile“). */
@@ -137,6 +138,7 @@ fun SettingsHub(onAdd: () -> Unit, reload: () -> Unit) {
                 12 -> ParentalPage(ctx) { page = -1 }
                 13 -> StoragePage(ctx)
                 14 -> DiagPage(ctx, reload)
+                16 -> DonateSection(ctx)
                 else -> AboutPage(ctx)
             }
             Spacer(Modifier.height(8.dp).bringIntoViewRequester(endReq))
@@ -225,6 +227,11 @@ private fun ChoiceChip(label: String, selected: Boolean, dots: List<Color> = emp
         if (selected) AppIcon(AIcon.Check, if (f) DS.FocusInk else Accent2, size = 18.dp)
     }
 }
+
+/** Chip für die Unterseiten von „Ansicht“ (ViewSettings.kt). */
+@Composable
+internal fun ViewChip(label: String, selected: Boolean, onFocus: (Boolean) -> Unit, onClick: () -> Unit) =
+    ChoiceChip(label, selected, onFocus = onFocus, onClick = onClick)
 
 /** Rundes Farbfeld für die eigene Farbe. */
 @Composable
@@ -455,6 +462,13 @@ private fun GeneralPage(ctx: Context) {
 
     SectionTitle("Bedienung")
     ToggleRow("Beenden bestätigen", "Auf der Startseite muss „Zurück“ zweimal gedrückt werden, damit die App nicht aus Versehen schließt.", General.confirmExit) { General.setConfirmExit(ctx, it) }
+    // Handy/Tablet: Querformat (die Oberfläche ist für den Fernseher gebaut)
+    if (MobilePrefs.isMobile(ctx)) {
+        val act = generateSequence<Context>(ctx) { (it as? android.content.ContextWrapper)?.baseContext }.filterIsInstance<android.app.Activity>().firstOrNull()
+        ToggleRow("Auf dem Handy im Querformat", "Die App ist für den Fernseher gebaut und wirkt quer am besten. Aus: dreht mit dem Gerät. Im Player: Tippen zeigt die Steuerung, Doppeltippen links/rechts spult, in der Mitte Pause.", MobilePrefs.landscape) {
+            if (act != null) MobilePrefs.set(act, it)
+        }
+    }
 }
 
 private fun canStartFromBoot(ctx: Context): Boolean =
@@ -515,33 +529,7 @@ private fun StoragePage(ctx: Context) {
     }
     backupMsg?.let { Text(it, color = Accent2, fontSize = 14.sp, modifier = Modifier.widthIn(max = 680.dp)) }
     Hint("Gesichert werden Einstellungen, Favoriten, Verlauf, Weiterschauen und Profile. Playlists und Zugangsdaten sind nicht enthalten. Beim Wiederherstellen startet die App neu.")
-}
-
-@Composable
-private fun ViewPage(ctx: Context) {
-    CatPrefs.init(ctx); BrowsePrefs.init(ctx)
-    SectionTitle("Filme, Serien und Sender")
-    val views = listOf("Raster", "Kino")
-    SelectRow("Standard-Ansicht", views[if (BrowsePrefs.detail) 1 else 0], views, if (BrowsePrefs.detail) 1 else 0) { BrowsePrefs.set(ctx, it == 1) }
-    Hint("Raster zeigt viele Titel auf einmal. Kino zeigt oben die Details zum markierten Titel und unten eine Reihe zum Durchblättern.")
-    StepRow("Spalten (Raster)", AppSettings.gridCols.toString(),
-        { AppSettings.setGrid(ctx, AppSettings.gridCols - 1, AppSettings.gridRows) },
-        { AppSettings.setGrid(ctx, AppSettings.gridCols + 1, AppSettings.gridRows) })
-    StepRow("Zeilen (Raster)", AppSettings.gridRows.toString(),
-        { AppSettings.setGrid(ctx, AppSettings.gridCols, AppSettings.gridRows - 1) },
-        { AppSettings.setGrid(ctx, AppSettings.gridCols, AppSettings.gridRows + 1) })
-    SectionTitle("Startseite")
-    val heroOpts = listOf(0, 6, 9, 15)
-    SelectRow("Banner wechselt", if (General.heroSec == 0) "nie" else "alle ${General.heroSec} s", heroOpts.map { if (it == 0) "nie" else "alle $it s" }, heroOpts.indexOf(General.heroSec).coerceAtLeast(0)) {
-        General.setHeroSec(ctx, heroOpts[it])
-    }
-    StepRow("Kartengröße (Reihen)", AppSettings.cardW.toString(),
-        { AppSettings.setCardW(ctx, AppSettings.cardW - 10) },
-        { AppSettings.setCardW(ctx, AppSettings.cardW + 10) })
-    SectionTitle("Kategorien-Ansicht")
-    val cv = listOf("Liste mit Vorschau", "Kacheln")
-    SelectRow("Ansicht", cv[if (CatPrefs.listView) 0 else 1], cv, if (CatPrefs.listView) 0 else 1) { CatPrefs.set(ctx, it == 0) }
-    Hint("Das Raster kannst du zusätzlich direkt in der Rasteransicht mit dem Raster-Knopf ändern.")
+    TransferSection(ctx)
 }
 
 @Composable
@@ -625,6 +613,12 @@ private fun PlayerPage(ctx: Context) {
         AppSettings.setAutoFps(ctx, it)
     }
     Hint("Intro-Zeiten stammen aus der Community-Datenbank TheIntroDB und gibt es nicht für jede Serie. Die Stream-Info erscheint nur bei Filmen und Serien.")
+    SectionTitle("Zweiter Stream")
+    DualPrefs.init(ctx)
+    SelectRow("Anordnung", DualPrefs.ARRANGE_NAMES[DualPrefs.split], DualPrefs.ARRANGE_NAMES, DualPrefs.split) { DualPrefs.set(ctx, split = it) }
+    SelectRow("Fenstergröße", DualPrefs.SIZE_NAMES[DualPrefs.size], DualPrefs.SIZE_NAMES, DualPrefs.size) { DualPrefs.set(ctx, size = it) }
+    SelectRow("Position", DualPrefs.CORNER_NAMES[DualPrefs.corner], DualPrefs.CORNER_NAMES, DualPrefs.corner) { DualPrefs.set(ctx, corner = it) }
+    Hint("Gilt für Bild-in-Bild. Deine Auswahl wird gespeichert.")
     SourceSettingsSection(ctx)
     DeadLinksSection(ctx)
 }
@@ -789,6 +783,7 @@ private fun DiagPage(ctx: Context, reload: () -> Unit) {
     }
     // Hinweis vor den Knöpfen: Text unter dem letzten Knopf scrollt die Liste nie ins Bild (nichts darunter ist anwählbar)
     Hint("Der Bericht enthält keine Adressen, Benutzernamen oder Passwörter. Er wird nur in die Zwischenablage kopiert und nirgendwohin gesendet.")
+    Hint("Auf dem Fernseher lässt sich die Zwischenablage oft nicht nutzen: Unter Einstellungen > Speicher > „Übertragung im WLAN starten“ kannst du den Bericht am Handy öffnen (Seite „Letzten Absturzbericht anzeigen“) und dort kopieren.")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         PillButton("Playlist neu laden", light = true, icon = AIcon.Refresh) { reload() }
         PillButton("Bericht kopieren") {
@@ -958,6 +953,7 @@ private fun LivePage(ctx: Context) {
     Hint("Sender als Favorit: auf dem Sender OK gedrückt halten > „Zu Favoriten“. Kategorie als Favorit: auf der Kategorie OK gedrückt halten.")
     ChannelListsSection(ctx)
     CatchupSection()
+    LiveBufferSection(ctx)
     ReminderSettingsSection(ctx)
 }
 
@@ -970,13 +966,18 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
     Text("Meine Playlists (${PlaylistStore.lists.size})", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     PlaylistStore.lists.forEachIndexed { i, pl ->
         val isActive = i == PlaylistStore.active
+        val shown = PlaylistStore.isShown(i)
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(DS.RadiusM)).background(if (isActive) DS.Overlay2 else Color(0x12FFFFFF)).padding(14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(Modifier.weight(1f)) {
-                Text(pl.name + if (isActive) "  ·  aktiv" else "", color = if (isActive) Accent2 else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pl.name + if (isActive) "  ·  aktiv" else if (shown) "  ·  wird mit angezeigt" else "", color = if (isActive || shown) Accent2 else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(PlaylistStore.hostOf(pl.url), color = Muted, fontSize = 13.sp, maxLines = 1)
+            }
+            if (!isActive) SmallPill(if (shown) "Nicht mehr mit anzeigen" else "Mit anzeigen") {
+                PlaylistStore.setShown(ctx, i, !shown)
+                scope.launch { PlaylistStore.applyMulti(ctx) }
             }
             if (!isActive) SmallPill("Aktivieren") {
                 PlaylistStore.activate(ctx, i)
@@ -994,6 +995,8 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
             }
         }
     }
+    if (PlaylistStore.lists.size > 1) Hint("„Mit anzeigen“ zeigt eine Playlist zusätzlich zur aktiven: Filme und Serien erscheinen zusammen (doppelte Filme nur einmal, gleiche Serien als eine Serie mit mehreren Quellen). In Filme und Serien filterst du über „Quelle“, im Live TV wechselst du die Quelle mit dem Knopf oben. Jede weitere Playlist braucht zusätzlich Speicher.")
+    PlaylistStore.extraError?.let { Text(it, color = Color(0xFFFF8A80), fontSize = 15.sp) }
     if (editing >= 0) {
         Field(name, { name = it }, "Name der Playlist")
         PillButton("Name speichern", light = true) { PlaylistStore.rename(ctx, editing, name); editing = -1 }
@@ -1150,43 +1153,39 @@ private fun AboutPage(ctx: Context) {
     Hint("Setzt Ansicht, Design, Menü, Player, Ton und Start auf die Standardwerte. Playlists, Favoriten, Verlauf und Fortsetzen-Positionen bleiben erhalten. Zwischenspeicher leerst du unter „Speicher“.")
 }
 
-/** App-Aktualisierung aus der App heraus. Ohne eingetragene Adresse gibt es nur das Eingabefeld. */
+/** App-Aktualisierung aus der App heraus: Standard ist die neueste Veröffentlichung auf GitHub. */
 @Composable
 private fun UpdateSection(ctx: Context) {
     SectionTitle("App-Aktualisierung")
-    var url by remember { mutableStateOf(AppUpdate.url(ctx)) }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var info by remember { mutableStateOf<UpdateInfo?>(null) }
+    var auto by remember { mutableStateOf(AppUpdate.auto(ctx)) }
+    val info = AppUpdate.available
     val scope = rememberCoroutineScope()
-    Field(url, { url = it; AppUpdate.setUrl(ctx, it); info = null }, "Adresse der Update-Datei (https://…/update.json)")
-    if (url.isNotBlank()) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton(if (busy) "Bitte warten …" else "Nach Update suchen") {
-                if (busy) return@PillButton
-                busy = true; status = "Suche …"; info = null
-                scope.launch {
-                    AppUpdate.check(ctx)
-                        .onSuccess { r -> info = r; status = if (r == null) "Du hast die neueste Version." else "Neu: Version ${r.name}" + (if (r.notes.isNotBlank()) " – " + r.notes else "") }
-                        .onFailure { status = it.message ?: "Fehler" }
-                    busy = false
-                }
-            }
-            info?.let { u ->
-                PillButton("Herunterladen und installieren") {
-                    if (busy) return@PillButton
-                    busy = true
-                    scope.launch {
-                        AppUpdate.download(ctx, u) { p -> status = if (p >= 0) "Lade … $p %" else "Lade …" }
-                            .onSuccess { f -> status = if (AppUpdate.install(ctx, f)) "Installation gestartet" else "Erlaube der App einmal „Apps installieren“ und tippe dann erneut." }
-                            .onFailure { status = it.message ?: "Fehler" }
-                        busy = false
-                    }
-                }
+    Text("Installiert: Version " + AppUpdate.currentName(ctx), color = Muted, fontSize = 16.sp)
+    ToggleRow("Automatisch nach Updates suchen", "Einmal am Tag. Ein neues Update erscheint in der Glocke oben rechts.", auto) { auto = it; AppUpdate.setAuto(ctx, it) }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PillButton(if (busy) "Bitte warten …" else "Jetzt nach Update suchen") {
+            if (busy) return@PillButton
+            busy = true; status = "Suche …"
+            scope.launch {
+                AppUpdate.check(ctx)
+                    .onSuccess { r -> status = if (r == null) "Du hast die neueste Version." else "Neu: Version ${r.name}" + (if (r.notes.isNotBlank()) " – " + r.notes else "") }
+                    .onFailure { status = it.message ?: "Fehler" }
+                busy = false
             }
         }
-        if (status.isNotBlank()) Text(status, color = Muted, fontSize = 16.sp)
+        info?.let { u ->
+            PillButton("Herunterladen und installieren") {
+                if (busy) return@PillButton
+                busy = true
+                scope.launch { AppUpdate.downloadAndInstall(ctx, u) { status = it }; busy = false }
+            }
+        }
     }
-    Hint("Trage die Adresse einer kleinen Datei update.json ein, die du selbst bereitstellst: {\"versionCode\": 2, \"versionName\": \"1.1\", \"apk\": \"ipvio.apk\"}. Die neue APK muss mit demselben Schlüssel signiert sein wie die installierte, sonst lehnt Android sie ab.")
+    if (status.isNotBlank()) Text(status, color = Muted, fontSize = 16.sp)
+    Hint("Updates kommen von der Projektseite auf GitHub. Deine Playlists, Favoriten, der Verlauf und die Einstellungen bleiben bei einem Update erhalten. Android fragt vor der Installation einmal nach.")
+    var url by remember { mutableStateOf(AppUpdate.url(ctx).takeIf { it != AppUpdate.DEFAULT_URL }.orEmpty()) }
+    Field(url, { url = it; AppUpdate.setUrl(ctx, it) }, "Eigene Update-Adresse (leer = GitHub)")
 }
 
