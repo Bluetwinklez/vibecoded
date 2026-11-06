@@ -43,6 +43,10 @@
 - Settings > View rebuilt: 5 tabs (cards, sidebar, grid, home, categories) with a live preview of every option
 - New "Donate" card in the settings (PayPal link and QR code)
 
+**Fixes**
+- Crashes fixed: duplicate list entries (same channel/show twice) in Sports, Live TV, episodes and cast no longer crash the app
+- Live TV list: playlist switch and OK/right-key focus fixed
+
 **Transfer**
 - Transfer history, favorites and settings to another device over Wi-Fi (optionally with playlists)
 - QR codes: scan instead of typing the address (add playlist from phone, Wi-Fi transfer, Google sign-in)
