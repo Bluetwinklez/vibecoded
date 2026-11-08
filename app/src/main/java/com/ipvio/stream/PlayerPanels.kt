@@ -51,7 +51,7 @@ fun PChoiceList(options: List<String>, selected: Int, focus: FocusRequester, onP
 fun BoxScope.TracksPanel(
     player: Player, ver: Int, onChanged: () -> Unit,
     audioFocus: FocusRequester, subsFocus: FocusRequester,
-    onClose: () -> Unit, onStyle: () -> Unit
+    onClose: () -> Unit, onStyle: () -> Unit, onSearch: (() -> Unit)? = null
 ) {
     val audio = remember(ver) { collectTracks(player, C.TRACK_TYPE_AUDIO) }
     val subs = remember(ver) { collectTracks(player, C.TRACK_TYPE_TEXT) }
@@ -138,6 +138,18 @@ fun BoxScope.TracksPanel(
             }
         }
         Spacer(Modifier.height(12.dp))
+        if (onSearch != null) {
+            PPanelRow(
+                "Untertitel online suchen", false,
+                Modifier.onPreviewKeyEvent { e ->
+                    if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft) { onClose(); true }
+                    else if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { onSearch(); true }
+                    else false
+                },
+                chevron = true, tinted = true, onClick = onSearch
+            )
+            Spacer(Modifier.height(PT.RowGap))
+        }
         PPanelRow(
             "Aussehen der Untertitel", false,
             Modifier.onPreviewKeyEvent { e ->

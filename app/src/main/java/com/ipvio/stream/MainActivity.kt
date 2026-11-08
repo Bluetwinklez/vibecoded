@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
         HomeLayout.init(this); BoomerLayout.init(this)
         SidebarPrefs.init(this)
         Config.init(this)
+        Config.initSubs(this)
         LiveSettings.init(this)
         Recorder.attach(this)
         MobilePrefs.apply(this)

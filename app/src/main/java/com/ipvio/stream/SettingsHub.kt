@@ -55,7 +55,7 @@ private val CATS = listOf(
     Cat(AIcon.Live, "Live-TV & Guide", "TV-Programm, Senderlisten, Erinnerungen"),
     Cat(AIcon.Download, "Playlists", "Verwalten, Sprachen, Aktualisieren"),
     Cat(AIcon.Person, "Profile", "Verlauf, Favoriten, Jugendschutz je Person"),
-    Cat(AIcon.Star, "API-Schlüssel", "TMDB, IMDb und Rotten Tomatoes"),
+    Cat(AIcon.Star, "API-Schlüssel", "TMDB, IMDb, Rotten Tomatoes, Untertitel"),
     Cat(AIcon.Lock, "Jugendschutz", "PIN, Inhalte ab 18"),
     Cat(AIcon.Storage, "Speicher", "Cache, Verlauf, Fortsetzen"),
     Cat(AIcon.Pulse, "Diagnose", "Status und Fehlersuche"),
@@ -1261,6 +1261,10 @@ private fun ApiKeysPage(ctx: Context) {
     var omdb by remember { mutableStateOf(Config.ownOmdb(ctx)) }
     var tmdbStatus by remember { mutableStateOf("") }
     var omdbStatus by remember { mutableStateOf("") }
+    var osKey by remember { mutableStateOf(Config.OS_KEY) }
+    var sdKey by remember { mutableStateOf(Config.SD_KEY) }
+    var osStatus by remember { mutableStateOf("") }
+    var sdStatus by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     Hint("Die App enthält keine eigenen Schlüssel. Mit deinen eigenen, kostenlosen Schlüsseln zeigt sie Poster, Beschreibungen, Besetzung, Trailer, automatische Genres sowie IMDb- und Rotten-Tomatoes-Wertungen. Ohne Schlüssel übernimmt sie Beschreibung, Cover und Bewertung von deinem Anbieter (bei Xtream-Zugängen).")
 
@@ -1274,6 +1278,14 @@ private fun ApiKeysPage(ctx: Context) {
     Hint("Kostenlos unter omdbapi.com > API Key (FREE). Danach den Aktivierungslink in der E-Mail anklicken, sonst funktioniert der Schlüssel nicht. Geht auch ohne TMDB-Schlüssel.")
     if (omdbStatus.isNotBlank()) Text(omdbStatus, color = if (omdbStatus == "Schlüssel gültig") Accent2 else Muted, fontSize = 16.sp)
 
+    SectionTitle("Untertitel online suchen")
+    Field(osKey, { osKey = it; osStatus = "" }, "OpenSubtitles API-Schlüssel")
+    Hint("Kostenlos unter opensubtitles.com: Konto anlegen, dann unter „API consumers“ eine App anlegen und den API-Schlüssel eintragen. Ohne Anmeldung sind nur wenige Downloads pro Tag möglich.")
+    if (osStatus.isNotBlank()) Text(osStatus, color = if (osStatus == "Schlüssel gültig") Accent2 else Muted, fontSize = 16.sp)
+    Field(sdKey, { sdKey = it; sdStatus = "" }, "SubDL API-Schlüssel")
+    Hint("Kostenlos unter subdl.com > Konto > API. Im Player unter „Audio & Untertitel“ > „Untertitel online suchen“ werden beide Dienste gefragt.")
+    if (sdStatus.isNotBlank()) Text(sdStatus, color = if (sdStatus == "Schlüssel gültig") Accent2 else Muted, fontSize = 16.sp)
+
     Hint("Die Schlüssel bleiben nur auf diesem Gerät. Nach dem Eintragen die App einmal neu starten, damit alle Bereiche die Infos laden. Intro- und Abspann-Zeiten kommen von TheIntroDB und brauchen keinen Schlüssel.")
     // Buttons last: text below the last focusable element was cut off at the bottom of the page
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1281,15 +1293,19 @@ private fun ApiKeysPage(ctx: Context) {
             if (busy) return@PillButton
             busy = true
             Config.save(ctx, tmdb, omdb)
-            tmdb = Config.ownTmdb(ctx); omdb = Config.ownOmdb(ctx)
+            Config.saveSubs(ctx, osKey, sdKey)
+            tmdb = Config.ownTmdb(ctx); omdb = Config.ownOmdb(ctx); osKey = Config.OS_KEY; sdKey = Config.SD_KEY
             scope.launch {
                 tmdbStatus = if (tmdb.isEmpty()) "" else KeyCheck.tmdb(tmdb) ?: "Schlüssel gültig"
                 omdbStatus = if (omdb.isEmpty()) "" else KeyCheck.omdb(omdb) ?: "Schlüssel gültig"
+                osStatus = if (osKey.isEmpty()) "" else KeyCheck.openSubtitles(osKey) ?: "Schlüssel gültig"
+                sdStatus = if (sdKey.isEmpty()) "" else KeyCheck.subdl(sdKey) ?: "Schlüssel gültig"
                 busy = false
             }
         }
-        if (tmdb.isNotEmpty() || omdb.isNotEmpty()) ConfirmPill("Schlüssel entfernen") {
+        if (tmdb.isNotEmpty() || omdb.isNotEmpty() || osKey.isNotEmpty() || sdKey.isNotEmpty()) ConfirmPill("Schlüssel entfernen") {
             tmdb = ""; omdb = ""; tmdbStatus = ""; omdbStatus = ""; Config.save(ctx, "", "")
+            osKey = ""; sdKey = ""; osStatus = ""; sdStatus = ""; Config.saveSubs(ctx, "", "")
         }
     }
 }
