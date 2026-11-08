@@ -43,7 +43,9 @@ import java.util.Locale
 
 data class BrowseReq(val title: String, val items: List<Item>, val sort: Int = 0)
 
-class BrowseState(val req: BrowseReq) {
+class BrowseState(req0: BrowseReq) {
+    /** Titles of the view; grows when a Stalker category is loaded further on opening ([StalkerMore]). */
+    var req by mutableStateOf(req0)
     var sort by mutableIntStateOf(req.sort.coerceIn(0, 8))
     var minRi by mutableIntStateOf(0)
     var year by mutableStateOf("Alle")
@@ -216,6 +218,11 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
             withFrameNanos { }
         } else delay(200)
         runCatching { restoreFocus.requestFocus() }
+    }
+
+    // Stalker portal: near the end of the list fetch the next titles of the category (like IPTVnator when scrolling)
+    LaunchedEffect(state.focused, list.size) {
+        if (ready && list.isNotEmpty() && state.focused >= list.size - StalkerMore.AHEAD) StalkerMore.wantMore(state)
     }
 
     LaunchedEffect(jumpFirst) {

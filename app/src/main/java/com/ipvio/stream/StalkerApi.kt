@@ -23,10 +23,15 @@ object StalkerApi {
     private class Session(val src: StalkerLogic.Source, val endpoint: String, val token: String, val at: Long)
     private val sessions = HashMap<Int, Session>()
     private const val SESSION_MS = 10 * 60_000L
-    /** At most this many movies/series in the list (portals deliver only ~14 per page); distributed over the categories. */
-    private const val MAX_MOVIES = 6000
-    private const val MAX_SERIES = 4000
     private const val MAX_CHANNELS = 30000
+    /** Pages per step when a category is opened or scrolled further (~14 titles per page), see [loadChunk]. */
+    private const val LOAD_CHUNK = 4
+    /** Short pause between two pages so the portal does not block (one request per category while loading). */
+    private const val PAGE_PAUSE_MS = 120L
+    /** This many categories in a row without an answer: wait [COOLDOWN_MS], at most [MAX_COOLDOWNS] times. */
+    private const val GIVE_UP_AFTER = 3
+    private const val MAX_COOLDOWNS = 2
+    private const val COOLDOWN_MS = 30_000L
 
     /** Last response of the portal in short form (only code and kind, never address or MAC) for understandable error texts. */
     @Volatile private var note = ""
@@ -141,10 +146,15 @@ object StalkerApi {
     }
 
     /**
-     * Write the whole list to [out] (M3U). [onPhase] = progress, [check] throws on abort.
+     * Write the list to [out] (M3U): all channels, plus only the first page (newest titles) of every movie and series
+     * category, fast like IPTVnator. Categories with more titles go to [onCats]; their further pages come when the
+     * category is opened or scrolled ([loadChunk], [StalkerMore]). [onPhase] = progress, [check] throws on abort.
      * Return value: number of entries.
      */
-    fun write(src: StalkerLogic.Source, out: Writer, onPhase: (String) -> Unit, check: () -> Unit): Int {
+    fun write(
+        src: StalkerLogic.Source, out: Writer, onPhase: (String) -> Unit, check: () -> Unit,
+        onCats: (List<StalkerLogic.CatRef>) -> Unit = {}
+    ): Int {
         onPhase("Zugang wird geprüft …")
         val s = login(src, force = true)
         var n = 0
@@ -168,49 +178,141 @@ object StalkerApi {
                 if (live % 400 == 0) onPhase("Sender werden geladen ($live) …")
             }
         }
-        val seenSeries = HashSet<String>()
 
-        // ---- Movies (series in the movie area are marked as series)
-        onPhase("Filme werden geladen …")
-        val cats = categories(s, "vod", "get_categories").filterKeys { it != "*" }
-        val perCat = (MAX_MOVIES / cats.size.coerceAtLeast(1)).coerceIn(40, 600)
-        var movies = 0
-        for ((cid, cname) in cats) {
-            check()
-            paged(s, "vod", "&category=$cid&sortby=added", perCat, check) { o ->
-                val f = fields(o)
-                if (o.optString("is_series") == "1") {
-                    val nm = (f["name"] ?: "").trim().lowercase()
-                    if (nm.isNotEmpty() && seenSeries.add(nm))
-                        StalkerLogic.seriesEntry(src, f, cid, cname, "v")?.let { out.write(it); out.write("\n"); n++ }
-                } else {
-                    StalkerLogic.movieEntry(src, f, cname)?.let { out.write(it); out.write("\n"); n++; movies++ }
-                }
-                if (movies % 200 == 0 && movies > 0) onPhase("Filme werden geladen ($movies) …")
+        // ---- Movies and series: only the first page (newest titles) per category, the rest on opening ([loadChunk])
+        onPhase("Kategorien werden geladen …")
+        val em = Emitter(src) { out.write(it); out.write("\n"); n++ }
+        val cats = categories(s, "vod", "get_categories").filterKeys { it != "*" }.map { "vod" to it } +
+            categories(s, "series", "get_categories").filterKeys { it != "*" }.map { "series" to it }
+        val more = ArrayList<StalkerLogic.CatRef>()
+        val skipped = ArrayList<Pair<String, Map.Entry<String, String>>>()
+        var failedInRow = 0
+        var cooldowns = 0
+        fun wait() { var w = 0L; while (w < COOLDOWN_MS) { check(); Thread.sleep(1000); w += 1000 } }
+        fun load(type: String, cid: String, cname: String): Paged {
+            val r = firstPage(src, type, cid, cname, check, em)
+            if (r.more && r.last > 0) more.add(StalkerLogic.CatRef(type, cid, StalkerLogic.groupName(cname), r.total, r.last))
+            return r
+        }
+        for ((idx, c) in cats.withIndex()) {
+            val (type, cat) = c
+            // Portal stops answering several times in a row: pause briefly, then continue
+            if (failedInRow >= GIVE_UP_AFTER && cooldowns < MAX_COOLDOWNS) {
+                cooldowns++; failedInRow = 0
+                onPhase("Portal antwortet nicht, neuer Versuch in ${COOLDOWN_MS / 1000} s …")
+                wait()
+            }
+            if (failedInRow >= GIVE_UP_AFTER) { skipped.add(c); continue }
+            val r = load(type, cat.key, cat.value)
+            failedInRow = if (r.ok) 0 else failedInRow + 1
+            // Without a single title the category would not appear at all: try again at the end
+            if (!r.ok && r.last == 0) skipped.add(c)
+            if (idx % 10 == 0) onPhase("Kategorien werden geladen (${idx + 1}/${cats.size}) …")
+        }
+        if (skipped.isNotEmpty()) {
+            onPhase("Kategorien werden erneut versucht …")
+            wait()
+            var inRow = 0
+            for ((type, cat) in skipped) {
+                if (inRow >= GIVE_UP_AFTER) break
+                inRow = if (load(type, cat.key, cat.value).ok) 0 else inRow + 1
             }
         }
-
-        // ---- Series (own area, placeholders; episodes only on opening)
-        onPhase("Serien werden geladen …")
-        val sCats = categories(s, "series", "get_categories").filterKeys { it != "*" }
-        val perSer = (MAX_SERIES / sCats.size.coerceAtLeast(1)).coerceIn(40, 400)
-        var series = 0
-        for ((cid, cname) in sCats) {
-            check()
-            paged(s, "series", "&category=$cid&sortby=added", perSer, check) { o ->
-                val f = fields(o)
-                val nm = (f["name"] ?: f["title"] ?: "").trim().lowercase()
-                if (nm.isNotEmpty() && seenSeries.add(nm))
-                    StalkerLogic.seriesEntry(src, f, cid, cname, "s")?.let { out.write(it); out.write("\n"); n++; series++ }
-                if (series % 200 == 0 && series > 0) onPhase("Serien werden geladen ($series) …")
-            }
-        }
+        onCats(more)
         out.flush()
         if (n == 0) {
             val why = if (note.isNotEmpty()) " ($note)" else ""
             throw PlaylistError("Das Portal hat keine Sender geliefert$why. MAC-Adresse und Abo beim Anbieter prüfen.")
         }
         return n
+    }
+
+    /** Result of a run over pages: [total] entries according to the portal (-1 = unknown), [last] = last page loaded. */
+    private class Paged(val ok: Boolean, val total: Int, val last: Int, val more: Boolean)
+
+    /**
+     * Pages [from] .. [from]+[max]-1 of a list to [each]. Stops at an empty or repeating page. [Paged.more] = the portal
+     * has further pages; [Paged.ok] false = a page did not come even after logging in again.
+     */
+    private fun pageRange(
+        src: StalkerLogic.Source, type: String, extra: String, from: Int, max: Int, check: () -> Unit, each: (JSONObject) -> Unit
+    ): Paged {
+        var page = from
+        var pages = from
+        var total = -1
+        var lastFp: String? = null
+        while (page <= pages && page < from + max) {
+            check()
+            var o: JSONObject? = null
+            for (attempt in 0 until 2) {
+                val s = runCatching { login(src, force = attempt > 0) }.getOrNull() ?: break
+                o = js(src, StalkerLogic.api(s.endpoint, type, "get_ordered_list", "$extra&p=$page"), s.token) as? JSONObject
+                if (o != null) break
+            }
+            if (o == null) return Paged(false, total, page - 1, true)
+            val a = o.optJSONArray("data") ?: return Paged(true, total, page - 1, false)
+            if (a.length() == 0) return Paged(true, total, page - 1, false)
+            val fp = a.optJSONObject(0)?.opt("id")?.toString() + "|" + a.optJSONObject(a.length() - 1)?.opt("id")?.toString() + "|" + a.length()
+            if (fp == lastFp) return Paged(true, total, page - 1, false)
+            lastFp = fp
+            total = o.optInt("total_items", -1).takeIf { it > 0 } ?: total
+            val per = o.optInt("max_page_items", a.length()).coerceAtLeast(1)
+            pages = StalkerLogic.pageCount(total, per, page + 1).coerceAtLeast(page)
+            for (i in 0 until a.length()) a.optJSONObject(i)?.let(each)
+            page++
+            if (page < from + max && page <= pages) Thread.sleep(PAGE_PAUSE_MS)
+        }
+        return Paged(true, total, page - 1, page <= pages)
+    }
+
+    /** Writes movies and series as M3U lines (each movie ID and series name only once). */
+    private class Emitter(val src: StalkerLogic.Source, val put: (String) -> Unit) {
+        private val movies = HashSet<String>()
+        private val series = HashSet<String>()
+
+        fun video(o: JSONObject, type: String, cid: String, cname: String) {
+            val f = fields(o)
+            if (type == "series" || o.optString("is_series") == "1") {
+                val nm = (f["name"] ?: f["title"] ?: "").trim().lowercase()
+                if (nm.isNotEmpty() && series.add(nm))
+                    StalkerLogic.seriesEntry(src, f, cid, cname, if (type == "series") "s" else "v")?.let(put)
+            } else if (movies.add(f["id"] ?: f["cmd"] ?: return)) {
+                StalkerLogic.movieEntry(src, f, cname)?.let(put)
+            }
+        }
+    }
+
+    private fun catExtra(cid: String) = "&category=${enc(cid)}&sortby=added"
+
+    /** First page of a category. The portal sends the newest first; the app reads "new" from the end of the list: write oldest first. */
+    private fun firstPage(src: StalkerLogic.Source, type: String, cid: String, cname: String, check: () -> Unit, em: Emitter): Paged {
+        val rows = ArrayList<JSONObject>()
+        val r = pageRange(src, type, catExtra(cid), 1, 1, check) { rows.add(it) }
+        for (i in rows.indices.reversed()) em.video(rows[i], type, cid, cname)
+        return r
+    }
+
+    /** One step loaded on demand: new M3U lines, new state, [done] = no further pages, [ok] false = portal does not answer. */
+    class Chunk(val m3u: String, val ref: StalkerLogic.CatRef, val done: Boolean, val ok: Boolean)
+
+    /** The next [LOAD_CHUNK] pages of a category after page [StalkerLogic.CatRef.pages] (on opening or scrolling). */
+    fun loadChunk(src: StalkerLogic.Source, ref: StalkerLogic.CatRef, check: () -> Unit): Chunk {
+        val sb = StringBuilder()
+        val em = Emitter(src) { sb.append(it).append('\n') }
+        val rows = ArrayList<JSONObject>()
+        val r = pageRange(src, ref.type, catExtra(ref.id), ref.pages + 1, LOAD_CHUNK, check) { rows.add(it) }
+        // Oldest first (see [firstPage]); these titles are older than everything loaded so far and go in front
+        for (i in rows.indices.reversed()) em.video(rows[i], ref.type, ref.id, ref.name)
+        val cur = ref.copy(pages = maxOf(ref.pages, r.last), total = if (r.total > 0) r.total else ref.total)
+        return Chunk(sb.toString(), cur, r.ok && !r.more, r.ok)
+    }
+
+    /** Play command of a movie with its own files: "/media/file_<file ID>.mpg" of the first file. */
+    private fun movieFileCmd(src: StalkerLogic.Source, s: Session, movieId: String): String? {
+        val o = js(src, StalkerLogic.api(s.endpoint, "vod", "get_ordered_list", "&movie_id=${enc(movieId)}&p=1"), s.token)
+        val a = (o as? JSONObject)?.optJSONArray("data") ?: (o as? JSONArray) ?: return null
+        val id = a.optJSONObject(0)?.opt("id")?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        return "/media/file_$id.mpg"
     }
 
     private fun sourceOf(key: Int): StalkerLogic.Source? =
@@ -222,10 +324,12 @@ object StalkerApi {
         val src = sourceOf(ref.key) ?: return@withContext null
         for (attempt in 0 until 2) {
             val s = runCatching { login(src, force = attempt > 0) }.getOrNull() ?: return@withContext null
-            val r = js(src, StalkerLogic.createLink(s.endpoint, ref.type, ref.cmd, ref.series), s.token) as? JSONObject
-            val u = StalkerLogic.stripCmd(r?.optString("cmd"))
+            val (type, cmd) = if (ref.type == "mfile") "vod" to (movieFileCmd(src, s, ref.cmd) ?: continue) else ref.type to ref.cmd
+            val r = js(src, StalkerLogic.createLink(s.endpoint, type, cmd, ref.series), s.token) as? JSONObject
+            val u = StalkerLogic.playUrl(s.endpoint, r?.optString("cmd"))
             if (u != null) return@withContext u
         }
+        if (ref.type == "mfile") return@withContext null
         // Some portals already deliver a directly playable address in the channel
         StalkerLogic.stripCmd(ref.cmd)?.takeIf { !it.contains("localhost") }
     }

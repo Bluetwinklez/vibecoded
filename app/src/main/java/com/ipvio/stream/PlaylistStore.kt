@@ -149,6 +149,8 @@ object PlaylistStore {
     private val extras = LinkedHashMap<String, Extra>()
     @Volatile private var primaryItems: List<Item> = emptyList()
     @Volatile private var primaryUrl: String? = null
+    /** Address of the active playlist currently shown (null = none loaded). */
+    val shownUrl: String? get() = primaryUrl
     private var primaryEpg: List<String> = emptyList()
     private var primaryOrder: Map<String, Int> = emptyMap()
     private var epgSig = 0L
@@ -364,13 +366,15 @@ object PlaylistStore {
     private fun cacheFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".bin")
     private fun gzFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".m3u.gz")
     private fun rawFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".m3u")
+    /** Stalker portal: categories of which only the newest titles were fetched while loading (see [StalkerMore]). */
+    fun stalkerMoreFile(c: Context, url: String) = File(c.filesDir, "stalker_more_" + key(url) + ".tsv")
     private fun partFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".part")
     private fun infoFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".info")
     private fun tmp(f: File) = File(f.path + ".tmp")
 
     private fun deleteFiles(c: Context, url: String) {
         if (url.startsWith("file://")) runCatching { File(java.net.URI(url)).takeIf { it.path.contains("/imports/") }?.delete() }
-        val main = listOf(cacheFile(c, url), gzFile(c, url), rawFile(c, url), partFile(c, url), infoFile(c, url), Catchup.file(c, url))
+        val main = listOf(cacheFile(c, url), gzFile(c, url), rawFile(c, url), partFile(c, url), infoFile(c, url), Catchup.file(c, url), stalkerMoreFile(c, url))
         (main + main.map { tmp(it) }).forEach { runCatching { it.delete() } }
     }
 
@@ -547,9 +551,10 @@ object PlaylistStore {
         raw.delete(); part.delete()
         bytesRead = 0L; totalBytes = -1L; downloadDone = false
         val counter = CountingOut(FileOutputStream(part)) { bytesRead = it }
+        var more: List<StalkerLogic.CatRef> = emptyList()
         try {
             OutputStreamWriter(BufferedOutputStream(counter, 1 shl 16), Charsets.UTF_8).use { w ->
-                StalkerApi.write(src, w, { phase = it }, { if (cancelled()) throw CancellationException("abgebrochen") })
+                StalkerApi.write(src, w, { phase = it }, { if (cancelled()) throw CancellationException("abgebrochen") }) { more = it }
             }
         } catch (e: Throwable) {
             part.delete()
@@ -557,6 +562,9 @@ object PlaylistStore {
         }
         info.writeText(LoadLogic.PartInfo(key(u), null, null, "UTF-8").encode())
         if (!part.renameTo(raw)) throw IOException("Datei konnte nicht umbenannt werden")
+        // Only after a successful load: which categories are loaded further on opening
+        runCatching { stalkerMoreFile(c, u).writeText(StalkerLogic.encodeCats(more)) }
+        StalkerMore.reset()
         return raw to Charsets.UTF_8
     }
 
@@ -779,6 +787,34 @@ object PlaylistStore {
         val k = key(lists[i].url)
         multi = if (on) multi + k else multi - k
         persist(c)
+    }
+
+    /**
+     * Add titles of a category loaded on demand (Stalker portal, see [StalkerMore]) to the active playlist [u].
+     * IDs already present and hidden languages are skipped. Return value: the titles that are really new.
+     */
+    @Volatile private var idsFor: List<Item>? = null
+    private var ids = HashSet<String>()
+
+    @Synchronized
+    fun appendItems(c: Context, u: String, add: List<Item>): List<Item> {
+        if (add.isEmpty() || primaryUrl != u) return emptyList()
+        val base = primaryItems
+        if (idsFor !== base) { ids = HashSet<String>(base.size * 2).also { s -> base.forEach { s.add(it.id) } } }
+        val fresh = add.filter { it.lang !in shownHidden && ids.add(it.id) }
+        // Titles loaded on demand are older than the loaded ones: insert in front (the app reads "new" from the end of the list)
+        val next = if (fresh.isEmpty()) base else fresh + base
+        primaryItems = next; idsFor = next
+        if (fresh.isEmpty()) return fresh
+        if (extras.isEmpty()) {
+            merged = MultiLogic.Merged(next, emptySet(), emptyMap())
+            // Extend the shown list by the new titles only instead of running all filters over the whole list
+            val raw = rawChannels
+            val shown = if (filteredFor === raw && filteredVer == filterVer()) filtered else shownOf(raw)
+            val all = fresh + raw
+            setItems(all, shownOf(fresh) + shown)
+        } else rebuild(c)
+        return fresh
     }
 
     /** Build and show the list from the active and the loaded further playlists (background thread). */
