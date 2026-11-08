@@ -30,6 +30,9 @@
 - In the Live TV list you can switch the playlist (or "All playlists") without going into the settings
 - Second stream in the live player: picture-in-picture or split screen, sound from either stream, swap streams. Arrangement, window size (4 sizes) and corner are saved (Settings > Player > Second stream)
 
+**Phone search**
+- New button at the bottom of the sidebar: shows a QR code. Scan it and search movies, series and live channels on your phone (a web page served by the TV, same Wi-Fi, nothing to install). Tap a result to play it on the TV; pause, skip, stop and volume buttons included
+
 **Languages**
 - Dutch (Nederlands) is the 10th language
 
@@ -42,10 +45,6 @@
 **Interface (new)**
 - Settings > View rebuilt: 5 tabs (cards, sidebar, grid, home, categories) with a live preview of every option
 - New "Donate" card in the settings (PayPal link and QR code)
-
-**Fixes**
-- Crashes fixed: duplicate list entries (same channel/show twice) in Sports, Live TV, episodes and cast no longer crash the app
-- Live TV list: playlist switch and OK/right-key focus fixed
 
 **Transfer**
 - Transfer history, favorites and settings to another device over Wi-Fi (optionally with playlists)

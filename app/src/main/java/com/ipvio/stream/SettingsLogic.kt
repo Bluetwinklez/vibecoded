@@ -3,9 +3,9 @@ package com.ipvio.stream
 import java.util.Calendar
 import java.util.TimeZone
 
-/** Plan für die automatische Playlist-Aktualisierung. */
+/** Plan for the automatic playlist refresh. */
 data class UpdatePlan(
-    /** 0 = bei jedem Start, 1 = alle X Stunden, 2 = täglich, 3 = wöchentlich, 4 = nur von Hand */
+    /** 0 = at every start, 1 = every X hours, 2 = daily, 3 = weekly, 4 = by hand only */
     val mode: Int,
     val intervalH: Int = 12,
     val hour: Int = 4,
@@ -14,14 +14,14 @@ data class UpdatePlan(
     val dow: Int = Calendar.MONDAY
 )
 
-/** Reine Hilfsfunktionen der Einstellungen (ohne Android, daher testbar). */
+/** Pure helper functions of the settings (without Android, hence testable). */
 object SettingsLogic {
 
-    /** Menü-Nummern: 0 Start, 1 Filme, 2 Serien, 3 Live TV, 4 Suche. Ist die gewählte Startseite versteckt, startet die App auf "Start". */
+    /** Menu numbers: 0 Start, 1 Movies, 2 Series, 3 Live TV, 4 Search. If the chosen start page is hidden, the app starts on "Start". */
     fun resolveStartTab(pref: Int, order: List<Int>, hidden: List<Int>): Int =
         if (pref in 1..4 && pref in order && pref !in hidden) pref else 0
 
-    /** Letzter planmäßiger Zeitpunkt (≤ jetzt) für täglich/wöchentlich. */
+    /** Last scheduled time (≤ now) for daily/weekly. */
     fun lastScheduled(plan: UpdatePlan, nowMs: Long, zone: TimeZone): Long {
         val c = Calendar.getInstance(zone)
         c.timeInMillis = nowMs
@@ -37,7 +37,7 @@ object SettingsLogic {
         return c.timeInMillis
     }
 
-    /** Ist laut Plan jetzt eine Aktualisierung fällig? [lastMs] = letzte erfolgreiche Aktualisierung (0 = nie). */
+    /** Is a refresh due now according to the plan? [lastMs] = last successful refresh (0 = never). */
     fun refreshDue(plan: UpdatePlan, lastMs: Long, nowMs: Long, zone: TimeZone): Boolean = when (plan.mode) {
         0 -> true
         1 -> lastMs <= 0L || nowMs < lastMs || nowMs - lastMs >= plan.intervalH.coerceAtLeast(1) * 3_600_000L
@@ -45,7 +45,7 @@ object SettingsLogic {
         else -> false
     }
 
-    /** Nächster geplanter Zeitpunkt (null bei "bei jedem Start" und "nur von Hand"). */
+    /** Next scheduled time (null for "at every start" and "by hand only"). */
     fun nextDue(plan: UpdatePlan, lastMs: Long, nowMs: Long, zone: TimeZone): Long? = when (plan.mode) {
         1 -> if (lastMs <= 0L) nowMs else lastMs + plan.intervalH.coerceAtLeast(1) * 3_600_000L
         2, 3 -> {
@@ -67,7 +67,7 @@ object SettingsLogic {
     // ---- Zeit ----
     class Zone(val id: String, val label: String)
 
-    /** Auswahl: erster Eintrag = Systemzeit des Geräts. */
+    /** Choice: first entry = system time of the device. */
     val ZONES = listOf(
         Zone("", ""),
         Zone("Europe/Berlin", "Berlin · Wien · Zürich · Zagreb · Belgrad"),

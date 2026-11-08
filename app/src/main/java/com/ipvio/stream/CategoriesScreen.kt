@@ -115,7 +115,7 @@ fun CategoriesScreen(
             Spacer(Modifier.height(10.dp))
             Box(Modifier.onFocusChanged { inPills = it.hasFocus }) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // Anbieter-Kategorien zuerst; die Wahl wird gespeichert (gleiche Einstellung wie „Automatische Genres“)
+                    // Provider categories first; the choice is saved (same setting as "Automatic genres")
                     val modes = listOf("Anbieter-Kategorien", "Auto-Genres")
                     val sel = if (mode == 0) 1 else 0
                     DropdownPill("Filter", modes[sel], modes, sel, modifier = Modifier.focusRequester(pillFocus), icon = FIcon.Genre) {
@@ -139,7 +139,7 @@ fun CategoriesScreen(
             if (mode == 0 && req.ipvio.isEmpty()) AutoGenresOff()
             else {
                 if (mode == 0 && Classifier.running) Text("Genres werden gerade im Hintergrund erkannt. Die Kategorien erscheinen nach und nach.", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
-                // Auto-Genres: Titel gleich nach Bewertung sortiert (beste zuerst); Kategorien des Anbieters behalten ihre Sortierung
+                // Auto genres: titles sorted by rating (best first); provider categories keep their sorting
                 val catSort = if (mode == 0) 2 else req.sort
                 if (CatPrefs.listView) ListMode(req.title, entries, catSort, firstFocus, pillFocus, onPick, onOpen) { bgItem = it }
                 else TileMode(entries, catSort, firstFocus, onPick)
@@ -226,7 +226,7 @@ private fun ListMode(
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp).onFocusChanged { inPreview = it.hasFocus }) {
-            // Raster: 2 Zeilen mit großen Covern (Standard 5 Spalten = 10 Titel), Spalten einstellbar im Knopf "Ansicht"
+            // Grid: 2 rows with large covers (default 5 columns = 10 titles), columns adjustable in the "View" button
             val cols = if (General.perRow > 0) General.perRow.coerceIn(3, 7) else 5
             val gap = 14.dp
             val byWidth = (maxWidth - gap * (cols - 1)) / cols
@@ -305,8 +305,8 @@ private fun TileMode(entries: List<Pair<String, List<Item>>>, sort: Int, firstFo
 }
 
 /**
- * Rubrik-Kachel: Hintergrundbild vom neuesten Titel, davor ein kleiner Fächer aus bis zu drei Covern,
- * links Name und Anzahl. Ohne Bilder bleibt ein ruhiger Farbverlauf in der Akzentfarbe.
+ * Category tile: background image from the newest title, in front a small fan of up to three covers,
+ * name and count on the left. Without images a calm gradient in the accent color remains.
  */
 @Composable
 private fun CatTile(name: String, items: List<Item>, modifier: Modifier, onClick: () -> Unit) {
@@ -349,7 +349,7 @@ private fun CatTile(name: String, items: List<Item>, modifier: Modifier, onClick
     }
 }
 
-/** Erklärt, warum die automatischen Genres leer sind (Bibliothek zu groß), und was man tun kann. */
+/** Explains why the automatic genres are empty (library too large) and what you can do. */
 @Composable
 private fun AutoGenresOff() {
     val all = PlaylistStore.channels

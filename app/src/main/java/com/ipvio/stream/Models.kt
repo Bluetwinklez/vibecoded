@@ -10,8 +10,8 @@ data class Episode(
 )
 
 /**
- * Wählt die Quelle einer Folge nach Sprache, Qualität und Quelle (Vorgabe des Nutzers).
- * Ohne feste Qualität entscheidet [cap] (siehe [QualityLogic]): die beste Quelle, die das Gerät gut schafft.
+ * Chooses the source of an episode by language, quality and source (user's preference).
+ * Without a fixed quality [cap] decides (see [QualityLogic]): the best source the device handles well.
  */
 fun pickVariant(ep: Episode, q: String?, lang: String?, label: String?, cap: Int = 4): Variant {
     var c = ep.variants.ifEmpty { listOf(Variant(ep.url, "", ep.quality, null)) }
@@ -22,7 +22,7 @@ fun pickVariant(ep: Episode, q: String?, lang: String?, label: String?, cap: Int
     return c.first()
 }
 
-/** „Episode 1“ … nur einmal im Speicher statt einmal je Folge. */
+/** "Episode 1" … only once in memory instead of once per episode. */
 object EpTitles {
     private val CACHE = arrayOfNulls<String>(2000)
     fun of(n: Int): String {
@@ -32,25 +32,25 @@ object EpTitles {
 }
 
 /**
- * Die Folgen einer Serie, platzsparend gespeichert (statt einer Datenbank – gemessen: gleicher Effekt, ohne Ladezeit):
- * Staffel/Folge als Zahl, die Adresse nur als Ende („12345.mkv“) – der gemeinsame Anfang („http://server/series/user/pass/“)
- * liegt einmal im Speicher. Eine Folge ([Episode]) wird erst beim Zugriff gebaut. Für den Rest der App ist es eine normale Liste.
- * Bei großen Anbietern sind ~70 % aller Einträge Folgen: 581.000 Folgen brauchen so ~12 MB statt ~88 MB.
+ * The episodes of a series, stored compactly (instead of a database – measured: same effect, without load time):
+ * season/episode as numbers, the address only as its end ("12345.mkv") – the common beginning ("http://server/series/user/pass/")
+ * is in memory once. An episode ([Episode]) is built only on access. For the rest of the app it is an ordinary list.
+ * With large providers ~70 % of all entries are episodes: 581,000 episodes need ~12 MB instead of ~88 MB this way.
  */
 class EpisodeTable private constructor(
     /** (Staffel shl 16) or Folge */
     private val se: IntArray,
     private val pre: Array<String>,
-    /** Anfang je Folge (Index in [pre]); null = alle [pre] 0 */
+    /** Beginning per episode (index into [pre]); null = all [pre] 0 */
     private val preIdx: ByteArray?,
     /** Adress-Enden hintereinander, [sufEnd] = Ende je Folge */
     private val suf: String,
     private val sufEnd: IntArray,
-    /** Qualität je Folge als Code (siehe [Q]) */
+    /** Quality per episode as a code (see [Q]) */
     private val q: ByteArray,
-    /** Quellen je Folge, nur bei Folgen mit mehreren Quellen (sonst null) */
+    /** Sources per episode, only for episodes with several sources (otherwise null) */
     private val vars: Array<List<Variant>?>?,
-    /** Anzahl verschiedener Staffeln (für die Karten, ohne alle Folgen zu bauen) */
+    /** Number of distinct seasons (for the cards, without building all episodes) */
     val seasonCount: Int
 ) : AbstractList<Episode>(), RandomAccess {
     override val size: Int get() = se.size
@@ -67,12 +67,12 @@ class EpisodeTable private constructor(
         private val Q = arrayOf(null, "HD", "FHD", "4K")
         private fun qCode(s: String?): Int = Q.indexOf(s)
 
-        /** Anfang einer Adresse bis einschließlich des letzten „/“. */
+        /** Beginning of an address up to and including the last "/". */
         fun prefixOf(url: String): String = url.substring(0, url.lastIndexOf('/') + 1)
 
         /**
-         * Kompakte Form einer Folgenliste. Passt etwas nicht ins Schema (ungewöhnlicher Titel, Qualität, Nummer,
-         * über 120 verschiedene Adress-Anfänge), bleibt die Liste, wie sie ist – nichts geht verloren.
+         * Compact form of an episode list. If something does not fit the scheme (unusual title, quality, number,
+         * more than 120 distinct address beginnings), the list stays as it is – nothing is lost.
          */
         fun of(list: List<Episode>, pool: StringPool? = null): List<Episode> {
             if (list.isEmpty()) return emptyList()
@@ -113,7 +113,7 @@ class EpisodeTable private constructor(
     }
 }
 
-/** Anzahl der Staffeln einer Serie – schnell bei der kompakten Liste (Karten zeigen das bei jedem Zeichnen). */
+/** Number of seasons of a series – fast with the compact list (cards show this on every draw). */
 fun seasonCount(item: Item): Int = (item.episodes as? EpisodeTable)?.seasonCount ?: item.episodes.map { it.season }.distinct().size
 
 data class Item(
@@ -127,37 +127,37 @@ data class Item(
     val episodes: List<Episode> = emptyList(),
     val quality: String? = null,
     val tvgId: String? = null,
-    /** Sprache laut Kennzeichnung des Anbieters (Kürzel aus [LangTagLogic], "?" = ohne Kennung). */
+    /** Language according to the provider's tag (abbreviation from [LangTagLogic], "?" = no tag). */
     val lang: String = LangTagLogic.UNKNOWN,
-    /** Quelle bei mehreren gleichzeitig gezeigten Playlists: 0 = Haupt-Playlist, 1 … = weitere (siehe [MultiLogic]). */
+    /** Source with several playlists shown at once: 0 = main playlist, 1 … = further ones (see [MultiLogic]). */
     val src: Int = 0
 ) {
-    // Schlüssel für den Metadaten-Cache: einmal pro Titel berechnet statt bei jedem Sortiervergleich neu.
-    // Eigenes Feld statt "by lazy": spart bei 100.000+ Titeln zwei Hilfsobjekte je Titel.
+    // Key for the metadata cache: computed once per title instead of anew on every sort comparison.
+    // Own field instead of "by lazy": saves two helper objects per title with 100,000+ titles.
     private var mkCache: String? = null
     val mk: String get() = mkCache ?: (kind.name + "|" + title.lowercase() + "|" + (year ?: 0)).also { mkCache = it }
 }
 
 /**
- * Ergebnis des Einlesens: Einträge (ohne ausgeblendete Sprachen) plus die im Kopf der Liste genannten EPG-Adressen.
- * [counts] = Titel je Sprache in der ganzen Liste, [bytes] = Datenmenge je Sprache (für die Speicher-Schätzung).
+ * Result of parsing: entries (without hidden languages) plus the EPG addresses named in the head of the list.
+ * [counts] = titles per language in the whole list, [bytes] = amount of data per language (for the memory estimate).
  */
 class ParsedPlaylist(
     val items: List<Item>, val epgUrls: List<String>,
     val counts: Map<String, Int> = emptyMap(), val bytes: Map<String, Long> = emptyMap(),
-    /** Sender mit Archiv (Catchup) laut Playlist: Sender-ID → Angaben. */
+    /** Channels with archive (catchup) according to the playlist: channel ID → details. */
     val catchup: Map<String, CatchupInfo> = emptyMap()
 )
 
-/** Ergebnis des schnellen Prüf-Durchlaufs (ohne Titel anzulegen): Titel und Datenmenge je Sprache. */
+/** Result of the quick scan pass (without creating titles): titles and amount of data per language. */
 class PlaylistScan(val counts: Map<String, Int>, val bytes: Map<String, Long>, val entries: Int)
 
-/** Wird geworfen, wenn das Einlesen abgebrochen werden soll (Speicher knapp, Nutzer bricht ab). */
+/** Thrown when parsing should be aborted (memory tight, user cancels). */
 class ParseStop(msg: String) : RuntimeException(msg)
 
 /**
- * Legt gleiche Texte nur einmal im Speicher ab (Kategorien, Beschriftungen, Sprachen).
- * Große Playlists wiederholen dieselbe Kategorie zehntausendfach – ohne Pool wäre jede Wiederholung ein eigener Text.
+ * Stores equal texts only once in memory (categories, labels, languages).
+ * Large playlists repeat the same category tens of thousands of times – without a pool every repeat would be its own text.
  */
 class StringPool {
     private val map = HashMap<String, String>()
@@ -166,7 +166,7 @@ class StringPool {
 }
 
 object M3uParser {
-    /** Sprache eines Eintrags; die Kategorie wird pro Name nur einmal untersucht. */
+    /** Language of an entry; the category is examined only once per name. */
     private class LangOf(private val pool: StringPool) {
         private val byGroup = HashMap<String, String>()
         fun of(group: String, name: String, live: Boolean): String {
@@ -176,7 +176,7 @@ object M3uParser {
         }
     }
 
-    // Folge bis 4-stellig: Anime wie One Piece haben über 1.000 Folgen ("S01 E1050" wurde sonst zu Folge 105)
+    // Episode up to 4 digits: anime like One Piece have over 1,000 episodes ("S01 E1050" used to become episode 105)
     private val SE = Regex("""^(.*?)[\s._-]*[Ss](\d{1,2})[\s._-]*[Ee](\d{1,4})""")
     private val YEAR = Regex("""[\(\[]((?:19|20)\d{2})[\)\]]""")
     private val PREFIX = Regex("""^\s*[A-Za-z]{2,3}\s*[|:]\s*""")
@@ -202,7 +202,7 @@ object M3uParser {
 
     private fun rank(q: String?) = when (q) { "4K" -> 4; "FHD" -> 3; "HD" -> 2; else -> 1 }
 
-    // Einmal gebaut statt für jede Zeile neu (große Playlists haben 100.000+ Zeilen)
+    // Built once instead of anew for every line (large playlists have 100,000+ lines)
     private val ATTRS = listOf("tvg-logo", "tvg-id", "group-title", "url-tvg", "x-tvg-url")
         .associateWith { Regex(it + "=\"([^\"]*)\"") }
 
@@ -234,11 +234,11 @@ object M3uParser {
 
     fun parse(text: String): List<Item> = parseLines(text.lineSequence()).items
 
-    /** Liest zeilenweise aus einem Reader. So muss die ganze Liste nie als ein einziger String im Speicher liegen. */
+    /** Reads line by line from a Reader. This way the whole list never has to sit in memory as a single String. */
     fun parseStream(reader: java.io.Reader, hidden: Set<String> = emptySet(), check: (() -> Unit)? = null): ParsedPlaylist =
         java.io.BufferedReader(reader, 1 shl 16).useLines { parseLines(it, hidden, check) }
 
-    /** Schneller Durchlauf ohne Titel anzulegen: wie viele Titel und wie viele Daten je Sprache (für die Sprachauswahl). */
+    /** Quick pass without creating titles: how many titles and how much data per language (for the language selection). */
     fun scanStream(reader: java.io.Reader, check: (() -> Unit)? = null): PlaylistScan =
         java.io.BufferedReader(reader, 1 shl 16).useLines { lines ->
             val st = Stats()
@@ -248,10 +248,10 @@ object M3uParser {
             PlaylistScan(st.counts(), st.bytes, n)
         }
 
-    /** Ein Eintrag der Liste: die #EXTINF-Zeile wird erst bei Bedarf weiter zerlegt (Logo, tvg-id). */
+    /** An entry of the list: the #EXTINF line is only split further on demand (logo, tvg-id). */
     private class Entry(val info: String, val name: String, val group: String, val url: String)
 
-    /** Zählt Titel und Datenmenge je Sprache; Serien zählen je Sprache einmal (nicht jede Folge). */
+    /** Counts titles and amount of data per language; series count once per language (not every episode). */
     private class Stats {
         val titles = HashMap<String, Int>()
         val bytes = HashMap<String, Long>()
@@ -263,10 +263,10 @@ object M3uParser {
         fun counts(): Map<String, Int> = titles
     }
 
-    /** Was beim Einlesen eines Eintrags feststeht: Art, Sprache, Staffel/Folge. */
+    /** What is determined when parsing an entry: kind, language, season/episode. */
     private class Kinded(val kind: Kind, val lang: String, val se: MatchResult?)
 
-    /** Geht die Zeilen durch und meldet jeden Eintrag einzeln – nichts wird gesammelt. */
+    /** Goes through the lines and reports each entry individually – nothing is collected. */
     private inline fun entries(lines: Sequence<String>, noinline check: (() -> Unit)?, onHeader: (String) -> Unit = {}, onEntry: (Entry) -> Unit) {
         var info: String? = null
         var name: String? = null
@@ -292,7 +292,7 @@ object M3uParser {
         }
     }
 
-    /** Art und Sprache eines Eintrags; zählt ihn in [st]. null = Trenner, wird übersprungen. */
+    /** Kind and language of an entry; counts it in [st]. null = separator, skipped. */
     private fun classify(e: Entry, st: Stats, langOf: LangOf): Kinded? {
         if (isSeparator(e.name)) return null
         val m = SE.find(e.name)
@@ -305,13 +305,13 @@ object M3uParser {
         return Kinded(kind, lang, m)
     }
 
-    /** Folge einer Serie beim Zusammenfassen am Ende (nur für eine Serie gleichzeitig im Speicher). */
+    /** Episode of a series when merging at the end (only for one series at a time in memory). */
     private class EpRaw(val season: Int, val num: Int, val url: String, val label: String, val q: String?, val lang: String?)
 
     /**
-     * Folgen einer Serie während des Einlesens – ohne ein Objekt je Folge: Zahlen in Feldern, Adress-Enden als Bytes
-     * hintereinander, Anfänge/Beschriftungen/Sprachen als Verweise auf gemeinsame Texte. Spart beim Einlesen großer Listen
-     * (580.000 Folgen) gut 30 MB in der Spitze.
+     * Episodes of a series while parsing – without an object per episode: numbers in fields, address ends as bytes
+     * one after another, beginnings/labels/languages as references to shared texts. Saves a good 30 MB at the peak when parsing large lists
+     * (580,000 episodes).
      */
     private class SeriesAcc(val title: String, val logo: String?, val group: String, val q: String?, val lang: String) {
         var n = 0
@@ -341,7 +341,7 @@ object M3uParser {
             n++
         }
 
-        /** Alle Folgen als einfache Liste (nur kurz, beim Zusammenfassen dieser einen Serie). */
+        /** All episodes as a simple list (only briefly, when merging this one series). */
         fun raw(): ArrayList<EpRaw> {
             val out = ArrayList<EpRaw>(n)
             for (i in 0 until n) {
@@ -358,9 +358,9 @@ object M3uParser {
     private fun epTitle(n: Int): String = EpTitles.of(n)
 
     /**
-     * Liest die Liste in einem Durchgang. Ausgeblendete Sprachen ([hidden]) werden nur gezählt, aber nicht angelegt –
-     * so braucht eine Liste mit 800.000 Einträgen nur so viel Speicher wie die gewählten Sprachen.
-     * [check] wird alle 2.000 Einträge aufgerufen (Fortschritt, Abbruch, Speicher-Wache).
+     * Reads the list in one pass. Hidden languages ([hidden]) are only counted but not created –
+     * so a list with 800,000 entries needs only as much memory as the chosen languages.
+     * [check] is called every 2,000 entries (progress, abort, memory guard).
      */
     fun parseLines(lines: Sequence<String>, hidden: Set<String> = emptySet(), check: (() -> Unit)? = null): ParsedPlaylist {
         val pool = StringPool()
@@ -380,7 +380,7 @@ object M3uParser {
             when (kd.kind) {
                 Kind.SERIES -> {
                     val m = kd.se
-                    // Schlüssel (= Serien-ID) wie bisher aus dem bereinigten Namen, damit Fortsetzen/Meine Liste erhalten bleiben
+                    // Key (= series ID) as before from the cleaned name, so Resume/My list are preserved
                     val cleaned = clean(m?.groupValues?.get(1) ?: e.name)
                     val key = cleaned.lowercase()
                     val title = TitleText.title(cleaned)
@@ -421,7 +421,7 @@ object M3uParser {
                 while (j < raw.size && raw[j].season == raw[i].season && raw[j].num == raw[i].num) j++
                 if (j - i == 1) {
                     val r = raw[i]
-                    // Nur eine Quelle: keine eigene Liste (spart bei 100.000+ Folgen viel Speicher; pickVariant nimmt dann url/quality der Folge)
+                    // Only one source: no list of its own (saves a lot of memory with 100,000+ episodes; pickVariant then takes url/quality of the episode)
                     eps.add(Episode(r.season, r.num, epTitle(r.num), r.url, emptyList(), r.q))
                 } else {
                     val vars = raw.subList(i, j).sortedByDescending { rank(it.q) }.map { Variant(it.url, it.label, it.q, it.lang) }

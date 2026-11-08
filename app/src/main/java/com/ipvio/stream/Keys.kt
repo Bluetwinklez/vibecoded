@@ -18,8 +18,8 @@ fun Modifier.favKeys(onFav: () -> Unit): Modifier {
     return this.onPreviewKeyEvent { e ->
         when {
             e.key == Key.Menu && e.type == KeyEventType.KeyDown -> { onFav(); true }
-            // Langes OK: erst beim Loslassen auslösen. Öffnet die Aktion ein Menü, bekäme dieses sonst das Loslassen
-            // als Klick auf den ersten Eintrag.
+            // Long OK: trigger only on release. If the action opens a menu, that menu would otherwise receive the release
+            // as a click on the first entry.
             e.key == Key.DirectionCenter && e.type == KeyEventType.KeyDown && (longDone || e.nativeKeyEvent.isLongPress) -> { longDone = true; true }
             e.key == Key.DirectionCenter && e.type == KeyEventType.KeyUp && longDone -> { longDone = false; onFav(); true }
             else -> false
@@ -28,8 +28,8 @@ fun Modifier.favKeys(onFav: () -> Unit): Modifier {
 }
 
 /**
- * Menü-Taste öffnet ein Menü ([onMenu]), OK lange gedrückt macht [onLong] (beim Loslassen).
- * Viele Fernbedienungen (Fire TV) haben keine Menü-Taste: dann öffnet langes OK dasselbe Menü.
+ * Menu key opens a menu ([onMenu]), OK held long does [onLong] (on release).
+ * Many remotes (Fire TV) have no menu key: then a long OK opens the same menu.
  */
 @Composable
 fun Modifier.menuKeys(onMenu: () -> Unit, onLong: () -> Unit): Modifier {

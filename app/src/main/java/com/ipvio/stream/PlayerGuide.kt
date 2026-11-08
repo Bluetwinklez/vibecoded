@@ -68,16 +68,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Kurz nach dem Schließen eines Auswahlfensters im Guide (Zurück) keinen weiteren Zurück-Schritt ausführen. */
+/** Shortly after closing a selection window in the guide (Back) do not perform another back step. */
 object GuideBack {
     @Volatile var mutedUntil = 0L
-    /** Zurück-Schritt des offenen Guides (der Player fängt die Zurück-Taste zuerst ab und ruft das hier auf). */
+    /** Back step of the open guide (the player intercepts the Back key first and calls this). */
     var handler: (() -> Unit)? = null
 }
 
-/** Merkt sich die Ansicht des TV-Guides (Zoom, Zeilenhöhe, vergangene Sendungen). */
+/** Remembers the view of the TV guide (zoom, row height, past shows). */
 object GuidePrefs {
-    // Standard (Runde 14, Wunsch des Nutzers): Zoom „Groß“, Zeilenhöhe „Kompakt“
+    // Default (round 14, user's wish): zoom "Large", row height "Compact"
     var zoom by mutableIntStateOf(2)
     var rowSize by mutableIntStateOf(0)
     var hidePast by mutableStateOf(false)
@@ -87,7 +87,7 @@ object GuidePrefs {
         if (inited) return
         inited = true
         val p = Profiles.sp(c, "ipvio_guide")
-        // Einmalig: neue Standard-Ansicht (Groß / Kompakt) auch für alle, die schon gespeichert hatten
+        // One-time: new default view (Large / Compact) also for everyone who had already saved
         if (p.getInt("ver", 1) < 2) p.edit().putInt("zoom", 2).putInt("row", 0).putInt("ver", 2).apply()
         zoom = p.getInt("zoom", 2).coerceIn(0, 2)
         rowSize = p.getInt("row", 0).coerceIn(0, 2)
@@ -104,9 +104,9 @@ object GuidePrefs {
 fun Guide(
     list: List<Item>, curId: String, focus: FocusRequester, onClose: () -> Unit,
     onArchive: (Item, EpgEntry) -> Unit = { _, _ -> },
-    /** Alle Sender (für die Kategorien links); Standard = nur die übergebene Liste. */
+    /** All channels (for the categories on the left); default = only the passed list. */
     all: List<Item> = list,
-    /** Sender aus einer anderen Kategorie gewählt: mit dieser Liste weiterschalten. */
+    /** Channel chosen from another category: continue switching with this list. */
     onPickIn: ((Item, List<Item>) -> Unit)? = null,
     onPick: (Item) -> Unit
 ) {
@@ -114,13 +114,13 @@ fun Guide(
     GuidePrefs.init(ctx)
     val openedAt = remember { System.currentTimeMillis() / 1000 }
     val base = (openedAt - 1800) - ((openedAt - 1800) % 1800)
-    // Sender mit Archiv (Catchup): so viele Tage lässt sich zurückblättern
+    // Channels with archive (catchup): this many days can be scrolled back
     val pastDays = remember(list, Catchup.version) { Catchup.maxDays(list) }
     val minStart = base - pastDays * 86400L
-    // "Jetzt" wandert mit: die Markierung und der Status der Sendungen werden alle 30 s aktualisiert
+    // "Now" moves along: the highlight and the state of the shows are updated every 30 s
     var nowSec by remember { mutableLongStateOf(openedAt) }
     LaunchedEffect(Unit) { while (true) { delay(30_000); nowSec = System.currentTimeMillis() / 1000 } }
-    // dp je Minute: „Klein“ zeigt gut 3 Stunden auf einmal, „Mittel“ gut 2 Stunden
+    // dp per minute: "Small" shows a good 3 hours at once, "Medium" a good 2 hours
     val zooms = listOf(3.5f, 5f, 8f)
     val zoomNames = listOf("Klein", "Mittel", "Groß")
     val rowNames = listOf("Kompakt", "Normal", "Groß")
@@ -136,7 +136,8 @@ fun Guide(
     var inCats by remember { mutableStateOf(false) }
     var rowReq by remember { mutableStateOf<FocusRequester?>(null) }
     var showSettings by remember { mutableStateOf(false) }
-    // Kategorien links (wie im Entwurf): aktuelle Liste, alle Sender, Favoriten, eigene Listen, Gruppen des Anbieters
+    var showSearch by remember { mutableStateOf(false) }
+    // Categories on the left (as in the design): current list, all channels, favorites, own lists, provider groups
     val cats = remember(list, all, Library.favs.size, ChannelLists.lists.size) { guideCategories(list, all) }
     var catIdx by remember { mutableIntStateOf(0) }
     val shown = cats.getOrNull(catIdx)?.items ?: list
@@ -144,7 +145,7 @@ fun Guide(
     val idx = shown.indexOfFirst { it.id == curId }.coerceAtLeast(0)
     val ls = key(catIdx) { rememberLazyListState(maxOf(idx - 1, 0)) }
 
-    // Programmdaten vorab laden: zuerst die Sender rund um den aktuellen, 8 gleichzeitig
+    // Preload program data: first the channels around the current one, 8 at a time
     LaunchedEffect(shown) {
         val order = shown.indices.sortedBy { kotlin.math.abs(it - idx) }.map { shown[it] }
         for (chunk in order.take(80).chunked(8)) {
@@ -162,9 +163,9 @@ fun Guide(
         runCatching { focus.requestFocus() }
     }
 
-    // Zurück (Wunsch des Nutzers, Runde 14): in den Sendungen → zum Sender dieser Zeile (dessen Programm man gerade ansieht);
-    // in der Senderspalte → zur gewählten Kategorie; in den Kategorien → schließen (Links dort ebenso).
-    // Der Player fängt die Zurück-Taste ab und ruft diesen Schritt über GuideBack.handler auf (vorher schloss er den Guide sofort).
+    // Back (user's wish, round 14): in the shows → to the channel of this row (whose program you are looking at);
+    // in the channel column → to the chosen category; in the categories → close (Left there as well).
+    // The player intercepts the Back key and calls this step via GuideBack.handler (before, it closed the guide immediately).
     val backStep by androidx.compose.runtime.rememberUpdatedState<() -> Unit> {
         if (System.currentTimeMillis() >= GuideBack.mutedUntil) when {
             inBlock -> {
@@ -181,8 +182,13 @@ fun Guide(
     }
     LaunchedEffect(GuidePrefs.zoom) { infoE?.let { shiftFor(it) } }
 
-    // Oben: links Kopf + markierte Sendung, rechts das laufende Bild (PlayerScreen verkleinert es auf 400 × 225 dp, oben rechts).
-    // Darunter: Kategorien und Programmraster über die ganze Breite – so sieht man mehrere Stunden auf einmal.
+    if (showSearch) GuideSearchDialog(
+        all,
+        onPick = { ch -> showSearch = false; val p = onPickIn; if (p != null) p(ch, all) else onPick(ch) },
+        onClose = { showSearch = false; GuideBack.mutedUntil = System.currentTimeMillis() + 400 }
+    )
+    // Top: header + selected show on the left, the running picture on the right (PlayerScreen shrinks it to 400 × 225 dp, top right).
+    // Below: categories and program grid across the full width – so several hours are visible at once.
     Column(
         Modifier.fillMaxSize()
             .drawBehind {
@@ -199,7 +205,7 @@ fun Guide(
     ) {
         Row(Modifier.fillMaxWidth().height(238.dp)) {
             Column(Modifier.weight(1f).fillMaxHeight().padding(end = 20.dp)) {
-                // Kopf: Titel, Datum und Uhrzeit, Jetzt und Ansicht
+                // Header: title, date and time, Now and View
                 Row(Modifier.fillMaxWidth().height(58.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MenuIcon(3, Accent1, Modifier.size(30.dp))
                     Column(Modifier.weight(1f)) {
@@ -215,6 +221,7 @@ fun Guide(
                         Box(Modifier.width(1.dp).height(14.dp).background(Color(0x44FFFFFF)))
                         Text(raw = true, text = hhmm(nowSec), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, style = TNUM)
                     }
+                    SmallPill("Suche", icon = AIcon.Edit) { showSearch = true }
                     SmallPill("Jetzt", icon = AIcon.Dot) { jumpNow() }
                     Box {
                         SmallPill("", icon = AIcon.Gear) { showSettings = true }
@@ -274,7 +281,7 @@ fun Guide(
                         Text(raw = true, text = cats.getOrNull(catIdx)?.name?.let { Lang.tr(it) } ?: "", color = Muted, fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(208.dp).padding(start = 6.dp))
                         Box(Modifier.weight(1f).fillMaxHeight().clipToBounds()) {
-                            // nur die sichtbaren Zeitmarken (mit Archiv reicht das Raster Tage zurück)
+                            // only the visible time marks (with archive the grid reaches days back)
                             var t = maxOf(minStart, winStart - winStart % 1800 - 3600)
                             val tEnd = minOf(base + maxSpan, winStart + viewMin * 60L + 3600)
                             while (t < tEnd) {
@@ -303,7 +310,7 @@ fun Guide(
                                 onInfo = { e -> infoE = e; infoItem = ch },
                                 onShift = { e -> shiftFor(e) },
                                 onBlock = { inB, r -> inBlock = inB; inCats = false; rowReq = r },
-                                // Links aus der Senderspalte: zu den Kategorien (früher: schließen)
+                                // Left from the channel column: to the categories (before: close)
                                 onClose = { if (!runCatching { catReq.requestFocus() }.isSuccess) onClose() },
                                 onArchive = { e -> onArchive(ch, e) },
                                 onPick = { val p = onPickIn; if (p != null) p(ch, shown) else onPick(ch) }
@@ -317,7 +324,7 @@ fun Guide(
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             GuideHint(null, "Sendungen", AIcon.Left, AIcon.Right)
             GuideHint(null, "Sender", AIcon.Up, AIcon.Down)
-            // Was OK bei der markierten Sendung tut (früher ein Knopf im Detailfeld, der bei langen Texten wegfiel)
+            // What OK does on the selected show (before a button in the detail field that was dropped for long texts)
             val okText = guideOkAction(infoE, infoItem, nowSec)
             GuideHint("OK", okText)
             if (pastDays > 0) GuideHint(null, "1 Tag", AIcon.Rewind, AIcon.FastForward)
@@ -326,15 +333,15 @@ fun Guide(
 }
 }
 
-/** Deckende Farben der Sendungsfelder (keine Transparenz, siehe GuideRow). */
+/** Opaque colors of the show fields (no transparency, see GuideRow). */
 private val BlockBase = Color(0xFF1C202B)
 private val BlockPast = Color(0xFF15181F)
 private val BlockLine = Color(0xFF2A2F3B)
 
-/** Eine Kategorie links im TV-Guide. */
+/** A category on the left in the TV guide. */
 class GuideCat(val name: String, val items: List<Item>, val icon: AIcon?)
 
-/** Kategorien für den TV-Guide: aktuelle Liste (falls anders als alle), alle Sender, Favoriten, eigene Listen, Gruppen. */
+/** Categories for the TV guide: current list (if different from all), all channels, favorites, own lists, groups. */
 fun guideCategories(list: List<Item>, all: List<Item>): List<GuideCat> {
     val out = ArrayList<GuideCat>()
     val allIds = all.size
@@ -362,14 +369,14 @@ private fun GuideCatRow(c: GuideCat, selected: Boolean, modifier: Modifier, onFo
             .background(if (f) RowFocus else if (selected) Accent1.copy(alpha = .18f) else Color.Transparent)
             .border(if (f) DS.Border else 1.dp, if (f) Accent2 else if (selected) Accent1.copy(alpha = .55f) else Color.Transparent, shape)
             .onFocusChanged { f = it.isFocused; if (it.isFocused) onFocus() }
-            // Links in den Kategorien: Guide schließen (wie Zurück)
+            // Left in the categories: close the guide (like Back)
             .onPreviewKeyEvent { ev -> if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionLeft) { onLeft(); true } else false }
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (c.icon != null) AppIcon(c.icon, if (c.icon == AIcon.Star) DS.Gold else if (selected) Accent1 else Muted, size = 15.dp)
-        // Namen des Anbieters bleiben, wie sie sind; eigene Bezeichnungen der App werden übersetzt
+        // Provider names stay as they are; the app's own labels are translated
         Text(c.name, color = Color.White, fontSize = 14.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), raw = c.icon == null || c.icon == AIcon.Lists)
         Text(raw = true, text = c.items.size.toString(), color = Muted, fontSize = 13.sp)
@@ -391,8 +398,8 @@ private fun GuideHint(key: String?, text: String, vararg keys: AIcon) {
 }
 
 /**
- * Rechte Spalte (Entwurf Bild 3): markierte Sendung mit Status, Titel, Sender · Zeit · Dauer, Beschreibung,
- * was OK tut (ansehen / aus dem Archiv / erinnern) und die nächsten Sendungen des Senders.
+ * Right column (design picture 3): selected show with status, title, channel · time · duration, description,
+ * what OK does (watch / from the archive / remind) and the next shows of the channel.
  */
 @Composable
 private fun GuideDetailPanel(e: EpgEntry?, ch: Item?, nowSec: Long, modifier: Modifier) {
@@ -439,14 +446,14 @@ private fun GuideDetailPanel(e: EpgEntry?, ch: Item?, nowSec: Long, modifier: Mo
                     Text("noch ${((e.end - nowSec) / 60).coerceAtLeast(0)} Min", color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Bold, style = TNUM)
                 }
             }
-            // Die ganze Breite gehört der Beschreibung (die Spalte „Nächste Sendungen“ ist auf Wunsch des Nutzers entfallen)
+            // The whole width belongs to the description (the "Next shows" column was dropped at the user's request)
             if (e.desc.isNotBlank()) Text(raw = true, text = e.desc, color = DS.TextSoft, fontSize = 14.sp, lineHeight = 19.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.weight(1f))
         }
     }
 }
 
-/** Beschriftung für OK in der Tastenhilfe: ansehen, aus dem Archiv ansehen oder Erinnerung setzen/löschen. */
+/** Label for OK in the key help: watch, watch from the archive or set/delete a reminder. */
 private fun guideOkAction(e: EpgEntry?, ch: Item?, nowSec: Long): String {
     if (e == null || ch == null) return "Ansehen / Erinnerung"
     return when {
@@ -465,9 +472,9 @@ private fun GuideRow(
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val cu = remember(ch.id, Catchup.version) { Catchup.of(ch) }
-    // null = wird noch geladen (zeigt "lädt …" statt fälschlich "Kein Programm verfügbar")
+    // null = still loading (shows "loading …" instead of wrongly "No program available")
     val raw by produceState<List<EpgEntry>?>(null, ch.id) { value = EpgFull.get(ch) }
-    // „Vergangene ausblenden“ lässt Sendungen im Archiv stehen: die kann man noch ansehen
+    // "Hide past" leaves shows in the archive: they can still be watched
     val entries = remember(raw, hidePast, cu) {
         cleanEpg(raw.orEmpty()).let { l -> if (hidePast) l.filter { it.end > nowSec || CatchupLogic.canPlay(cu, it.start, it.end, nowSec) } else l }
     }
@@ -527,8 +534,8 @@ private fun GuideRow(
                     Box(
                         Modifier.offset(x = x.dp).zIndex(if (bf) 2f else 0f).width(dw.dp).fillMaxHeight().clip(blockShape)
                             .then(
-                                // Alle Felder deckend (Runde 14): die markierte Sendung wird breiter und liegt über den Nachbarn –
-                                // durchscheinend überlagerten sich sonst die Texte kurzer Sendungen
+                                // All fields opaque (round 14): the selected show becomes wider and lies over its neighbors –
+                                // semi-transparent, the texts of short shows would overlap
                                 if (bf) Modifier.background(Brush.horizontalGradient(listOf(lerp(BlockBase, Accent1, .62f), lerp(BlockBase, Accent1, .42f))))
                                 else if (isNow) Modifier.background(lerp(BlockBase, Accent1, .16f))
                                 else Modifier.background(if (past && !inArchive) BlockPast else BlockBase)
@@ -536,7 +543,7 @@ private fun GuideRow(
                             .border(if (bf) 2.dp else 1.dp, if (bf) Accent1 else if (isNow) lerp(BlockBase, Accent1, .40f) else BlockLine, blockShape)
                             .focusRequester(req)
                             .onPreviewKeyEvent { ev ->
-                                // Spulen-Tasten: einen Tag zurück/vor (im Archiv schnell zu älteren Sendungen)
+                                // Seek keys: one day back/forward (quickly to older shows in the archive)
                                 if (ev.type == KeyEventType.KeyDown && (ev.key == Key.MediaRewind || ev.key == Key.MediaFastForward)) {
                                     val want = e.start + (if (ev.key == Key.MediaFastForward) 86400L else -86400L)
                                     val target = entries.minByOrNull { kotlin.math.abs(it.start - want) }
@@ -567,8 +574,8 @@ private fun GuideRow(
                                 } else false
                             }
                             .onFocusChanged { bf = it.isFocused; if (it.isFocused) { onBlock(true, cellReq); onInfo(e); onShift(e) } }
-                            // Spätere Sendung: OK setzt/löscht die Erinnerung (Runde 14: ohne Auswahlfenster);
-                            // im Archiv: Sendung abspielen; sonst Sender ansehen
+                            // Later show: OK sets/deletes the reminder (round 14: without a selection window);
+                            // in the archive: play the show; otherwise watch the channel
                             .clickable {
                                 val n = System.currentTimeMillis() / 1000
                                 if (ReminderLogic.canRemind(e.start, n)) {

@@ -17,23 +17,23 @@ import java.io.File
 data class UpdateInfo(val code: Long, val name: String, val apkUrl: String, val notes: String)
 
 /**
- * Aktualisierung aus der App.
- * Standard: die neueste Veröffentlichung auf GitHub (Releases des Projekts). Die App sucht einmal am Tag, zeigt
- * „Update verfügbar“ in der Glocke oben rechts und installiert auf Knopfdruck. Android fragt dabei immer einmal nach
- * (bei Apps außerhalb des Play Store geht es nicht ganz ohne Bestätigung).
+ * Update from within the app.
+ * Default: the latest release on GitHub (releases of the project). The app checks once a day, shows
+ * "Update available" in the bell at the top right and installs on a button press. Android always asks once
+ * (for apps outside the Play Store it does not work entirely without confirmation).
  *
- * Eigene Adresse (Einstellungen > Über) geht weiterhin: entweder eine GitHub-API-Adresse
- * (https://api.github.com/repos/NAME/REPO/releases/latest) oder eine kleine JSON-Datei
- * {"versionCode": 2, "versionName": "1.1", "apk": "ipvio.apk", "notes": "Was ist neu"}.
+ * A custom address (Settings > About) still works: either a GitHub API address
+ * (https://api.github.com/repos/NAME/REPO/releases/latest) or a small JSON file
+ * {"versionCode": 2, "versionName": "1.1", "apk": "ipvio.apk", "notes": "What's new"}.
  *
- * Damit Verlauf, Favoriten und Einstellungen bei einem Update erhalten bleiben, muss jede neue APK mit demselben
- * Schlüssel signiert sein (siehe docs/RELEASE.md). Sonst lehnt Android die Installation ab.
+ * So that history, favorites and settings are preserved on an update, every new APK must be signed with the same
+ * key (see docs/RELEASE.md). Otherwise Android rejects the installation.
  */
 object AppUpdate {
-    /** Fest eingebaute Update-Adresse: die neueste Veröffentlichung des Projekts auf GitHub. */
+    /** Built-in update address: the latest release of the project on GitHub. */
     const val DEFAULT_URL = "https://api.github.com/repos/Emrodev/IPVIO-Stream/releases/latest"
 
-    /** Gefundenes Update (für die Glocke), null = keines bekannt. */
+    /** Found update (for the bell), null = none known. */
     var available by mutableStateOf<UpdateInfo?>(null)
         private set
 
@@ -41,7 +41,7 @@ object AppUpdate {
     fun url(c: Context) = prefs(c).getString("url", "").orEmpty().ifBlank { DEFAULT_URL }
     fun setUrl(c: Context, v: String) = prefs(c).edit().putString("url", v.trim()).apply()
 
-    /** Automatische Suche beim Start (Standard: an). */
+    /** Automatic check at start (default: on). */
     fun auto(c: Context) = prefs(c).getBoolean("auto", true)
     fun setAuto(c: Context, on: Boolean) = prefs(c).edit().putBoolean("auto", on).apply()
 
@@ -52,7 +52,7 @@ object AppUpdate {
 
     fun currentName(c: Context): String = runCatching { c.packageManager.getPackageInfo(c.packageName, 0).versionName }.getOrNull() ?: ""
 
-    /** Liefert null, wenn die installierte Version aktuell ist. */
+    /** Returns null if the installed version is current. */
     suspend fun check(c: Context): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
         runCatching {
             val u = url(c)
@@ -95,11 +95,11 @@ object AppUpdate {
         return UpdateInfo(code, j.optString("versionName", code.toString()), UpdateLogic.resolve(u, apk), j.optString("notes"))
     }
 
-    /** Beim Start: höchstens einmal am Tag still suchen. Fehler (kein Netz, GitHub nicht erreichbar) bleiben unsichtbar. */
+    /** At start: check silently at most once a day. Errors (no network, GitHub unreachable) stay invisible. */
     suspend fun autoCheck(c: Context) {
         if (!auto(c)) return
         if (!UpdateLogic.due(prefs(c).getLong("last", 0L), System.currentTimeMillis())) {
-            // Bekanntes Update merken, damit die Glocke es nach einem Neustart weiter zeigt
+            // Remember a known update so the bell keeps showing it after a restart
             restore(c); return
         }
         check(c)
@@ -115,19 +115,19 @@ object AppUpdate {
         val s = prefs(c).getString("known", null) ?: return
         val o = runCatching { JSONObject(s) }.getOrNull() ?: return
         val u = UpdateInfo(o.optLong("c"), o.optString("n"), o.optString("a"), o.optString("t"))
-        // Inzwischen installiert? Dann nicht mehr anzeigen
+        // Installed in the meantime? Then do not show it any more
         val newer = if (u.code > 0) UpdateLogic.isNewer(currentCode(c), u.code) else UpdateLogic.isNewerName(currentName(c), u.name)
         if (newer) available = u else remember(c, null)
     }
 
-    /** Herunterladen und den Installer öffnen; [status] bekommt Fortschritt und Ergebnis als Text. */
+    /** Download and open the installer; [status] gets progress and result as text. */
     suspend fun downloadAndInstall(c: Context, u: UpdateInfo, status: (String) -> Unit) {
         download(c, u) { p -> status(if (p >= 0) "Lade … $p %" else "Lade …") }
             .onSuccess { f -> status(if (install(c, f)) "Installation gestartet" else "Erlaube der App einmal „Apps installieren“ und tippe dann erneut.") }
             .onFailure { status(it.message ?: "Fehler") }
     }
 
-    /** Lädt die APK in den Zwischenspeicher; [onProgress] liefert Prozent (0..100) oder -1 bei unbekannter Größe. */
+    /** Downloads the APK into the cache; [onProgress] delivers percent (0..100) or -1 for unknown size. */
     suspend fun download(c: Context, info: UpdateInfo, onProgress: (Int) -> Unit): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val dir = File(c.cacheDir, "updates").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
@@ -156,7 +156,7 @@ object AppUpdate {
         }
     }
 
-    /** Öffnet den System-Installer. Fehlt die Erlaubnis „Apps aus unbekannten Quellen“, öffnet sich stattdessen deren Einstellung. */
+    /** Opens the system installer. If the "Apps from unknown sources" permission is missing, its setting opens instead. */
     fun install(c: Context, apk: File): Boolean {
         if (android.os.Build.VERSION.SDK_INT >= 26 && !c.packageManager.canRequestPackageInstalls()) {
             runCatching {

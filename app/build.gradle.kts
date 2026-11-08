@@ -36,8 +36,10 @@ android {
         minSdk = 24
         targetSdk = 37
         // Raise both for every release; the GitHub release tag must match versionName (e.g. tag "v1.1").
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+        // Name unter dem Symbol; der Debug-Build überschreibt ihn (siehe buildTypes)
+        manifestPlaceholders["appLabel"] = "IPVIO Stream"
 
         buildConfigField("String", "TMDB_KEY", "\"${secret("TMDB_KEY")}\"")
         buildConfigField("String", "OMDB_KEY", "\"${secret("OMDB_KEY")}\"")
@@ -55,10 +57,18 @@ android {
     }
 
     buildTypes {
+        // Test-Build (Run in Android Studio / Debug-APK): eigene App-ID, damit die private IPVIO-App auf dem Fernseher
+        // nicht überschrieben wird. Beide Apps lassen sich parallel installieren (eigene Daten, eigener Name).
+        debug {
+            applicationIdSuffix = ".test"
+            manifestPlaceholders["appLabel"] = "IPVIO Stream"
+        }
         release {
             if (hasKeystore) signingConfig = signingConfigs.getByName("release")
             optimization {
-                enable = true
+                // Off: the shrunk release build (12.7 MB) did not start on the device. Turn back on only together with
+                // keep rules in src/main/keepRules and a test on a real device.
+                enable = false
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }

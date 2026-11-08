@@ -4,9 +4,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 
-/** Design-Werte des Players. Gleiche Abstände und Größen überall, damit alles ruhig und gleichmäßig wirkt. */
+/** Design values of the player. Same spacing and sizes everywhere so everything looks calm and even. */
 object PT {
-    // Farben (Grundfarben Bg/Surf/Accent1/Accent2/Muted kommen aus Ui.kt)
+    // Colors (base colors Bg/Surf/Accent1/Accent2/Muted come from Ui.kt)
     val T2 = Color(0xFFB8BDCC)          // zweite Textfarbe
     val Live = Color(0xFFFF3B5C)
     val Gold = DS.Gold
@@ -20,20 +20,20 @@ object PT {
     val ScrimTop = Color(0xCC000000)
     val ScrimBottom = Color(0xE6000000)
 
-    // Ränder (Overscan-sicher)
+    // Margins (overscan-safe)
     val MarginX = 56.dp
     val MarginY = 32.dp
 
-    // Knöpfe
+    // Buttons
     val BtnSize = 52.dp
     val BtnPrimary = 64.dp
     val BtnGap = 16.dp
 
-    // Menüs
+    // Menus
     val PanelRadius = 24.dp
     val RowHeight = 52.dp
     val RowGap = 4.dp
 }
 
-/** Gleich breite Ziffern, damit Uhrzeiten nicht "zittern". */
+/** Equal-width digits so clock times do not "jitter". */
 val TNUM = TextStyle(fontFeatureSettings = "tnum")

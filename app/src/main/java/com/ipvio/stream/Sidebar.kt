@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier.size(26.dp)) {
         val s = size.minDimension
-        // Strichstärke im Verhältnis zur Größe (wie die Umriss-Symbole im Entwurf)
+        // Stroke width in proportion to size (like the outline icons in the design)
         val sw = Stroke(width = maxOf(1.4.dp.toPx(), s * 0.085f), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val w = sw.width
         fun line(x1: Float, y1: Float, x2: Float, y2: Float) =
@@ -137,11 +137,11 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
     }
 }
 
-// Seitenleiste (Runde 14): eingeklappt nur Symbole (immer sichtbar), mit Fokus klappt sie über den Inhalt auf und zeigt die Texte
+// Sidebar (round 14): collapsed only icons (always visible), with focus it expands over the content and shows the texts
 private val SidebarBg: Color get() = lerp(Look.bg, Color.Black, 0.25f)
 private val SidebarInk = Color(0xFFCFCFD6)
 
-/** Lage und Stil der Seitenleiste (Runde 20): links, rechts oder oben; nur Symbole oder immer mit Text. */
+/** Position and style of the sidebar (round 20): left, right or top; icons only or always with text. */
 object SidebarPrefs {
     const val LEFT = 0
     const val RIGHT = 1
@@ -149,7 +149,7 @@ object SidebarPrefs {
     val POS_NAMES = listOf("Links", "Rechts", "Oben")
     var pos by mutableIntStateOf(LEFT)
         private set
-    /** Immer mit Text (sonst nur Symbole, Texte beim Hineingehen). */
+    /** Always with text (otherwise icons only, texts when entering). */
     var labels by mutableStateOf(false)
         private set
 
@@ -167,17 +167,17 @@ object SidebarPrefs {
     fun align(): Alignment = when (pos) { RIGHT -> Alignment.CenterEnd; TOP -> Alignment.TopCenter; else -> Alignment.CenterStart }
 }
 
-/** Höhe der Leiste oben. */
+/** Height of the bar at the top. */
 val TopBarH: androidx.compose.ui.unit.Dp get() = dpx(68)
 
-/** Platz für die Seitenleiste am Inhalt (links, rechts oder oben). */
+/** Space for the sidebar at the content (left, right or top). */
 fun Modifier.sidebarPad(): Modifier = when (SidebarPrefs.pos) {
     SidebarPrefs.RIGHT -> this.padding(end = DS.SidebarW)
     SidebarPrefs.TOP -> this.padding(top = TopBarH)
     else -> this.padding(start = DS.SidebarW)
 }
 
-/** Abstand links bis zum Inhalt (nur bei der Leiste links). */
+/** Distance from the left to the content (only with the bar on the left). */
 val SideStart: androidx.compose.ui.unit.Dp get() = if (SidebarPrefs.pos == SidebarPrefs.LEFT) DS.SidebarW else 0.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -185,12 +185,13 @@ val SideStart: androidx.compose.ui.unit.Dp get() = if (SidebarPrefs.pos == Sideb
 fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: FocusRequester, onFocusIn: (Boolean) -> Unit) {
     var focusIn by remember { mutableStateOf(false) }   // = Seitenleiste hat den Fokus
     val pos = SidebarPrefs.pos
-    val expanded = focusIn || SidebarPrefs.labels
+    // While the View live preview is open the app is only looked at: the bar does not open by itself (only "always with text" does)
+    val expanded = (focusIn && !ViewLive.active) || SidebarPrefs.labels
     val fm = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val visible = AppSettings.menuOrder.filter { it !in AppSettings.menuHidden }
     val activeVisible = tab in visible
-    // Zurück in den Inhalt: die Richtung weg von der Leiste
+    // Back into the content: the direction away from the bar
     val outKey = when (pos) { SidebarPrefs.RIGHT -> Key.DirectionLeft; SidebarPrefs.TOP -> Key.DirectionDown; else -> Key.DirectionRight }
     val onPick: (Int) -> Unit = { id ->
         AppNav.focusTab = id
@@ -198,8 +199,8 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
         onTab(id)
         scope.launch {
             delay(200)
-            // Solange die Seitenleiste den Fokus noch hat, weiter versuchen: erst das Ziel des Inhalts,
-            // dann "in den Inhalt". Ein einzelner Versuch scheitert, wenn die Liste noch lädt.
+            // As long as the sidebar still has the focus, keep trying: first the content's target,
+            // then "into the content". A single attempt fails if the list is still loading.
             var n = 0
             while (focusIn && n < 14) {
                 val ok = ContentFocus.tab == id && runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
@@ -214,7 +215,7 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
     }
     val group = Modifier
         .focusProperties { enterTo { if (activeVisible) activeFocus else FocusRequester.Default } }
-        // Zurück zum zuletzt markierten Element im Inhalt (nicht zum Element neben dem Menüpunkt)
+        // Back to the last selected element in the content (not to the element next to the menu entry)
         .onPreviewKeyEvent { ev ->
             if (ev.type == KeyEventType.KeyDown && ev.key == outKey) {
                 ContentMemory.restore() || runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
@@ -224,12 +225,12 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
         .onFocusChanged { focusIn = it.hasFocus; onFocusIn(it.hasFocus) }
 
     if (pos == SidebarPrefs.TOP) {
-        // Leiste oben: Symbole mit Text nebeneinander
+        // Bar at the top: icons with text side by side
         Row(
             modifier.fillMaxWidth().height(TopBarH).background(SidebarBg)
                 .drawBehind { drawLine(Color(0x1AFFFFFF), Offset(0f, size.height - 1f), Offset(size.width, size.height - 1f), 1f) }
                 .then(group)
-                // Viele Menüpunkte: Leiste lässt sich seitlich verschieben (der markierte Punkt rückt ins Bild)
+                // Many menu entries: the bar can be shifted sideways (the selected entry moves into view)
                 .horizontalScroll(androidx.compose.foundation.rememberScrollState())
                 .padding(horizontal = dpx(28)),
             verticalAlignment = Alignment.CenterVertically,
@@ -240,6 +241,7 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
             visible.forEach { id ->
                 SideItem(id, MENU_LABELS[id], id == tab, true, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier, horizontal = true) { onPick(id) }
             }
+            PhoneSearchItem(true, Modifier, horizontal = true)
         }
         return
     }
@@ -247,7 +249,7 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
     val right = pos == SidebarPrefs.RIGHT
     val w by animateDpAsState(if (expanded) DS.SidebarOpenW else DS.SidebarCollapsedW, if (Look.motion == 0) snap() else tween(220), label = "sideW")
     Box(modifier.fillMaxHeight()) {
-        // Aufgeklappt (nur bei „nur Symbole“): Inhalt dahinter abdunkeln, damit die Texte gut lesbar sind
+        // Expanded (only with "icons only"): darken the content behind so the texts are well readable
         if (focusIn && !SidebarPrefs.labels) Box(
             Modifier.width(w + dpx(260)).fillMaxHeight().align(if (right) Alignment.CenterEnd else Alignment.CenterStart)
                 .background(
@@ -272,15 +274,42 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
                     SideItem(id, MENU_LABELS[id], id == tab, expanded, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier) { onPick(id) }
                 }
             }
+            // At the very bottom: phone search (QR code), so you can type on the phone instead of with the remote
+            Spacer(Modifier.weight(1f))
+            PhoneSearchItem(expanded, Modifier.padding(bottom = dpx(22)))
+        }
+    }
+}
+
+/** "Phone search" button: opens the card with the QR code (see [RemoteOverlay]). */
+@Composable
+private fun PhoneSearchItem(expanded: Boolean, modifier: Modifier, horizontal: Boolean = false) {
+    var f by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(dpx(12))
+    val ink = if (f) DS.FocusInk else if (RemoteHub.active) Accent1 else SidebarInk
+    Row(
+        (if (horizontal) modifier.height(dpx(48)) else modifier.fillMaxWidth().height(dpx(56))).clip(shape)
+            .background(if (f) SolidColor(DS.FocusFill) else SolidColor(Color.Transparent))
+            .onFocusChanged { f = it.isFocused }
+            .clickable { RemoteUi.show = true }
+            .padding(start = dpx(17), end = if (horizontal) dpx(17) else 0.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AppIcon(AIcon.Phone, ink, size = dpx(26))
+        if (expanded) {
+            Spacer(Modifier.width(dpx(18)))
+            Text("Handy-Suche", color = if (f) DS.FocusInk else Color.White, fontSize = spx(19),
+                fontWeight = if (f) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
         }
     }
 }
 
 @Composable
 private fun SideItem(id: Int, label: String, active: Boolean, expanded: Boolean, modifier: Modifier, horizontal: Boolean = false, onClick: () -> Unit) {
-    var f by remember { mutableStateOf(false) }
+    var fRaw by remember { mutableStateOf(false) }
+    val f = fRaw && !ViewLive.active
     val shape = RoundedCornerShape(dpx(12))
-    // Aktiv: Symbol in der Designfarbe auf getönter Fläche. Fokus: weiße Fläche, dunkle Schrift (eindeutig „markiert“).
+    // Active: icon in the design color on a tinted surface. Focus: white surface, dark text (clearly "selected").
     val ink = if (f) DS.FocusInk else if (active) Accent1 else SidebarInk
     Row(
         (if (horizontal) modifier.height(dpx(48)) else modifier.fillMaxWidth().height(dpx(56))).clip(shape)
@@ -289,7 +318,7 @@ private fun SideItem(id: Int, label: String, active: Boolean, expanded: Boolean,
                 else if (active) SolidColor(Accent1.copy(alpha = .16f))
                 else SolidColor(Color.Transparent)
             )
-            .onFocusChanged { f = it.isFocused }
+            .onFocusChanged { fRaw = it.isFocused }
             .clickable(onClick = onClick)
             .padding(start = dpx(17), end = if (horizontal) dpx(17) else 0.dp),
         verticalAlignment = Alignment.CenterVertically

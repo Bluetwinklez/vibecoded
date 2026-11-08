@@ -1,14 +1,14 @@
 package com.ipvio.stream
 
 /**
- * Neue Folgen bei Favoriten-Serien (Runde 15): vergleicht die Zahl der Folgen mit dem letzten bekannten Stand.
- * Ohne Android, testbar. Beim ersten Mal (Serie ist neu in den Favoriten) wird nur der Stand gemerkt, es gibt keine Meldung.
+ * New episodes for favorite series (round 15): compares the number of episodes with the last known state.
+ * Without Android, testable. The first time (series is new in favorites) only the state is remembered, no notice.
  */
 object NewEpisodeLogic {
-    /** Eine Serie der Favoriten: Kennung, Titel, Folgen als (Staffel, Nummer). */
+    /** A favorite series: ID, title, episodes as (season, number). */
     class Show(val id: String, val title: String, val episodes: List<Pair<Int, Int>>)
 
-    /** Meldung: neue Folge(n) einer Serie; [season]/[num] = die jüngste Folge, [added] = wie viele neu sind. */
+    /** Notice: new episode(s) of a series; [season]/[num] = the latest episode, [added] = how many are new. */
     data class Notice(val id: String, val title: String, val season: Int, val num: Int, val added: Int)
 
     class Result(val known: Map<String, Int>, val notices: List<Notice>)
@@ -26,11 +26,11 @@ object NewEpisodeLogic {
                 notices.add(Notice(s.id, s.title, last.first, last.second, n - old))
             }
         }
-        // Serien, die nicht mehr in den Favoriten sind, vergessen
+        // Forget series that are no longer in favorites
         return Result(out, notices)
     }
 
-    /** Text für die Glocke, z. B. „Neue Folge · Staffel 3, Folge 5“ oder „3 neue Folgen · bis Staffel 3, Folge 8“. */
+    /** Text for the bell, e.g. "New episode · Season 3, Episode 5" or "3 new episodes · up to Season 3, Episode 8". */
     fun text(n: Notice): String =
         if (n.added <= 1) "Neue Folge · Staffel ${n.season}, Folge ${n.num}" else "${n.added} neue Folgen · bis Staffel ${n.season}, Folge ${n.num}"
 }

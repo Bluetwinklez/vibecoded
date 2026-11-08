@@ -6,12 +6,19 @@ import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +38,7 @@ import kotlinx.coroutines.launch
 fun AddPlaylistScreen(onDone: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Zuletzt eingegebene Playlist, die noch nicht fertig geladen wurde (Absturz, Stromausfall, Abbruch): vorausfüllen
+    // Last entered playlist that has not finished loading (crash, power loss, abort): prefill
     val pend = remember { PlaylistStore.pending(ctx) }
     val pendX = remember { pend?.let { LoadLogic.xtreamParts(it.url) } }
     var xtream by remember { mutableStateOf(pendX != null) }
@@ -45,7 +52,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     var user by remember { mutableStateOf(pendX?.second ?: "") }
     var pass by remember { mutableStateOf(pendX?.third ?: "") }
     var showPass by remember { mutableStateOf(false) }
-    // Vom Handy senden: lokaler Mini-Server, solange dieser Bildschirm offen ist
+    // Send from the phone: local mini server as long as this screen is open
     val ip = remember { PhoneImport.localIp() }
     val receiver = remember {
         PhoneImport { inp ->
@@ -64,6 +71,21 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
         receiver.uploadDir = ImportFiles.tmpDir(ctx)
         receiver.saveUpload = { name, f -> ImportFiles.save(ctx, name, f) }
         receiver.crash = { ImportFiles.crashText(ctx) }
+        // Full transfer from another device (settings, history, playlists with logins): also possible from the phone page
+        receiver.restore = { t ->
+            val ok = Backup.restoreText(ctx, t) >= 0
+            if (ok) Handler(Looper.getMainLooper()).postDelayed({ Profiles.restart(ctx) }, 1500)
+            ok
+        }
+        receiver.onEpg = { u ->
+            Handler(Looper.getMainLooper()).post {
+                Xmltv.setCustom(ctx, u)
+                if (PlaylistStore.channels.isNotEmpty()) Xmltv.start(ctx, PlaylistStore.epgUrls, PlaylistStore.channels)
+            }
+        }
+        receiver.onList = { name, bytes ->
+            Handler(Looper.getMainLooper()).post { ListImportApply.run(ctx, name, bytes) }
+        }
         serving = receiver.start()
         onDispose { receiver.stop() }
     }
@@ -76,9 +98,22 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
             else if (PlaylistStore.load(ctx, u, true)) onDone()
         }
     }
+    // Backup of another device (with playlists and logins): load the file, the app restarts with everything in place
+    val pickBackup = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val n = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@runCatching -1
+                    if (bytes.size > 4 * 1024 * 1024) -1 else Backup.restoreText(ctx, String(bytes, Charsets.UTF_8))
+                }.getOrDefault(-1)
+            }
+            if (n >= 0) Profiles.restart(ctx) else PlaylistStore.error = "Keine gültige Sicherung gefunden."
+        }
+    }
     BackHandler(enabled = canCancel) { PlaylistStore.clearPending(ctx); onDone() }
 
-    // Beim letzten Mal mitten im Laden unterbrochen: automatisch weitermachen, ohne etwas neu einzugeben
+    // Interrupted in the middle of loading last time: continue automatically without entering anything again
     LaunchedEffect(Unit) {
         val p = pend ?: return@LaunchedEffect
         when {
@@ -90,21 +125,24 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
 
     if (PlaylistStore.loading) { PlaylistLoadingOverlay(); return }
 
-    // Start-Fokus auf die Auswahl M3U/Xtream (nicht auf ein Eingabefeld: das würde sofort die Bildschirmtastatur öffnen)
+    // Start focus on the M3U/Xtream choice (not on an input field: that would open the on-screen keyboard immediately)
     val startFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(120); runCatching { startFocus.requestFocus() } }
 
+    // Phone (narrow or portrait): single column, without the phone card, smaller margins
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val compact = cfg.screenWidthDp < 900 || cfg.screenHeightDp > cfg.screenWidthDp
     Row(
         Modifier.fillMaxSize()
             .background(Brush.radialGradient(listOf(lerp(Bg, Accent1, 0.14f), Bg), radius = 1400f))
-            .padding(horizontal = 46.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(40.dp),
+            .padding(horizontal = if (compact) 12.dp else 46.dp, vertical = if (compact) 8.dp else 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 40.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Links: das Formular
+        // Left: the form
         Column(
-            // Innenabstand im Scrollbereich: der fokussierte Knopf wird vergrößert und darf nicht abgeschnitten werden
-            Modifier.weight(1.1f).verticalScroll(rememberScrollState()).padding(12.dp),
+            // Padding in the scroll area: the focused button is enlarged and must not be cut off
+            Modifier.weight(1.1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(if (compact) 6.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -112,7 +150,16 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                 Text("IPVIO", color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.ExtraBold)
             }
             Text("Playlist hinzufügen", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Many new users ask which link to enter: say clearly that the app brings no content of its own
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(DS.RadiusM)).background(Color(0x14FFFFFF)).border(1.dp, Surf2, RoundedCornerShape(DS.RadiusM)).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Wichtig zu wissen", color = Accent2, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("IPVIO Stream ist nur ein Abspielgerät. Die App liefert selbst keine Sender, Filme, Serien und keine Playlist. Den Link oder die Zugangsdaten bekommst du von deinem IPTV-Anbieter oder aus deiner eigenen Quelle. Wir können dir keinen Link nennen.",
+                    color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FocusButton("M3U-Link", Modifier.focusRequester(startFocus), primary = !xtream && !stalker) { xtream = false; stalker = false }
                 FocusButton("Xtream-Login", primary = xtream && !stalker) { xtream = true; stalker = false }
                 FocusButton("Stalker-Portal", primary = stalker) { stalker = true; xtream = false }
@@ -120,15 +167,15 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
             if (stalker) {
                 Field(portal, { portal = it }, "Portal-Adresse (z. B. http://portal.tld:8080/c/)")
                 Field(mac, { mac = it }, "MAC-Adresse (z. B. 00:1A:79:12:34:56)")
-                Text("Sender und Filme werden geladen (Serien noch nicht). Die MAC-Adresse bekommst du von deinem Anbieter.", color = Muted, fontSize = 15.sp)
+                Text("Sender, Filme und Serien werden geladen. Die MAC-Adresse bekommst du von deinem Anbieter.", color = Muted, fontSize = 15.sp)
             } else if (!xtream) {
                 Field(url, { url = it }, "http://…/playlist.m3u")
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FocusButton("Aus Zwischenablage einfügen") {
                         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.primaryClip?.getItemAt(0)?.text?.let { url = it.toString() }
                     }
-                    // Runde 20: M3U-Datei vom Gerät (USB-Stick, Downloads …); auf Geräten ohne Dateiauswahl über die Handy-Seite
+                    // Round 20: M3U file from the device (USB stick, Downloads …); on devices without a file picker via the phone page
                     FocusButton("Datei vom Gerät") {
                         try { pickFile.launch(arrayOf("*/*")) }
                         catch (e: Exception) { PlaylistStore.error = "Auf diesem Gerät gibt es keine Dateiauswahl. Lade die Datei über die Handy-Seite rechts hoch." }
@@ -150,24 +197,32 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                 }
                 if (canCancel) FocusButton("Abbrechen") { PlaylistStore.clearPending(ctx); onDone() }
             }
+            // Second device? Take everything over in one step
+            Text("Schon ein anderes Gerät mit IPVIO Stream? Spiele die Sicherung ein: Playlists, Zugangsdaten, Verlauf, Favoriten und Einstellungen sind danach sofort da.", color = Muted, fontSize = 15.sp)
+            FocusButton("Sicherung von anderem Gerät einspielen") {
+                try { pickBackup.launch(arrayOf("*/*")) }
+                catch (e: Exception) { PlaylistStore.error = "Auf diesem Gerät gibt es keine Dateiauswahl. Spiele die Sicherung über die Handy-Seite rechts ein." }
+            }
         }
-        // Rechts: Anleitung für die Eingabe am Handy
-        PhoneCard(Modifier.weight(1f), if (serving && ip != null) "http://" + ip + ":" + receiver.port else null, receiver.code)
+        // Right: instructions for input on the phone
+        if (!compact) PhoneCard(Modifier.weight(1f), if (serving && ip != null) "http://" + ip + ":" + receiver.port else null, receiver.code)
     }
 }
 
-/** Karte mit Anleitung: Playlist bequem am Handy eingeben statt mit der Fernbedienung. */
+/** Card with instructions: enter the playlist conveniently on the phone instead of with the remote. */
 @Composable
 private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
     val shape = RoundedCornerShape(DS.RadiusXl)
+    var bigQr by remember { mutableStateOf(false) }
+    // The card scrolls (the focused QR code brings the rest into view), so nothing is cut off on small screens
     Column(
-        modifier.clip(shape).background(Surf).border(2.dp, Surf2, shape).padding(28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        modifier.fillMaxHeight().clip(shape).background(Surf).border(2.dp, Surf2, shape).verticalScroll(rememberScrollState()).padding(22.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("Einfacher mit dem Handy", color = Accent2, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Einfacher mit dem Handy", color = Accent2, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Text(
             "Mit der Fernbedienung zu tippen ist mühsam. Schick die Zugangsdaten lieber vom Handy:",
-            color = Muted, fontSize = 16.sp, lineHeight = 22.sp
+            color = Muted, fontSize = 15.sp, lineHeight = 21.sp
         )
         if (address == null) {
             Text(
@@ -183,9 +238,14 @@ private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
                 ) {
                     Text(address, color = Accent2, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, raw = true)
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QrImage(address, 130.dp)
-                    Text("QR-Code scannen", color = Muted, fontSize = 13.sp)
+                var qf by remember { mutableStateOf(false) }
+                Column(
+                    Modifier.clip(RoundedCornerShape(DS.RadiusM)).border(if (qf) 3.dp else 0.dp, Color.White, RoundedCornerShape(DS.RadiusM))
+                        .onFocusChanged { qf = it.isFocused }.clickable { bigQr = true }.padding(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    QrImage(address, 110.dp)
+                    Text("OK = groß", color = Muted, fontSize = 12.sp)
                 }
             }
             Step(3, "Den Code von hier eingeben:")
@@ -198,6 +258,23 @@ private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
                 Text(code, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 4.sp)
             }
             Step(4, "Zugangsdaten eintragen oder eine M3U-Datei hochladen und senden. Die Playlist wird danach automatisch geladen.")
+        }
+    }
+    if (bigQr && address != null) Dialog(onDismissRequest = { bigQr = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val close = remember { FocusRequester() }
+        LaunchedEffect(Unit) { delay(100); runCatching { close.requestFocus() } }
+        Box(Modifier.fillMaxSize().background(Color(0xE6000000)).clickable { bigQr = false }.focusRequester(close).focusable(), contentAlignment = Alignment.Center) {
+            Row(horizontalArrangement = Arrangement.spacedBy(40.dp), verticalAlignment = Alignment.CenterVertically) {
+                QrImage(address, 440.dp)
+                Column(Modifier.width(420.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Mit der Handy-Kamera scannen", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Text("Handy und dieses Gerät müssen im selben WLAN sein. Halte die Kamera auf das Bild. Es klappt auch aus einiger Entfernung.", color = Muted, fontSize = 18.sp, lineHeight = 26.sp)
+                    Text("Oder Adresse im Browser eintippen:", color = Muted, fontSize = 16.sp)
+                    Text(address, color = Accent2, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, raw = true)
+                    Text("Code: $code", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, raw = true)
+                    Text("Zurück oder OK schließt das Bild.", color = Muted, fontSize = 15.sp)
+                }
+            }
         }
     }
 }

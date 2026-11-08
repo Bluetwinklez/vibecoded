@@ -37,11 +37,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 /*
- * Runde 17b – Live TV im „Cinematic“-Stil (Entwurf Bild 3): Hintergrund in der Farbe des markierten Senders mit großem,
- * blassem Logo; rechts groß, was gerade läuft (LIVE, Titel, Beschreibung, Zeitleiste) und was danach kommt.
+ * Round 17b – Live TV in "Cinematic" style (design image 3): background in the color of the highlighted channel with a large,
+ * faint logo; on the right, large, what is on now (LIVE, title, description, timeline) and what comes next.
  */
 
-/** Hintergrund der Live-Seite: Farbe und Logo des markierten Senders, weich überblendet. */
+/** Background of the live page: color and logo of the highlighted channel, softly cross-faded. */
 @Composable
 fun LiveBackdrop(ch: Item?, modifier: Modifier = Modifier) {
     Box(modifier.background(Bg)) {
@@ -62,12 +62,12 @@ fun LiveBackdrop(ch: Item?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Was auf dem markierten Sender läuft: groß, mit Zeitleiste und den nächsten Sendungen. */
+/** What is on the highlighted channel: large, with timeline and the next shows. */
 @Composable
 fun LiveNowPanel(ch: Item?, modifier: Modifier = Modifier) {
     if (ch == null) return
     Crossfade(ch, animationSpec = tween(if (Look.motion == 0) 0 else 400), label = "liveNow", modifier = modifier) { c ->
-        val epg by produceState(emptyList<EpgEntry>(), c.id) { value = Epg.now(c) }
+        val epg by produceState(emptyList<EpgEntry>(), c.id) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { Epg.now(c) } }   // parsing off the main thread
         val nowE = Epg.current(epg)
         val next = if (nowE != null) epg.filter { it.start >= nowE.end }.take(2) else epg.take(2)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(dpx(18))) {
@@ -109,7 +109,7 @@ fun LiveNowPanel(ch: Item?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Rotes „LIVE“ mit pulsierendem Punkt (ohne Animationen ruhig). */
+/** Red "LIVE" with a pulsing dot (calm without animations). */
 @Composable
 fun LiveBadge() {
     val t = rememberInfiniteTransition(label = "live")

@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
-/** Sender-Infoblock: Logo, Nummer, Name, laufende Sendung mit Fortschritt und "Danach". */
+/** Channel info block: logo, number, name, running show with progress and "Next". */
 @Composable
 fun LiveInfoBlock(item: Item?, title: String, number: Int, epg: List<EpgEntry>, modifier: Modifier = Modifier) {
     val nowE = Epg.current(epg)
@@ -91,8 +92,63 @@ fun LiveInfoBlock(item: Item?, title: String, number: Int, epg: List<EpgEntry>, 
 }
 
 /**
- * Senderliste (Links im Live-Player): optional Rubriken-Spalte, Sender-Spalte und rechts ein Infofenster
- * als flache Leiste unten im Bild. Das Verhalten ist 1:1 wie vorher – nur ausgelagert und neu gestaltet.
+ * Info bar when switching (1.2): across the full width at the bottom edge, soft dark gradient instead of a box.
+ * Logo, LIVE, number, channel, quality, running show with time and progress, "Next" on the right.
+ */
+@Composable
+fun LiveBanner(item: Item?, title: String, number: Int, epg: List<EpgEntry>, modifier: Modifier = Modifier) {
+    val nowE = Epg.current(epg)
+    val nextE = if (nowE != null) epg.firstOrNull { it.start >= nowE.end } else null
+    val logo = item?.logo
+    Box(modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000))))) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = PT.MarginX, end = PT.MarginX, top = 56.dp, bottom = PT.MarginY),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)
+        ) {
+            Box(
+                Modifier.size(84.dp).clip(RoundedCornerShape(DS.RadiusM)).background(Color(0x33FFFFFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (logo != null) AsyncImage(logo, null, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit)
+                else Text(raw = true, text = title.take(2).uppercase(), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("LIVE", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xFFE5484D)).padding(horizontal = 12.dp, vertical = 3.dp))
+                    if (number > 0) Text("$number", color = Accent2, fontSize = 22.sp, fontWeight = FontWeight.Bold, style = TNUM)
+                    Text(raw = true, text = title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    item?.quality?.takeIf { it.isNotBlank() }?.let {
+                        Text(raw = true, text = it, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0x40FFFFFF)).padding(horizontal = 8.dp, vertical = 2.dp))
+                    }
+                }
+                if (nowE != null) {
+                    val frac = ((System.currentTimeMillis() / 1000 - nowE.start).toFloat() / (nowE.end - nowE.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(raw = true, text = nowE.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        Text("${hhmm(nowE.start)}–${hhmm(nowE.end)}", color = PT.T2, fontSize = 17.sp, style = TNUM, maxLines = 1)
+                    }
+                    Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(50)).background(Color(0x40FFFFFF))) {
+                        Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Accent1))
+                    }
+                } else {
+                    Text(if (item != null && Epg.supported(item)) "Kein Programm für diesen Sender" else "Kein Programm verfügbar", color = PT.T2, fontSize = 16.sp, maxLines = 1)
+                }
+            }
+            if (nextE != null) {
+                Column(Modifier.widthIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Danach", color = PT.T2, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(raw = true, text = "${hhmm(nextE.start)}  ${nextE.title}", color = Color.White, fontSize = 17.sp, style = TNUM, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Channel list (Left in the live player): optional category column, channel column and on the right an info window
+ * as a flat bar at the bottom of the picture. The behavior is exactly as before – only moved out and redesigned.
  */
 @Composable
 fun ChannelOverlay(
@@ -110,7 +166,7 @@ fun ChannelOverlay(
     val favItems = Library.favs.mapNotNull { byId[it] }
     val favCats = CatFavs.list.filter { it in groups }
     val catNames = favCats + groups.keys.filter { it !in favCats }
-    // Eigene Senderlisten (angelegt im Live-TV-Bereich mit der Menü-Taste)
+    // Own channel lists (created in the Live TV area with the menu key)
     val myLists = ChannelLists.lists.toList()
     val curList = ChannelLists.byKey(chanCat)
     val chanList = when {
@@ -203,7 +259,7 @@ fun ChannelOverlay(
                 }
             }
         }
-        // Programminfo: flache Leiste unten über dem Bild (statt großer Karte mitten im Video)
+        // Program info: flat bar at the bottom over the picture (instead of a big card in the middle of the video)
         Box(Modifier.weight(1f).fillMaxHeight().padding(horizontal = 28.dp, vertical = 28.dp), contentAlignment = Alignment.BottomCenter) {
             if (fc != null) {
                 val nowE = Epg.current(fe)
@@ -279,7 +335,7 @@ private fun ChannelRow(item: Item, current: Boolean, modifier: Modifier, onFocus
     val shape = RoundedCornerShape(DS.RadiusS)
     val epg by produceState(emptyList<EpgEntry>(), item.id) { value = Epg.now(item) }
     val nowE = Epg.current(epg)
-    // Menü-Taste (falls vorhanden): Favorit und eigene Senderlisten. OK gedrückt halten = sofort Favorit (Wunsch des Nutzers).
+    // Menu key (if present): favorite and own channel lists. Holding OK = favorite immediately (user's wish).
     var menu by remember { mutableStateOf(false) }
     if (menu) Box { ChannelMenu(item, null, null) { menu = false } }
     Row(
@@ -287,7 +343,7 @@ private fun ChannelRow(item: Item, current: Boolean, modifier: Modifier, onFocus
             .background(if (f) Color.White else if (current) DS.Overlay2 else Color.Transparent)
             .onFocusChanged { f = it.isFocused; if (it.isFocused) onFocus() }
             .menuKeys(onMenu = { menu = true }, onLong = {
-                // Mit eigenen Senderlisten: Auswahl (Favoriten oder eine Liste); sonst sofort Favorit an/aus
+                // With own channel lists: choice (favorites or a list); otherwise favorite on/off immediately
                 if (ChannelLists.lists.isNotEmpty()) { menu = true; return@menuKeys }
                 val on = !Library.isFav(item.id)
                 Library.toggleFav(ctx, item.id)

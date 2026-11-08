@@ -41,25 +41,25 @@ import java.util.zip.GZIPOutputStream
 data class PL(val name: String, val url: String)
 
 /**
- * Playlists: Liste der gespeicherten Zugänge, Laden, Zwischenspeicher.
+ * Playlists: list of saved logins, loading, cache.
  *
- * Ablauf beim Laden (ausgelegt auf Anbieter mit 800.000+ Einträgen und Geräte mit wenig Speicher):
- * 1. Der Zugang wird VOR dem Download gemerkt (Absturz, Stromausfall, App geschlossen → beim nächsten Start geht es weiter).
- * 2. Download in eine Datei (pl_*.part), nicht in den Speicher. Erlaubt der Server es, wird ein abgebrochener Download fortgesetzt.
- * 3. Einlesen Eintrag für Eintrag. Ausgeblendete Sprachen werden nur gezählt. Ist die Liste für das Gerät zu groß und noch keine
- *    Sprache gewählt, wird gefragt, welche Sprachen geladen werden sollen.
- * 4. Gespeichert werden die gezeigten Titel (pl_*.bin, schneller Start) und die ganze Liste komprimiert (pl_*.m3u.gz, ~10 %),
- *    damit eine andere Sprachauswahl ohne neuen Download geht.
+ * Loading flow (designed for providers with 800,000+ entries and devices with little memory):
+ * 1. The login is remembered BEFORE the download (crash, power loss, app closed → loading resumes on next start).
+ * 2. Download into a file (pl_*.part), not into memory. If the server allows it, an interrupted download is resumed.
+ * 3. Parse entry by entry. Hidden languages are only counted. If the list is too big for the device and no
+ *    language has been chosen yet, the user is asked which languages to load.
+ * 4. The shown titles are stored (pl_*.bin, fast start) and the whole list compressed (pl_*.m3u.gz, ~10 %),
+ *    so a different language selection works without a new download.
  */
 object PlaylistStore {
     /**
-     * Die geladenen Einträge – schon ohne die im Sprachfilter ausgeblendeten Sprachen.
-     * Ausgeblendete Sprachen werden gar nicht erst in den Speicher geholt (große Anbieter: 283.000 → z. B. 57.000 Titel).
+     * The loaded entries – already without the languages hidden by the language filter.
+     * Hidden languages are never loaded into memory in the first place (large providers: 283,000 → e.g. 57,000 titles).
      */
     private var rawChannels by mutableStateOf<List<Item>>(emptyList())
     /**
-     * Neue Liste übernehmen. [shown] = schon nach Jugendschutz gefiltert (im Hintergrund berechnet), sonst wird es hier gemacht –
-     * so muss das Filtern (Regex über alle Titel) nicht beim Zeichnen im Hauptthread passieren.
+     * Adopt a new list. [shown] = already filtered by parental control (computed in the background), otherwise it is done here –
+     * so filtering (regex over all titles) does not have to happen on the main thread while drawing.
      */
     private fun setItems(l: List<Item>, shown: List<Item>? = null) {
         LibMatch.reset()
@@ -67,61 +67,65 @@ object PlaylistStore {
         rawChannels = l
     }
 
-    /** Stand der Filter (Jugendschutz, „gestörte Titel ausblenden“): ändert er sich, wird die gezeigte Liste neu gebildet. */
-    private fun filterVer(): Int = Parental.version * 10_000 + (if (DeadLinks.hide) DeadLinks.version else 0)
+    /** State of the filters (parental control, "hide broken titles"): when it changes, the shown list is rebuilt. */
+    private fun filterVer(): Int = Parental.version * 10_000 + (if (DeadLinks.hide) DeadLinks.version else 0) + IgnoredGroups.version * 1_000_000
 
     private fun shownOf(l: List<Item>): List<Item> {
         var r = if (Parental.hideAdult) Parental.filter(l) else l
         if (DeadLinks.hide) r = DeadLinks.filter(r)
+        if (!IgnoredGroups.isEmpty) r = IgnoredGroups.filter(r)
         return r
     }
     @Volatile private var filteredFor: List<Item>? = null
     @Volatile private var filteredVer = -1
     @Volatile private var filtered: List<Item> = emptyList()
 
-    /** Anzahl Titel je Sprache in der ganzen Playlist (auch ausgeblendete) – für die Sprachauswahl in den Einstellungen. */
+    /** Number of titles per language in the whole playlist (including hidden ones) – for the language selection in settings. */
     var langCounts by mutableStateOf<Map<String, Int>>(emptyMap())
         private set
-    /** Datenmenge je Sprache der ganzen Playlist – für die Speicher-Schätzung ([fits]). */
+    /** Amount of data per language of the whole playlist – for the memory estimate ([fits]). */
     var langBytes by mutableStateOf<Map<String, Long>>(emptyMap())
         private set
-    /** Mit welcher Sprachauswahl die angezeigten Titel eingelesen wurden. */
+    /** The language selection with which the shown titles were read. */
     @Volatile private var shownHidden: Set<String> = emptySet()
 
-    /** Alle Einträge, wie sie die App zeigt: ohne ausgeblendete Sprachen und mit aktivem Jugendschutz ohne Erwachsenen-Inhalte. */
+    /** All entries as the app shows them: without hidden languages and, with parental control active, without adult content. */
     val channels: List<Item>
         get() {
             val raw = rawChannels
             val ver = filterVer()
-            if (!Parental.hideAdult && !DeadLinks.hide) return raw
+            if (!Parental.hideAdult && !DeadLinks.hide && IgnoredGroups.isEmpty) return raw
             if (raw !== filteredFor || ver != filteredVer) {
                 filtered = shownOf(raw); filteredFor = raw; filteredVer = ver
             }
             return filtered
         }
 
+    /** All loaded entries without the "Ignore" filters, parental control and broken titles – for managing ignored groups. */
+    fun unfilteredChannels(): List<Item> = rawChannels
+
     var loading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
-    /** true, solange heruntergeladen oder eingelesen wird (nicht beim schnellen Lesen des Zwischenspeichers) – dann Ladebildschirm. */
+    /** true while downloading or parsing (not during fast reading of the cache) – then show the loading screen. */
     var heavy by mutableStateOf(false)
         private set
-    /** Fortschritt für den Ladebildschirm: aktueller Schritt, verarbeitete Bytes und Gesamtgröße (-1 = unbekannt). */
+    /** Progress for the loading screen: current step, processed bytes and total size (-1 = unknown). */
     var phase by mutableStateOf("")
         private set
     var bytesRead by mutableLongStateOf(0L)
         private set
     var totalBytes by mutableLongStateOf(-1L)
         private set
-    /** true, sobald Download und Einlesen fertig sind und nur noch gespeichert wird. */
+    /** true as soon as download and parsing are done and only saving remains. */
     var downloadDone by mutableStateOf(false)
         private set
-    /** Offene Rückfrage: welche Sprachen sollen geladen werden (sehr große Playlist)? Der Ladebildschirm zeigt dann die Auswahl. */
+    /** Pending question: which languages should be loaded (very large playlist)? The loading screen then shows the selection. */
     var langAsk by mutableStateOf<LangAsk?>(null)
         private set
-    /** Beginn des laufenden Downloads/Einlesens (für die Hinweise bei langer Ladezeit im Ladebildschirm), 0 = keiner. */
+    /** Start of the running download/parse (for the hints on long load times in the loading screen), 0 = none. */
     var loadStarted by mutableLongStateOf(0L)
         private set
-    /** Nutzer möchte während des Ladens doch Sprachen wählen: nach dem Download bzw. sofort beim Einlesen fragen. */
+    /** User wants to choose languages after all while loading: ask after the download or immediately while parsing. */
     var askRequested by mutableStateOf(false)
         private set
     var epgUrls: List<String> = emptyList()
@@ -130,16 +134,16 @@ object PlaylistStore {
     var active by mutableIntStateOf(0)
 
     // ------------------------------------------------------------------ mehrere Playlists gleichzeitig (Runde 20)
-    /** Weitere Playlists, die zusätzlich zur aktiven gezeigt werden (Schlüssel = Hash der Adresse, siehe [MultiLogic]). */
+    /** Further playlists shown in addition to the active one (key = hash of the address, see [MultiLogic]). */
     var multi by mutableStateOf<Set<Int>>(emptySet())
         private set
-    /** Zusammengeführte Liste aller gezeigten Quellen (mit den in „Alle“ ausgeblendeten Doppelten). */
+    /** Merged list of all shown sources (with the duplicates hidden in "All"). */
     var merged by mutableStateOf(MultiLogic.Merged(emptyList(), emptySet(), emptyMap()))
         private set
-    /** Namen der gezeigten Quellen: 0 = aktive Playlist, dann die weiteren. */
+    /** Names of the shown sources: 0 = active playlist, then the others. */
     var sourceNames by mutableStateOf<List<String>>(emptyList())
         private set
-    /** Hinweis, wenn eine weitere Playlist nicht geladen werden konnte. */
+    /** Notice when a further playlist could not be loaded. */
     var extraError by mutableStateOf<String?>(null)
     private class Extra(val items: List<Item>, val epg: List<String>, val order: Map<String, Int>)
     private val extras = LinkedHashMap<String, Extra>()
@@ -151,53 +155,54 @@ object PlaylistStore {
     private var inited = false
     private val loadLock = Mutex()
     @Volatile private var job: Job? = null
-    /** Letztes Einlesen war zu groß: beim nächsten Laden mit Oberfläche die Sprachauswahl zeigen. */
+    /** Last parse was too big: show the language selection on the next load with a UI. */
     @Volatile private var askNext = false
     @Volatile private var call: Call? = null
 
     private val client = Net.withTimeouts(20, 120)
 
     private val XTREAM = Regex("""^(https?://[^/]+)/get\.php\?.*?username=([^&]+).*?password=([^&]+)""")
-    private const val UA = "IPVIOStream/1.0"
-    /** Eine fertig heruntergeladene, aber noch nicht eingelesene Liste wird so lange wiederverwendet. */
+    // Common player identifier: some providers throttle unknown identifiers heavily (browser/VLC then load much faster)
+    private const val UA = "VLC/3.0.21 LibVLC/3.0.21"
+    /** A fully downloaded but not yet parsed list is reused for this long. */
     private const val RAW_MAX_AGE = 12 * 3_600_000L
-    /** Freier Platz, der nach dem Download mindestens bleiben soll. */
+    /** Free space that should remain at least after the download. */
     private const val SPACE_RESERVE = 64L * 1024 * 1024
 
     const val MSG_CANCEL = "Laden abgebrochen. Deine Angaben bleiben gespeichert."
     const val MSG_TOO_BIG = "Die gewählten Inhalte sind zu groß für den Speicher dieses Geräts. Bitte weniger Sprachen wählen."
 
-    /** Rückfrage bei sehr großen Playlists: welche Sprachen sollen geladen werden? */
+    /** Question for very large playlists: which languages should be loaded? */
     class LangAsk(val counts: Map<String, Int>, val bytes: Map<String, Long>, val preselect: Set<String>, val budget: Long) {
         internal val answer = CompletableDeferred<Set<String>?>()
         val titles: Int get() = counts.values.sum()
         fun titlesOf(shown: Set<String>): Int = counts.entries.sumOf { if (it.key in shown) it.value else 0 }
         fun estimate(shown: Set<String>): Long = LoadLogic.estimate(bytes, counts.keys - shown)
         fun fits(shown: Set<String>): Boolean = estimate(shown) <= budget
-        /** Gewählte (gezeigte) Sprachen, null = abbrechen. */
+        /** Chosen (shown) languages, null = cancel. */
         fun choose(shown: Set<String>?) { answer.complete(shown) }
-        /** Überspringen: die ganze Playlist laden. */
+        /** Skip: load the whole playlist. */
         fun chooseAll() { answer.complete(counts.keys) }
     }
 
-    /** Während des Ladens doch die Sprachauswahl zeigen (Hinweis nach 15 Minuten). */
+    /** Show the language selection anyway while loading (hint after 15 minutes). */
     fun requestLanguageChoice() { askRequested = true }
 
-    /** Wird beim Einlesen geworfen, wenn der Nutzer währenddessen die Sprachauswahl angefordert hat. */
+    /** Thrown while parsing when the user requested the language selection in the meantime. */
     private class AskAgain : RuntimeException("Sprachauswahl")
 
-    /** Sprache des Geräts (nicht der App), z. B. "de". */
+    /** Language of the device (not of the app), e.g. "de". */
     private fun systemLang(): String = try {
         android.content.res.Resources.getSystem().configuration.locales[0].language
     } catch (e: Exception) { java.util.Locale.getDefault().language }
 
-    /** Wie viel Speicher die Playlist höchstens belegen soll. */
+    /** How much memory the playlist may use at most. */
     fun budget(): Long = LoadLogic.budget(Runtime.getRuntime().maxMemory())
 
-    /** Passt diese Sprachauswahl in den Speicher? (Schätzung aus dem letzten Einlesen; unbekannt = ja.) */
+    /** Does this language selection fit in memory? (Estimate from the last parse; unknown = yes.) */
     fun fits(hidden: Set<String>): Boolean = LoadLogic.fits(langBytes, hidden, budget())
 
-    /** Laufendes Laden abbrechen (zweimal Zurück im Ladebildschirm). Die Angaben bleiben gespeichert. */
+    /** Cancel the running load (back twice in the loading screen). The data stays saved. */
     fun cancel() {
         error = MSG_CANCEL
         askRequested = false
@@ -215,7 +220,7 @@ object PlaylistStore {
         inited = true
         cleanupStale(c)
         val p = prefs(c)
-        // Bevorzugt die verschlüsselte Fassung; die alte Klartext-Fassung wird beim ersten Start übernommen und ersetzt.
+        // Prefers the encrypted version; the old plain-text version is adopted and replaced on first start.
         val enc = p.getString("lists_enc", null)
         val json = (if (enc != null) Secrets.decrypt(enc) else null) ?: p.getString("lists", "[]")
         try {
@@ -233,7 +238,7 @@ object PlaylistStore {
         if (enc == null && lists.isNotEmpty()) persist(c)   // Übernahme der alten Klartext-Liste (nach dem Setzen von "active")
     }
 
-    /** Reste abgebrochener Downloads, die älter als zwei Tage sind, löschen (eine Rohdatei kann über 200 MB groß sein). */
+    /** Delete leftovers of aborted downloads older than two days (a raw file can be over 200 MB). */
     private fun cleanupStale(c: Context) {
         runCatching {
             val now = System.currentTimeMillis()
@@ -255,7 +260,7 @@ object PlaylistStore {
 
     // ------------------------------------------------------------------ gemerkter Ladeauftrag
 
-    /** Die Playlist, die gerade hinzugefügt wird (oder beim letzten Mal nicht fertig wurde), sonst null. */
+    /** The playlist currently being added (or not finished last time), otherwise null. */
     fun pending(c: Context): LoadLogic.Pending? {
         val p = prefs(c)
         val enc = p.getString("pending_enc", null)
@@ -278,7 +283,7 @@ object PlaylistStore {
         runCatching { pending(c)?.let { writePending(c, it.copy(state = LoadLogic.FAILED, msg = msg)) } }
     }
 
-    /** Playlists für die Übertragung auf ein anderes Gerät (Klartext – nur über den Code-geschützten Weg). */
+    /** Playlists for transfer to another device (plain text – only via the code-protected route). */
     fun exportLists(c: Context): JSONArray {
         ensure(c)
         val a = JSONArray()
@@ -286,7 +291,7 @@ object PlaylistStore {
         return a
     }
 
-    /** Übertragene Playlists ergänzen (vorhandene Adressen bleiben, wie sie sind). Ohne aktive Liste wird die erste aktiv. */
+    /** Add transferred playlists (existing addresses stay as they are). Without an active list the first becomes active. */
     fun importLists(c: Context, a: JSONArray) {
         ensure(c)
         for (i in 0 until a.length()) {
@@ -297,7 +302,7 @@ object PlaylistStore {
         }
         active = active.coerceIn(0, maxOf(lists.size - 1, 0))
         persist(c)
-        // Sofort auf die Platte (die App startet gleich neu)
+        // Write to disk immediately (the app restarts right away)
         prefs(c).edit().commit()
     }
 
@@ -311,7 +316,7 @@ object PlaylistStore {
 
     fun savedUrl(c: Context): String? { ensure(c); return lists.getOrNull(active)?.url }
 
-    /** Xtream-Adresse (Benutzer und Passwort URL-kodiert) oder null, wenn eine Angabe fehlt oder ungültig ist. */
+    /** Xtream address (user and password URL-encoded) or null if a value is missing or invalid. */
     fun xtreamUrl(host: String, user: String, pass: String): String? = PlaylistLogic.xtreamUrl(host, user, pass)
 
     fun activate(c: Context, i: Int) { ensure(c); if (i in lists.indices) { active = i; persist(c) } }
@@ -418,8 +423,8 @@ object PlaylistStore {
     }
 
     /**
-     * Wache für lange Lesevorgänge (alle 2.000 Einträge): Abbruch durch den Nutzer, und Stopp, bevor der Speicher ausgeht.
-     * Ein kontrollierter Abbruch mit Hinweis ist besser als ein Absturz mitten im Einlesen.
+     * Guard for long reads (every 2,000 entries): abort by the user, and stop before memory runs out.
+     * A controlled abort with a notice is better than a crash in the middle of parsing.
      */
     private fun guard(askable: Boolean = true): () -> Unit {
         val j = job
@@ -435,7 +440,7 @@ object PlaylistStore {
 
     // ------------------------------------------------------------------ Download
 
-    /** Lädt die Liste in eine Datei, mit bis zu zwei neuen Versuchen bei Verbindungsabbruch (fortgesetzt, wenn der Server es erlaubt). */
+    /** Downloads the list into a file, with up to two retries on connection loss (resumed if the server allows it). */
     private suspend fun downloadWithRetry(c: Context, u: String): Pair<File, Charset> {
         var last: IOException? = null
         for (attempt in 0 until 3) {
@@ -454,11 +459,11 @@ object PlaylistStore {
     private fun charsetOf(name: String?): Charset = try { Charset.forName(name ?: "UTF-8") } catch (e: Exception) { Charsets.UTF_8 }
 
     /**
-     * Lädt die Liste in eine Datei – nicht in den Arbeitsspeicher. Gibt die fertige Datei und ihren Zeichensatz zurück.
-     * Liegt noch eine fertig geladene, aber nicht eingelesene Datei vor (Absturz/Stromausfall beim Einlesen), wird sie verwendet.
+     * Downloads the list into a file – not into working memory. Returns the finished file and its charset.
+     * If a fully downloaded but unparsed file exists (crash/power loss while parsing), it is used.
      */
     private fun download(c: Context, u: String): Pair<File, Charset> {
-        // Hochgeladene Datei (Handy-Seite oder Dateiauswahl): liegt schon auf dem Gerät
+        // Uploaded file (phone page or file picker): already on the device
         if (u.startsWith("file://")) {
             val f = File(java.net.URI(u))
             if (!f.exists() || f.length() == 0L) throw PlaylistError("Die Playlist-Datei ist nicht mehr da. Bitte erneut hochladen.")
@@ -467,7 +472,7 @@ object PlaylistStore {
         }
         StalkerLogic.parse(u)?.let { return downloadStalker(c, u, it) }
         val acct = XtreamLogic.fromUrl(u) ?: return downloadList(c, u)
-        // Hat get.php bei diesem Zugang schon einmal versagt, gleich die Schnittstelle nehmen
+        // If get.php has already failed once for this login, use the API right away
         if (useApi(c, u)) return downloadApi(c, u, acct)
         val got = try {
             downloadList(c, u)
@@ -476,7 +481,7 @@ object PlaylistStore {
         }
         val head = runCatching { got.first.inputStream().use { s -> val b = ByteArray(512); val k = s.read(b); if (k > 0) String(b, 0, k, got.second) else "" } }.getOrDefault("")
         if (XtreamLogic.looksLikeM3u(head)) return got
-        // 200, aber keine Liste (Fehlerseite, leere Antwort): Schnittstelle versuchen
+        // 200, but no list (error page, empty response): try the API
         got.first.delete(); infoFile(c, u).delete()
         return apiInstead(c, u, acct, PlaylistError("Der Server hat keine gültige Playlist geliefert."))
     }
@@ -484,7 +489,7 @@ object PlaylistStore {
     private fun apiKey(u: String) = "xt_api_" + key(u)
     private fun useApi(c: Context, u: String) = prefs(c).getBoolean(apiKey(u), false)
 
-    /** get.php hat versagt: über player_api.php laden und das für diesen Zugang merken. Scheitert auch das, zählt der klarere Fehler. */
+    /** get.php failed: load via player_api.php and remember that for this login. If that fails too, the clearer error counts. */
     private fun apiInstead(c: Context, u: String, acct: XtreamLogic.Acct, first: PlaylistError): Pair<File, Charset> {
         if (cancelled()) throw CancellationException("abgebrochen")
         return try {
@@ -502,10 +507,10 @@ object PlaylistStore {
         }
     }
 
-    /** Schnittstellen-Zugriff für die Folgen einer Serie, die erst beim Öffnen geladen werden ([LazySeries]). */
+    /** API access for the episodes of a series that are only loaded when it is opened ([LazySeries]). */
     internal fun xtreamApi(): XtreamApi = XtreamApi(client, UA)
 
-    /** Liste über die Schnittstelle des Anbieters aufbauen (siehe [XtreamApi]) und wie einen fertigen Download ablegen. */
+    /** Build the list via the provider's API (see [XtreamApi]) and store it like a finished download. */
     private fun downloadApi(c: Context, u: String, acct: XtreamLogic.Acct): Pair<File, Charset> {
         val raw = rawFile(c, u)
         val info = infoFile(c, u)
@@ -532,7 +537,7 @@ object PlaylistStore {
         return raw to Charsets.UTF_8
     }
 
-    /** Stalker-Portal: Liste über die Schnittstelle des Portals aufbauen (siehe [StalkerApi]). */
+    /** Stalker portal: build the list via the portal's API (see [StalkerApi]). */
     private fun downloadStalker(c: Context, u: String, src: StalkerLogic.Source): Pair<File, Charset> {
         val raw = rawFile(c, u)
         val info = infoFile(c, u)
@@ -565,7 +570,7 @@ object PlaylistStore {
         }
         raw.delete()
         var offset = if (pi != null && part.exists()) part.length() else 0L
-        // Nach einem Stromausfall können die letzten geschriebenen Bytes fehlen oder unsauber sein: ein Stück zurückgehen
+        // After a power loss the last written bytes may be missing or corrupt: go back a bit
         if (offset > 0) { offset = maxOf(0L, offset - 65_536); RandomAccessFile(part, "rw").use { it.setLength(offset) } }
         val extra = if (pi != null) LoadLogic.resumeHeaders(offset, pi.etag, pi.lastModified) else emptyMap()
         if (extra.isEmpty()) offset = 0L
@@ -632,7 +637,7 @@ object PlaylistStore {
 
     private class Built(val parsed: ParsedPlaylist, val hidden: Set<String>)
 
-    /** Liest eine Datei (heruntergeladen oder komprimiert gespeichert) mit Fortschritt; [teeTo] = gleichzeitig komprimiert speichern. */
+    /** Reads a file (downloaded or stored compressed) with progress; [teeTo] = store compressed at the same time. */
     private fun <T> readFile(src: File, gz: Boolean, cs: Charset, teeTo: File?, body: (Reader) -> T): T {
         totalBytes = src.length(); bytesRead = 0L; downloadDone = false
         val fin = CountingStream(FileInputStream(src)) { bytesRead = it }
@@ -658,9 +663,9 @@ object PlaylistStore {
     }
 
     /**
-     * Liest eine Liste ein. Ist noch keine Sprache gewählt (und nicht bewusst „alles“) und die Liste für dieses Gerät groß,
-     * wird zuerst schnell gezählt und dann gefragt ([ask]) – ohne Rückfrage (Hintergrund) wird abgebrochen.
-     * Fordert der Nutzer währenddessen die Sprachauswahl an, wird neu gefragt und neu eingelesen.
+     * Parses a list. If no language has been chosen yet (and not deliberately "all") and the list is large for this device,
+     * it is first counted quickly and then asked ([ask]) – without a question (background) it is aborted.
+     * If the user requests the language selection meanwhile, it asks again and parses again.
      */
     private suspend fun build(c: Context, src: File, gz: Boolean, cs: Charset, ask: Boolean, teeTo: File?, forceAsk: Boolean = false): Built {
         var force = forceAsk
@@ -718,7 +723,7 @@ object PlaylistStore {
         return urls.distinct()
     }
 
-    /** Die komprimierte Kopie ist fertig: übernehmen und die große Rohdatei löschen. */
+    /** The compressed copy is done: adopt it and delete the large raw file. */
     private fun commitGz(c: Context, u: String, gzTmp: File) {
         val gz = gzFile(c, u)
         if (gzTmp.exists() && gzTmp.length() > 0) { gz.delete(); gzTmp.renameTo(gz) }
@@ -736,7 +741,7 @@ object PlaylistStore {
         rebuild(c)
     }
 
-    /** Weitere gezeigte Playlists (ohne die aktive), in der Reihenfolge der Liste. */
+    /** Further shown playlists (without the active one), in list order. */
     fun extraUrls(c: Context): List<String> {
         ensure(c)
         return lists.filterIndexed { i, pl -> i != active && key(pl.url) in multi }.map { it.url }
@@ -744,7 +749,7 @@ object PlaylistStore {
 
     fun isShown(i: Int): Boolean = i == active || (i in lists.indices && key(lists[i].url) in multi)
 
-    /** Position der Playlist [i] unter den gezeigten Quellen (0 = aktive, dann die weiteren in Listenreihenfolge), -1 = nicht gezeigt. */
+    /** Position of playlist [i] among the shown sources (0 = active, then the others in list order), -1 = not shown. */
     fun shownIndex(i: Int): Int {
         if (i !in lists.indices) return -1
         if (i == active) return 0
@@ -753,8 +758,8 @@ object PlaylistStore {
     }
 
     /**
-     * Playlist wechseln (Live TV, ohne Einstellungen): macht [i] zur aktiven Playlist und zeigt sofort den Zwischenspeicher
-     * der neuen Playlist; danach wird vom Server erneuert. Die alte Anzeige wird verworfen, sonst bliebe sie sichtbar.
+     * Switch playlist (Live TV, without settings): makes [i] the active playlist and immediately shows the cache
+     * of the new playlist; then it is refreshed from the server. The old display is discarded, otherwise it would stay visible.
      */
     suspend fun switchTo(c: Context, i: Int) {
         ensure(c)
@@ -767,7 +772,7 @@ object PlaylistStore {
         load(c, lists[i].url, false)
     }
 
-    /** Playlist zusätzlich zeigen (oder nicht mehr). Danach [applyMulti] aufrufen. */
+    /** Show a playlist additionally (or no longer). Call [applyMulti] afterwards. */
     fun setShown(c: Context, i: Int, on: Boolean) {
         ensure(c)
         if (i !in lists.indices || i == active) return
@@ -776,9 +781,10 @@ object PlaylistStore {
         persist(c)
     }
 
-    /** Liste aus der aktiven und den geladenen weiteren Playlists bilden und anzeigen (Hintergrund-Thread). */
+    /** Build and show the list from the active and the loaded further playlists (background thread). */
     private fun rebuild(c: Context) {
         val u = primaryUrl ?: return
+        IgnoredGroups.init(c)
         val urls = extraUrls(c)
         extras.keys.retainAll(urls.toSet())
         val ex = urls.mapNotNull { url -> extras[url]?.let { url to it } }
@@ -793,9 +799,9 @@ object PlaylistStore {
         catOrder = MultiLogic.mergeOrder(listOf(primaryOrder) + ex.map { it.second.order })
         setItems(vis, shownOf(vis))
         Catchup.startAll(c, listOf(u to primaryItems) + ex.map { it.first to it.second.items })
-        // TV-Programm nur neu holen, wenn sich Adressen oder Sender geändert haben
+        // Only refetch the TV guide if addresses or channels have changed
         val es = epg.hashCode().toLong() * 31 + sig(vis.filter { it.kind == Kind.LIVE })
-        if (es != epgSig) { epgSig = es; Xmltv.start(c, epg, vis) }
+        if (es != epgSig) { val first = epgSig == 0L; epgSig = es; Xmltv.start(c, epg, vis, if (first) 6_000L else 0L) }
     }
 
     private fun restartCatchup(c: Context) {
@@ -807,19 +813,19 @@ object PlaylistStore {
 
     @Volatile private var twins: Map<String, Item> = emptyMap()
 
-    /** Gleicher Film aus Quelle [k], der in „Alle“ ausgeblendet ist (für den Quellen-Filter), sonst null. */
+    /** Same movie from source [k] that is hidden in "All" (for the source filter), otherwise null. */
     fun twin(i: Item, k: Int): Item? = if (i.kind == Kind.MOVIE) twins["$k|" + i.mk] else null
 
-    /** Gehört der Titel zur Quelle [k]? */
+    /** Does the title belong to source [k]? */
     fun inSource(i: Item, k: Int): Boolean = merged.inSource(i, k)
 
-    /** Titel einer Quelle (0 = aktive Playlist), mit Jugendschutz-Filter. */
+    /** Titles of one source (0 = active playlist), with parental-control filter. */
     fun bySource(k: Int): List<Item> {
         val m = merged
         return shownOf(m.items.filter { m.inSource(it, k) })
     }
 
-    /** Weitere Playlists laden: [network] = vom Server (sonst aus dem Zwischenspeicher, nur fehlende vom Server). */
+    /** Load further playlists: [network] = from the server (otherwise from the cache, only missing ones from the server). */
     private suspend fun loadExtras(c: Context, network: Boolean) {
         val urls = extraUrls(c)
         extraError = null
@@ -836,7 +842,7 @@ object PlaylistStore {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Server nicht erreichbar: alten Stand nehmen, wenn es einen gibt
+                // Server unreachable: take the old state if there is one
                 val old = if (network) runCatching { loadExtra(c, url, false) }.getOrNull() else null
                 if (old == null) extraError = nameOf(url) + ": " + (if (e is ParseStop) MSG_TOO_BIG else PlaylistLogic.friendlyError(e))
                 old
@@ -883,8 +889,8 @@ object PlaylistStore {
     }
 
     /**
-     * Auswahl „gleichzeitig zeigen“ geändert: fehlende Playlists laden (Zwischenspeicher, sonst Server) und neu zusammenführen.
-     * false = gerade beschäftigt.
+     * Selection "show at the same time" changed: load missing playlists (cache, otherwise server) and merge again.
+     * false = currently busy.
      */
     suspend fun applyMulti(c: Context): Boolean {
         ensure(c)
@@ -904,14 +910,14 @@ object PlaylistStore {
     private enum class Local { OK, NONE, FAILED }
 
     /**
-     * Ohne Netz laden: aus dem Zwischenspeicher, wenn er zur aktuellen Sprachauswahl passt, sonst aus der komprimiert
+     * Load without network: from the cache if it matches the current language selection, otherwise from the compressed
      * gespeicherten ganzen Liste neu einlesen ([allowGz]).
      */
     private suspend fun fromLocal(c: Context, u: String, allowGz: Boolean, ask: Boolean): Local {
         val hidden = LangFilter.hidden
         val head = readHeader(c, u)
         if (head != null) {
-            // Alte Fassung (ganze Liste ohne Sprach-Zahlen) bei sehr großer Datei und ohne Sprachauswahl: nicht alles in den Speicher holen
+            // Old version (whole list without language counts) with a very large file and no language selection: do not load everything into memory
             val legacyTooBig = head.hidden == null && hidden.isEmpty() && cacheFile(c, u).length() > budget()
             if (!legacyTooBig && (head.hidden == null || head.hidden == hidden)) {
                 val cached = readCache(c, u, hidden)
@@ -949,8 +955,8 @@ object PlaylistStore {
     }
 
     /**
-     * Lädt eine Playlist. [save] = neu hinzugefügt (wird erst bei Erfolg in die Liste übernommen, aber vorher gemerkt),
-     * [ask] = bei sehr großen Listen nach den Sprachen fragen dürfen (nicht im Hintergrund), [resumed] = automatisch fortgesetzt.
+     * Loads a playlist. [save] = newly added (only adopted into the list on success, but remembered beforehand),
+     * [ask] = may ask for languages on very large lists (not in the background), [resumed] = continued automatically.
      */
     suspend fun load(
         c: Context, url: String, save: Boolean, skipNetworkWhenCached: Boolean = false,
@@ -979,7 +985,7 @@ object PlaylistStore {
         var forceAsk = false
         if (save) {
             val prev = pending(c)
-            // Letzter Versuch abgestürzt oder zu groß, jetzt von Hand neu gestartet: bei großer Liste die Sprachen noch einmal zeigen
+            // Last attempt crashed or was too big, now restarted by hand: show the languages again for a large list
             forceAsk = !resumed && prev != null && prev.url == u && (prev.interrupted || prev.msg == MSG_TOO_BIG)
             writePending(c, LoadLogic.started(prev, u, resumed))
         }
@@ -989,7 +995,7 @@ object PlaylistStore {
             val r = withContext(Dispatchers.IO) { fromLocal(c, u, allowGz = skipNetworkWhenCached, ask = ask) }
             usedCache = r == Local.OK
         }
-        // Weitere gleichzeitig gezeigte Playlists gleich aus dem Zwischenspeicher dazunehmen (schneller Start)
+        // Take further simultaneously shown playlists straight from the cache (fast start)
         if (usedCache) withContext(Dispatchers.IO) { runCatching { loadExtras(c, network = false) }.onFailure { if (it is CancellationException) throw it } }
         if (usedCache && skipNetworkWhenCached) {
             if (save) finishSave(c, u)
@@ -1043,7 +1049,7 @@ object PlaylistStore {
         return ok
     }
 
-    /** Neu hinzugefügte Playlist erfolgreich geladen: in die Liste übernehmen und den gemerkten Auftrag löschen. */
+    /** Newly added playlist loaded successfully: adopt it into the list and delete the remembered job. */
     private fun finishSave(c: Context, u: String) {
         val idx = lists.indexOfFirst { it.url == u }
         if (idx >= 0) active = idx else { lists.add(PL(hostOf(u), u)); active = lists.size - 1 }
@@ -1052,9 +1058,9 @@ object PlaylistStore {
     }
 
     /**
-     * Sprachfilter geändert: ohne Netz neu einlesen (aus der gespeicherten ganzen Liste, sonst aus einem alten Zwischenspeicher).
-     * Gibt es beides nicht, wird normal geladen. Passt die neue Auswahl nicht in den Speicher, bleibt die alte aktiv.
-     * Rückgabe false = gerade beschäftigt (später erneut versuchen), sonst true.
+     * Language filter changed: re-parse without network (from the stored whole list, otherwise from an old cache).
+     * If neither exists, load normally. If the new selection does not fit in memory, the old one stays active.
+     * Return value false = currently busy (try again later), otherwise true.
      */
     suspend fun reapplyLanguages(c: Context): Boolean {
         val u = savedUrl(c) ?: return true
@@ -1064,15 +1070,15 @@ object PlaylistStore {
             loading = true; error = null
             phase = "Sprachauswahl wird angewendet …"; bytesRead = 0L; totalBytes = -1L; downloadDone = false
             val prev = shownHidden
-            // Wenig Speicher frei: alte Liste vorher freigeben, sonst lägen alte und neue Liste gleichzeitig im Speicher
+            // Little memory free: release the old list first, otherwise old and new list would be in memory at once
             if (Mem.heapTight(0.45)) setItems(emptyList())
             val r = withContext(Dispatchers.IO) { fromLocal(c, u, allowGz = true, ask = false) }
             when (r) {
-                // Weitere Playlists mit der neuen Sprachauswahl neu einlesen
+                // Re-parse further playlists with the new language selection
                 Local.OK -> { extras.clear(); withContext(Dispatchers.IO) { runCatching { loadExtras(c, network = false) }.onFailure { if (it is CancellationException) throw it } } }
                 Local.NONE -> return loadInner(c, u, false, false, false, false).let { true }
                 Local.FAILED -> {
-                    // Neue Auswahl passt nicht: alte Auswahl wiederherstellen (und, falls schon freigegeben, wieder einlesen)
+                    // New selection does not fit: restore the old selection (and, if already released, parse again)
                     val msg = error
                     LangFilter.set(c, prev)
                     if (rawChannels.isEmpty()) withContext(Dispatchers.IO) { fromLocal(c, u, allowGz = true, ask = false) }
@@ -1091,8 +1097,8 @@ object PlaylistStore {
     }
 
     /**
-     * Hintergrund-Aktualisierung bei geschlossener App: herunterladen, mit der gespeicherten Sprachauswahl einlesen und
-     * den Zwischenspeicher schreiben. Es wird nicht gefragt; ist die Liste ohne Sprachauswahl zu groß, bleibt der alte Stand.
+     * Background refresh while the app is closed: download, parse with the stored language selection and
+     * write the cache. It does not ask; if the list is too big without a language selection, the old state stays.
      */
     suspend fun refreshCacheOnly(c: Context, url: String): Boolean {
         ensure(c)
@@ -1126,12 +1132,12 @@ object PlaylistStore {
         }
     }
 
-    /** Im Hintergrund nicht verwendbare, fertig geladene Rohdatei löschen (Platz); eine Teildatei bleibt zum Fortsetzen. */
+    /** Delete a fully downloaded raw file that is unusable in the background (space); a partial file stays for resuming. */
     private fun dropRaw(c: Context, u: String) {
         if (rawFile(c, u).exists()) { rawFile(c, u).delete(); infoFile(c, u).delete() }
     }
 
-    /** true, wenn die Oberfläche gerade eine Playlist anzeigt (App läuft im selben Prozess). */
+    /** true if the UI is currently showing a playlist (app runs in the same process). */
     val hasData: Boolean get() = rawChannels.isNotEmpty()
 
     fun clear(c: Context) {
@@ -1143,7 +1149,7 @@ object PlaylistStore {
     }
 }
 
-/** Zählt die gelesenen Bytes (für den Fortschrittsbalken), meldet höchstens alle 128 KB. */
+/** Counts the bytes read (for the progress bar), reports at most every 128 KB. */
 private class CountingStream(inp: InputStream, private val onCount: (Long) -> Unit) : FilterInputStream(inp) {
     private var n = 0L
     private var last = 0L
@@ -1153,7 +1159,7 @@ private class CountingStream(inp: InputStream, private val onCount: (Long) -> Un
     override fun close() { onCount(n); super.close() }
 }
 
-/** Zählt die geschriebenen Bytes (Fortschritt beim Aufbau über die Schnittstelle), meldet höchstens alle 256 KB. */
+/** Counts the bytes written (progress when building via the API), reports at most every 256 KB. */
 private class CountingOut(out: OutputStream, private val onCount: (Long) -> Unit) : java.io.FilterOutputStream(out) {
     private var n = 0L
     private var last = 0L
@@ -1163,7 +1169,7 @@ private class CountingOut(out: OutputStream, private val onCount: (Long) -> Unit
     override fun close() { onCount(n); super.close() }
 }
 
-/** Gibt alles Gelesene zusätzlich an [copy] weiter (Einlesen und komprimiert Speichern in einem Durchgang). */
+/** Also passes everything read on to [copy] (parse and compressed storage in a single pass). */
 private class TeeReader(private val inner: Reader, private val copy: Writer) : Reader() {
     override fun read(cbuf: CharArray, off: Int, len: Int): Int {
         val n = inner.read(cbuf, off, len)
@@ -1173,7 +1179,7 @@ private class TeeReader(private val inner: Reader, private val copy: Writer) : R
     override fun close() = inner.close()
 }
 
-/** gzip mit schnellster Stufe: 230 MB → ~20 MB in gut einer Sekunde (Stufe 6 wäre kaum kleiner, aber doppelt so langsam). */
+/** gzip at the fastest level: 230 MB → ~20 MB in just over a second (level 6 would be hardly smaller, but twice as slow). */
 private class FastGzip(out: OutputStream) : GZIPOutputStream(BufferedOutputStream(out, 1 shl 16), 1 shl 16) {
     init { def.setLevel(Deflater.BEST_SPEED) }
 }

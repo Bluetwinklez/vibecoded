@@ -9,14 +9,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Spendenlink des Entwicklers (PayPal). Die App bleibt kostenlos – das ist nur ein freiwilliges Dankeschön. */
+/** Donation link of the developer (PayPal). The app stays free – this is only a voluntary thank-you. */
 object Donate {
     const val URL = "https://www.paypal.com/ncp/payment/EUSU4WAGRJNXY"
-    /** Kurzform zum Anzeigen (ohne https://). */
+    /** Short form for display (without https://). */
     val SHORT: String get() = URL.removePrefix("https://www.")
 }
 
-/** Einstellungen > Über: kleiner Spendenbereich mit Text, QR-Code und Link (ohne Knopf: auf dem Fernseher gibt es oft keinen Browser). */
+/** Settings > About: small donation area with text, QR code and link (no button: TVs often have no browser). */
 @Composable
 internal fun DonateSection(@Suppress("UNUSED_PARAMETER") ctx: Context) {
     SectionTitle("Spende")

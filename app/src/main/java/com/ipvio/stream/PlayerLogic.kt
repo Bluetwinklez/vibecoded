@@ -9,8 +9,8 @@ import androidx.media3.datasource.HttpDataSource
 import java.util.Locale
 
 /**
- * Reine Hilfsfunktionen des Players (ohne Compose), damit sie getestet werden können.
- * Alle Namen sind bewusst "player"-spezifisch, damit nichts mit anderen Dateien kollidiert.
+ * Pure helper functions of the player (without Compose) so they can be tested.
+ * All names are deliberately "player"-specific so nothing collides with other files.
  */
 
 /** 3725000 ms -> "01:02:05" bzw. "02:05" */
@@ -23,7 +23,7 @@ fun fmtTime(ms: Long): String {
     else String.format(Locale.US, "%02d:%02d", m, sec)
 }
 
-/** Kurzform für Sprünge: 30000 -> "0:30", 160000 -> "2:40" */
+/** Short form for jumps: 30000 -> "0:30", 160000 -> "2:40" */
 fun fmtShort(ms: Long): String {
     val s = (ms / 1000).coerceAtLeast(0)
     val h = s / 3600
@@ -36,7 +36,7 @@ fun fmtShort(ms: Long): String {
 /** "+2:40" bzw. "−0:30" */
 fun fmtDelta(ms: Long): String = (if (ms >= 0) "+" else "−") + fmtShort(kotlin.math.abs(ms))
 
-/** Schnellspulen: Stufe 0..4 je nachdem, wie lange eine Richtungstaste gehalten wird. */
+/** Fast seeking: level 0..4 depending on how long a direction key is held. */
 fun turboLevel(holdMs: Long): Int = when {
     holdMs < 500 -> 0
     holdMs < 1200 -> 1
@@ -45,7 +45,7 @@ fun turboLevel(holdMs: Long): Int = when {
     else -> 4
 }
 
-/** Sprungweite pro Schritt: Stufe 0 = eingestellte Weite, höhere Stufen = Bruchteil der Gesamtlänge (z. B. 1/15). */
+/** Jump size per step: level 0 = configured size, higher levels = fraction of the total length (e.g. 1/15). */
 fun turboStepMs(level: Int, stepMs: Long, durMs: Long): Long {
     if (level <= 0) return stepMs
     val d = if (durMs > 0) durMs else 3_600_000L
@@ -53,7 +53,7 @@ fun turboStepMs(level: Int, stepMs: Long, durMs: Long): Long {
     return maxOf(stepMs * (level + 1), frac)
 }
 
-/** Uhrzeit (Sekunden seit 1970), zu der der Film bei der aktuellen Geschwindigkeit endet. */
+/** Clock time (seconds since 1970) at which the movie ends at the current speed. */
 fun endClockSec(nowMs: Long, remainMs: Long, speed: Float): Long {
     val sp = if (speed > 0f) speed else 1f
     return (nowMs + (remainMs.coerceAtLeast(0) / sp).toLong()) / 1000
@@ -91,7 +91,7 @@ fun langLabel(code: String?): String? =
     code?.takeIf { it != "und" && it.isNotBlank() }
         ?.let { Locale.forLanguageTag(it).getDisplayLanguage(PlayerLocale.locale).replaceFirstChar { c -> c.uppercase() } }
 
-/** Sprache für Anzeigenamen (z. B. Tonspur-Sprachen); wird von den Spracheinstellungen gesetzt. */
+/** Language for display names (e.g. audio track languages); set by the language settings. */
 object PlayerLocale {
     @Volatile var locale: Locale = Locale.GERMAN
 }
@@ -110,8 +110,8 @@ fun collectTracks(player: Player, type: Int): List<TrackOpt> {
     for (g in player.currentTracks.groups) {
         if (g.type != type) continue
         for (i in 0 until g.length) {
-            // Ton und Untertitel immer vollständig anzeigen (auch wenn Kopfhörer/Box das Format nicht kann) – der Nutzer entscheidet.
-            // Nur Videostufen, die das Gerät gar nicht decodieren kann, bleiben ausgeblendet.
+            // Always show audio and subtitles completely (even if headphones/box cannot do the format) – the user decides.
+            // Only video levels the device cannot decode at all stay hidden.
             val ok = g.isTrackSupported(i)
             if (!ok && type == C.TRACK_TYPE_VIDEO) continue
             n++
@@ -125,12 +125,12 @@ fun collectTracks(player: Player, type: Int): List<TrackOpt> {
 }
 
 /**
- * Bereinigt Sendungsdaten des Anbieters: sortiert, wirft kaputte Zeiten weg und sorgt dafür,
- * dass sich nie zwei Sendungen überlappen (die frühere wird gekürzt).
+ * Cleans show data from the provider: sorts, discards broken times and makes sure
+ * that two shows never overlap (the earlier one is shortened).
  */
 /**
- * XMLTV-Zeit ("20261019132500 +0200" oder ohne Zone = UTC) -> Sekunden seit 1970.
- * Reine Rechnung ohne SimpleDateFormat: bei Hunderttausenden Sendungen mehrfach schneller.
+ * XMLTV time ("20261019132500 +0200" or without zone = UTC) -> seconds since 1970.
+ * Pure calculation without SimpleDateFormat: several times faster with hundreds of thousands of shows.
  */
 fun xmltvTime(s: String?): Long? {
     if (s == null) return null
@@ -186,7 +186,7 @@ fun speedLabel(s: Float): String = when (s) {
 }
 
 
-/** HTTP-Status hinter einem Wiedergabefehler (0, wenn es keinen gibt). */
+/** HTTP status behind a playback error (0 if there is none). */
 fun httpStatusOf(e: PlaybackException): Int {
     var t: Throwable? = e.cause
     var depth = 0
@@ -198,10 +198,10 @@ fun httpStatusOf(e: PlaybackException): Int {
     return 0
 }
 
-/** Antworten, bei denen ein erneuter Versuch nichts bringt (Zugang, Abo oder Adresse stimmen nicht). */
+/** Responses where a retry brings nothing (login, subscription or address are wrong). */
 fun isPermanentHttp(status: Int): Boolean = status == 401 || status == 403 || status == 404 || status == 410 || status == 451
 
-/** Verständliche Fehlermeldung mit Lösungshinweis. Zeigt nie die Adresse des Streams. */
+/** Understandable error message with a solution hint. Never shows the address of the stream. */
 fun playbackErrorText(code: Int, status: Int, live: Boolean): String = when {
     status == 401 || status == 403 -> "Zugang abgelehnt ($status). Benutzername, Passwort oder Abo beim Anbieter prüfen."
     status == 404 || status == 410 -> if (live) "Dieser Sender ist beim Anbieter nicht mehr vorhanden." else "Dieser Titel ist beim Anbieter nicht mehr vorhanden."
@@ -220,6 +220,6 @@ fun playbackErrorText(code: Int, status: Int, live: Boolean): String = when {
 }
 
 object PlayerLogic {
-    /** Hinweis, wenn ein Stream ein Format hat, das der Player nicht öffnen kann (statt eines Absturzes). */
+    /** Hint when a stream has a format the player cannot open (instead of a crash). */
     const val MSG_FORMAT = "Dieses Stream-Format wird nicht unterstützt."
 }

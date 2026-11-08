@@ -41,15 +41,15 @@ import kotlinx.coroutines.delay
 class Profile(val id: Int, val name: String)
 
 /**
- * Profile trennen alles Persönliche: Verlauf, Fortsetzen, Favoriten, Ansicht, Player-Einstellungen und Jugendschutz.
- * Playlist, Zugangsdaten, Sprache und Aktualisierungsplan sind für alle Profile gleich.
- * Profil 0 nutzt die bisherigen Dateinamen, damit vorhandene Daten erhalten bleiben.
+ * Profiles separate everything personal: history, resume, favorites, view, player settings and parental control.
+ * Playlist, login data, language and refresh schedule are the same for all profiles.
+ * Profile 0 uses the previous file names so existing data is preserved.
  */
 object Profiles {
     const val MAX = 5
     const val META = "ipvio_profiles"
 
-    /** Dateien, die pro Profil getrennt sind. */
+    /** Files that are separate per profile. */
     private val SCOPED = listOf(
         "ipvio_settings", "ipvio_lib", "ipvio_quality", "ipvio_hist", "ipvio_watch", "ipvio_catfavs",
         "ipvio_variants", "ipvio_guide", "ipvio_browse", "ipvio_cat", "ipvio_general", "ipvio_lang",
@@ -78,7 +78,7 @@ object Profiles {
 
     fun defaultName(id: Int) = if (id == 0) "Hauptprofil" else "Profil ${id + 1}"
 
-    /** Anzeigename: Standardnamen werden übersetzt, eigene Namen bleiben, wie sie sind. */
+    /** Display name: default names are translated, custom names stay as they are. */
     fun displayName(p: Profile): String = if (p.name == defaultName(p.id)) Lang.tr(p.name) else p.name
 
     /** Einstellungsdatei des aktiven Profils. */
@@ -99,7 +99,7 @@ object Profiles {
 
     fun setAsk(c: Context, v: Boolean) { askAtStart = v; save(c) }
 
-    /** Beim Kaltstart: Auswahl zeigen, wenn es mehrere Profile gibt (außer direkt nach einem Wechsel). */
+    /** On a cold start: show the selection if there are several profiles (except right after a switch). */
     fun needsPicker(c: Context): Boolean {
         init(c)
         val m = meta(c)
@@ -125,7 +125,7 @@ object Profiles {
         save(c)
     }
 
-    /** Löscht ein Profil samt seinen Daten. Das Hauptprofil und das aktive Profil bleiben bestehen. */
+    /** Deletes a profile with its data. The main profile and the active profile remain. */
     fun remove(c: Context, id: Int): Boolean {
         if (id == 0 || id == active) return false
         if (!list.removeAll { it.id == id }) return false
@@ -134,13 +134,13 @@ object Profiles {
         return true
     }
 
-    /** Aktives Profil setzen (noch ohne Neustart; nur für den Start vor dem Laden der Daten). */
+    /** Set the active profile (without restart yet; only for the start before the data is loaded). */
     fun select(c: Context, id: Int) {
         init(c)
         if (list.any { it.id == id }) { active = id; save(c) }
     }
 
-    /** Profil wechseln: Die App startet neu, damit alle Daten sauber aus dem neuen Profil geladen werden. */
+    /** Switch profile: the app restarts so all data is loaded cleanly from the new profile. */
     fun switchTo(c: Context, id: Int) {
         init(c)
         if (id == active || list.none { it.id == id }) return
@@ -161,7 +161,7 @@ object Profiles {
     }
 }
 
-/** Läuft in einem eigenen Prozess: startet die App neu und beendet den alten Prozess. */
+/** Runs in its own process: restarts the app and ends the old process. */
 class RestartActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -175,11 +175,11 @@ class RestartActivity : Activity() {
     }
 }
 
-/** "Wer schaut?" beim Start, wenn es mehrere Profile gibt. */
+/** "Who is watching?" at start if there are several profiles. */
 @Composable
 fun ProfilePicker(onPick: (Int) -> Unit) {
     val ctx = LocalContext.current
-    // Zuletzt aktives Profil gesperrt (Jugendschutz mit PIN)? Dann führt ein anderes Profil nur über die PIN.
+    // Last active profile locked (parental control with PIN)? Then another profile can only be left with the PIN.
     var pending by remember { mutableStateOf<Int?>(null) }
     var pinErr by remember { mutableStateOf<String?>(null) }
     val pid = pending

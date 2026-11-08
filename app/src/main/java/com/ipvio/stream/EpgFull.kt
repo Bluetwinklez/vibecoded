@@ -5,8 +5,8 @@ object EpgFull {
     fun trim() = cache.clear()
 
     /**
-     * Programm eines Senders: ab 1 h zurück, bei Sendern mit Archiv (Catchup) so weit zurück, wie das Archiv reicht.
-     * Zuerst Zwischenspeicher und geladenes XMLTV (ohne Netz), dann Xtream.
+     * Program of a channel: from 1 h back, for channels with archive (catchup) as far back as the archive reaches.
+     * First cache and loaded XMLTV (without network), then Xtream.
      */
     suspend fun get(item: Item): List<EpgEntry> {
         val nowMs = System.currentTimeMillis()
@@ -15,7 +15,7 @@ object EpgFull {
         val days = Catchup.of(item)?.days ?: 0
         val from = if (days > 0) nowSec - days * 86400L else nowSec - 3600
         val local = Xmltv.forChannel(item.tvgId).filter { it.end > from }
-        // Mit Archiv reicht XMLTV nur, wenn es auch vergangene Sendungen enthält
+        // With archive, XMLTV is only enough if it also contains past shows
         val localOk = local.size >= 3 && local.any { it.end > nowSec } && (days == 0 || local.first().start <= nowSec - 6 * 3600)
         if (localOk) return local
         val url = Epg.xtreamApi(item, "get_simple_data_table")
