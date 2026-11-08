@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -57,6 +58,8 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     var user by remember { mutableStateOf(pendX?.second ?: "") }
     var pass by remember { mutableStateOf(pendX?.third ?: "") }
     var showPass by remember { mutableStateOf(false) }
+    // Backup servers (optional): after an interrupted entry, restore the ones already saved
+    val backups = remember { backupList(pend?.url?.let { PlaylistStore.backups(ctx, it) } ?: emptyList()) }
     // Send from the phone: local mini server as long as this screen is open
     val ip = remember { PhoneImport.localIp() }
     val receiver = remember {
@@ -211,6 +214,11 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                 Row(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
                     FocusButton(if (showPass) "Passwort verbergen" else "Passwort anzeigen", compact = true) { showPass = !showPass }
                 }
+                BackupFields(backups)
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
+                    FocusButton("+ Backup-Server", compact = true) { backups.add("") }
+                }
+                Text(BACKUP_HINT, color = Muted, fontSize = 15.sp)
             }
             PlaylistStore.error?.let { Text(it, color = DS.Danger, fontSize = 14.sp, lineHeight = 18.sp) }
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -218,7 +226,11 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                     if (PlaylistStore.loading) return@FocusButton
                     val finalUrl = if (stalker) StalkerLogic.source(portal, mac, sn, devId, devId2)?.encode() else if (xtream) PlaylistStore.xtreamUrl(host, user, pass) else url
                     if (finalUrl == null) PlaylistStore.error = if (stalker) "Angaben unvollständig: Portal-Adresse und MAC-Adresse (z. B. 00:1A:79:12:34:56) nötig." else "Angaben unvollständig: Server, Benutzername und Passwort nötig."
-                    else scope.launch { if (PlaylistStore.load(ctx, finalUrl, true)) onDone() }
+                    else if (xtream && !stalker && !backupsValid(backups)) PlaylistStore.error = BACKUP_INVALID
+                    else {
+                        if (xtream && !stalker) PlaylistStore.setBackups(ctx, finalUrl, backups.toList())
+                        scope.launch { if (PlaylistStore.load(ctx, finalUrl, true)) onDone() }
+                    }
                 }
                 if (canCancel) FocusButton("Abbrechen", compact = true) { PlaylistStore.clearPending(ctx); onDone() }
                 // Nothing to add yet (first start): just look around the app; the home screen then offers "Playlist hinzufügen"
@@ -336,5 +348,37 @@ private fun Step(n: Int, text: String) {
             Text(n.toString(), color = OnAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Text(text, color = Color.White, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/** Erklärung unter den Backup-Feldern (Playlist hinzufügen und Einstellungen > Playlists). */
+internal const val BACKUP_HINT = "Fällt der Server aus, wechselt die App von selbst zu einem Backup-Server. Anbieter nennen sie oft als weitere Server- oder DNS-Adressen; Benutzername und Passwort bleiben gleich."
+internal const val BACKUP_INVALID = "Backup-Server ungültig: Adresse wie http://server.tld:8080 eingeben."
+
+/** Leere Felder sind erlaubt, ausgefüllte müssen eine gültige Server-Adresse sein. */
+internal fun backupsValid(b: List<String>): Boolean = b.all { it.isBlank() || HostFailoverLogic.normalize(it) != null }
+
+/** Bearbeitbare Liste der Backup-Server, mit mindestens einem (leeren) Feld. */
+internal fun backupList(saved: List<String>): SnapshotStateList<String> =
+    mutableStateListOf<String>().apply { addAll(saved); if (isEmpty()) add("") }
+
+/** Ein Feld je Backup-Server; weitere kommen über den „+“-Knopf dazu, leere Felder werden beim Speichern ignoriert. */
+@Composable
+internal fun BackupFields(list: SnapshotStateList<String>) {
+    for (i in list.indices) {
+        Field(list[i], { list[i] = it }, "Backup-Server ${i + 1} (optional)")
+        HostHealthLine(list[i])
+    }
+}
+
+/** „Erreichbar“ bzw. „Nicht erreichbar seit …“ unter einer Server-Adresse; nichts, solange die App sie nie benutzt hat. */
+@Composable
+internal fun HostHealthLine(addr: String) {
+    HostFailover.healthVersion   // neu zeichnen, wenn sich der Zustand ändert
+    val h = HostFailoverLogic.normalize(addr)?.let { HostFailover.health(it) } ?: return
+    if (h.ok) Text("✓ Erreichbar", color = Accent2, fontSize = 14.sp)
+    else {
+        val t = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT, Lang.locale()).format(java.util.Date(h.at))
+        Text("✗ Nicht erreichbar seit $t", color = DS.Danger, fontSize = 14.sp)
     }
 }

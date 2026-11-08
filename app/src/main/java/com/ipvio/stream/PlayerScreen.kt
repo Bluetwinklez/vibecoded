@@ -160,7 +160,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             // "tap://" = live buffer on the device (rewind, recording), everything else as before
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(ctx)
-                    .setDataSourceFactory(TapAwareDataSource.Factory(DefaultDataSource.Factory(ctx, http)))
+                    .setDataSourceFactory(TapAwareDataSource.Factory(HostFailover.DataSourceWrapper.Factory(DefaultDataSource.Factory(ctx, http))))
                     // Short network hiccups are retried inside the player (several times) instead of ending in an error
                     .setLoadErrorHandlingPolicy(IptvLoadErrorPolicy())
             )

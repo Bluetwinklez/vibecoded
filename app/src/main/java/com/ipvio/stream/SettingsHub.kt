@@ -1122,6 +1122,10 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
     val scope = rememberCoroutineScope()
     var editing by remember { mutableIntStateOf(-1) }
     var name by remember { mutableStateOf("") }
+    // Backup-Server einer Xtream-Playlist bearbeiten
+    var editingB by remember { mutableIntStateOf(-1) }
+    var backups by remember { mutableStateOf(backupList(emptyList())) }
+    var backupErr by remember { mutableStateOf<String?>(null) }
     PlaylistStore.savedUrl(ctx)
     if (Secrets.plainFallback) Hint("Dieses Gerät hat keinen sicheren Schlüsselspeicher: Playlist-Adressen mit Zugangsdaten werden unverschlüsselt gespeichert.")
     Text("Meine Playlists (${PlaylistStore.lists.size})", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -1136,6 +1140,10 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(pl.name + if (isActive) "  ·  " + Lang.tr("Hauptliste") else if (shown) "  ·  " + Lang.tr("zusätzlich angezeigt") else "", color = if (isActive || shown) Accent2 else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, raw = true)
                 Text(PlaylistStore.hostOf(pl.url), color = Muted, fontSize = 13.sp, maxLines = 1)
+                val nb = if (editingB == i) 0 else PlaylistStore.backups(ctx, pl.url).size
+                if (nb > 0) Text("Backup-Server: $nb", color = Muted, fontSize = 13.sp, maxLines = 1)
+                val down = PlaylistStore.downServers(ctx, pl.url)
+                if (down.isNotEmpty()) Text("Nicht erreichbar: " + down.joinToString(", "), color = Color(0xFFFF8A80), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (!isActive) SmallPill(if (shown) "Nicht mehr zusätzlich anzeigen" else "Zusätzlich anzeigen") {
                 PlaylistStore.setShown(ctx, i, !shown)
@@ -1146,8 +1154,13 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
                 scope.launch { PlaylistStore.load(ctx, pl.url, false) }
             }
             SmallPill("Umbenennen") { editing = i; name = pl.name }
+            if (XtreamLogic.fromUrl(pl.url) != null) SmallPill("Backup-Server") {
+                val b = PlaylistStore.backups(ctx, pl.url)
+                editingB = i; backups = backupList(b); backupErr = null
+            }
             SmallPill("Löschen") {
                 val wasActive = isActive
+                editingB = -1
                 PlaylistStore.remove(ctx, i)
                 if (PlaylistStore.lists.isEmpty()) onAdd()
                 else if (wasActive) {
@@ -1162,6 +1175,20 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
     if (editing >= 0) {
         Field(name, { name = it }, "Name der Playlist")
         PillButton("Name speichern", light = true) { PlaylistStore.rename(ctx, editing, name); editing = -1 }
+    }
+    if (editingB in PlaylistStore.lists.indices) {
+        XtreamLogic.fromUrl(PlaylistStore.lists[editingB].url)?.base?.let { main ->
+            Text("Hauptserver: $main", color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            HostHealthLine(main)
+        }
+        BackupFields(backups)
+        PillButton("+ Backup-Server") { backups.add("") }
+        Hint(BACKUP_HINT)
+        backupErr?.let { Text(it, color = Color(0xFFFF8A80), fontSize = 15.sp) }
+        PillButton("Backup-Server speichern", light = true) {
+            if (!backupsValid(backups)) backupErr = BACKUP_INVALID
+            else { PlaylistStore.setBackups(ctx, PlaylistStore.lists[editingB].url, backups.toList()); editingB = -1 }
+        }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         PillButton("+ Weitere Playlist hinzufügen", light = true) { onAdd() }
