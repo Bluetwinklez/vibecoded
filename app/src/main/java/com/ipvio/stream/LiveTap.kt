@@ -42,6 +42,7 @@ class LiveTap(val id: Int, val url: String, private val dir: File, private val m
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .addInterceptor(TlsFallback.interceptor())
         .build()
 
     /** Millisekunden seit Beginn des Puffers. */

@@ -53,6 +53,17 @@ object BufferLogic {
     /** Only the automatic mode learns; one level per call, at most 2. */
     fun bump(mode: Int, learned: Int): Int = if (mode == 0) (learned + 1).coerceAtMost(2) else learned
 
+    /**
+     * Byte limit of the buffer. The time targets (20-60 s) only work if the byte limit leaves room for them: a 4K movie
+     * with 40 Mbit/s is 5 MB per second, so 14 MB hold barely 3 s and the player stalls on every small network hiccup.
+     * So the limit grows with the Java heap (12 %, at most 64 MB) but never drops below the planned value. -1 = no limit of our own.
+     */
+    fun byteLimit(planned: Int, maxHeapBytes: Long): Int {
+        if (planned <= 0) return planned
+        val share = minOf(maxHeapBytes / 100 * 12, 64L * 1024 * 1024)
+        return maxOf(planned.toLong(), share).toInt()
+    }
+
     /** [base] = (min ms, max ms, start ms, rebuffer ms, byte limit or -1). */
     fun scale(base: IntArray, level: Int): IntArray {
         if (level <= 0) return base

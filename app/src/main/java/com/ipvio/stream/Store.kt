@@ -60,6 +60,8 @@ object AppSettings {
     var ccPref by mutableStateOf(false)
     var skipIntro by mutableStateOf(true)
     var showInfo by mutableStateOf(true)
+    /** Search with the device's own keyboard (e.g. Gboard: other languages, voice input) instead of the built-in one. */
+    var systemKeyboard by mutableStateOf(false)
     var seekStep by mutableIntStateOf(10)
     var autoNext by mutableStateOf(true)
     var hideSec by mutableIntStateOf(4)
@@ -106,6 +108,7 @@ object AppSettings {
         ccPref = p.getBoolean("cc_pref", false)
         skipIntro = p.getBoolean("skip_intro", true)
         showInfo = p.getBoolean("show_info", true)
+        systemKeyboard = p.getBoolean("sys_kb", false)
         seekStep = p.getInt("seek_step", 10).coerceIn(5, 120)
         autoNext = p.getBoolean("auto_next", true)
         hideSec = p.getInt("hide_sec", 4).coerceIn(3, 15)
@@ -210,6 +213,11 @@ object AppSettings {
     fun set(c: Context, v: Boolean) {
         ipvioFilter = v
         prefs(c).edit().putBoolean("ipvio_filter", v).apply()
+    }
+
+    fun setSystemKeyboard(c: Context, on: Boolean) {
+        systemKeyboard = on
+        prefs(c).edit().putBoolean("sys_kb", on).apply()
     }
 
     fun setPlayer(c: Context, skip: Boolean, info: Boolean, step: Int) {
@@ -387,6 +395,12 @@ object History {
         while (ids.size > 80) ids.removeAt(ids.lastIndex)
         prefs(c).edit().putString("ids", ids.joinToString("\n")).apply()
     }
+
+    /** Removes a single title from "Recently watched". */
+    fun remove(c: Context, id: String) {
+        if (!ids.remove(id)) return
+        prefs(c).edit().putString("ids", ids.joinToString("\n")).apply()
+    }
 }
 
 /**
@@ -515,6 +529,29 @@ object EpProgress {
         if (old != null && old.done && !v.done) return
         if (old == v) return
         m[k] = v
+        store(c, seriesId, m)
+    }
+
+    /** Length (seconds) of the placeholder progress that marks an episode as watched by hand. */
+    private const val MARK_SECONDS = 60
+
+    /**
+     * Marks episodes ([keys] = [ResumeLogic.key]) as watched by hand, or resets them to "not watched".
+     * A movie uses the key (0, 0).
+     */
+    @Synchronized
+    fun mark(c: Context, seriesId: String, keys: Collection<Long>, seen: Boolean) {
+        val m = load(c, seriesId)
+        for (k in keys) {
+            if (seen) m[k] = ResumeLogic.EpPos(MARK_SECONDS, MARK_SECONDS) else m.remove(k)
+        }
+        if (m.isEmpty()) {
+            cache.remove(seriesId)
+            prefs(c).edit().remove(seriesId).apply()
+        } else store(c, seriesId, m)
+    }
+
+    private fun store(c: Context, seriesId: String, m: Map<Long, ResumeLogic.EpPos>) {
         val p = prefs(c)
         val e = p.edit().putString(seriesId, System.currentTimeMillis().toString() + "|" + ResumeLogic.encode(m))
         if (p.all.size > MAX_SERIES) {

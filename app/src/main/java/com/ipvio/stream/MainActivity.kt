@@ -157,6 +157,8 @@ fun App(pick: Boolean = false) {
             LaunchedEffect(Unit) { delay(10_000); runCatching { SportAlerts.run(c.applicationContext) } }   // after the start: the playlist and the home screen come first
             Box(Modifier.fillMaxSize()) { AppContent(); SportAlertHost() }
         }
+        // New version available: dialog with one button (above every screen)
+        UpdatePromptHost()
     }
 }
 
@@ -201,8 +203,8 @@ private fun AppContent() {
 
     // New app version on GitHub? Check silently once a day; a find appears in the bell at the top right.
     LaunchedEffect(Unit) {
-        delay(8_000)   // erst nach dem Start, die Playlist hat Vorrang
-        runCatching { AppUpdate.autoCheck(ctx) }
+        delay(3_000)   // erst nach dem Start, die Playlist hat Vorrang
+        runCatching { AppUpdate.startCheck(ctx) }
     }
 
     LaunchedEffect(Unit) {

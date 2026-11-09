@@ -202,10 +202,12 @@ fun httpStatusOf(e: PlaybackException): Int {
 fun isPermanentHttp(status: Int): Boolean = status == 401 || status == 403 || status == 404 || status == 410 || status == 451
 
 /** Understandable error message with a solution hint. Never shows the address of the stream. */
-fun playbackErrorText(code: Int, status: Int, live: Boolean): String = when {
+fun playbackErrorText(code: Int, status: Int, live: Boolean, tls: Boolean = false): String = when {
+    tls -> "Das Zertifikat des Anbieters passt nicht zur Server-Adresse. Beim Anbieter nach einer aktuellen Adresse fragen."
     status == 401 || status == 403 -> "Zugang abgelehnt ($status). Benutzername, Passwort oder Abo beim Anbieter prüfen."
     status == 404 || status == 410 -> if (live) "Dieser Sender ist beim Anbieter nicht mehr vorhanden." else "Dieser Titel ist beim Anbieter nicht mehr vorhanden."
     status == 429 || status == 458 || status == 509 -> "Maximale Verbindungen des Anbieters erreicht. Anderes Gerät oder Profil beenden und erneut versuchen."
+    status == 512 -> "Der Server des Anbieters lehnt die Verbindung ab (512). Meist ist die Server-Adresse nicht mehr aktuell oder gesperrt."
     status in 500..599 -> "Der Anbieter hat gerade ein Problem ($status). Später erneut versuchen."
     status >= 400 -> "Der Anbieter lehnt die Wiedergabe ab ($status)."
     code == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||

@@ -48,6 +48,7 @@ object PlaylistLogic {
         401, 403 -> "Zugang abgelehnt ($code). Benutzername, Passwort oder Abo prüfen."
         404 -> "Playlist nicht gefunden (404). Adresse prüfen."
         429, 458, 509 -> "Der Anbieter begrenzt gerade die Verbindungen ($code). Später erneut versuchen."
+        512 -> "Der Server des Anbieters lehnt die Verbindung ab (512). Meist ist die Server-Adresse nicht mehr aktuell oder gesperrt. Beim Anbieter nach der aktuellen Adresse fragen."
         in 500..599 -> "Der Anbieter hat gerade ein Problem ($code). Später erneut versuchen."
         else -> "Server antwortet mit Fehler $code."
     }
@@ -75,6 +76,7 @@ object PlaylistLogic {
         is java.net.UnknownHostException -> "Server nicht gefunden. Adresse und Internetverbindung prüfen."
         is java.net.SocketTimeoutException -> "Zeitüberschreitung: Der Server antwortet nicht."
         is java.net.ConnectException -> "Keine Verbindung zum Server."
+        is javax.net.ssl.SSLPeerUnverifiedException -> "Das Zertifikat des Anbieters passt nicht zur Server-Adresse. Beim Anbieter nach einer aktuellen Adresse fragen."
         is javax.net.ssl.SSLException -> "Sichere Verbindung fehlgeschlagen (Zertifikat)."
         is IllegalArgumentException -> "Ungültige Adresse."
         is OutOfMemoryError -> "Die Playlist ist zu groß für den Speicher dieses Geräts."

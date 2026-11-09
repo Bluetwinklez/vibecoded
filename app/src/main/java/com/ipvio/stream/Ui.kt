@@ -165,7 +165,7 @@ fun Modifier.focusGlow(focused: Boolean, shape: androidx.compose.ui.graphics.Sha
     if (!focused) this else this.shadow(10.dp, shape, clip = false, ambientColor = Tok.Lift, spotColor = Tok.Lift)
 
 @Composable
-fun FocusButton(text: String, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+fun FocusButton(text: String, modifier: Modifier = Modifier, primary: Boolean = false, compact: Boolean = false, onClick: () -> Unit) {
     var f by remember { mutableStateOf(false) }
     val s by animateFloatAsState(if (f) focusScale(1.07f) else 1f, label = "btn")
     val shape = RoundedCornerShape(50)
@@ -176,9 +176,9 @@ fun FocusButton(text: String, modifier: Modifier = Modifier, primary: Boolean = 
             .background(if (f) SolidColor(DS.FocusFill) else if (primary) SolidColor(lerp(DS.Overlay3, Look.accent1, 0.32f)) else SolidColor(DS.Overlay3))
             .onFocusChanged { f = it.isFocused }
             .clickable(onClick = onClick)
-            .padding(horizontal = 28.dp, vertical = 14.dp),
+            .padding(horizontal = if (compact) 20.dp else 28.dp, vertical = if (compact) 9.dp else 14.dp),
         contentAlignment = Alignment.Center
-    ) { Text(text, color = if (f) DS.FocusInk else Color.White, fontSize = DS.TextLead, fontWeight = FontWeight.SemiBold) }
+    ) { Text(text, color = if (f) DS.FocusInk else Color.White, fontSize = if (compact) 16.sp else DS.TextLead, fontWeight = FontWeight.SemiBold) }
 }
 
 /**

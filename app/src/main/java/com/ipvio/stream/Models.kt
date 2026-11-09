@@ -169,11 +169,14 @@ object M3uParser {
     /** Language of an entry; the category is examined only once per name. */
     private class LangOf(private val pool: StringPool) {
         private val byGroup = HashMap<String, String>()
+        private val vodByGroup = HashMap<String, Boolean>()
         fun of(group: String, name: String, live: Boolean): String {
             val g = byGroup.getOrPut(group) { LangTagLogic.detect(group) ?: "" }
             if (g.isNotEmpty()) return g
             return pool.of(LangTagLogic.of("", name, live))
         }
+        /** Does the category name look like films ("VOD", "Kino" …)? Checked once per category, not once per entry. */
+        fun vod(group: String): Boolean = vodByGroup.getOrPut(group) { VOD_GROUP.containsMatchIn(group) }
     }
 
     // Episode up to 4 digits: anime like One Piece have over 1,000 episodes ("S01 E1050" used to become episode 105)
@@ -185,12 +188,49 @@ object M3uParser {
     private val TAGS = Regex("""\b(4K|UHD|FHD|HD|HEVC|H265|1080p|720p|MULTI|GERMAN|DUAL)\b""", RegexOption.IGNORE_CASE)
     private val SPACES = Regex("""\s{2,}""")
     private val VOD_GROUP = Regex("""film|movie|vod|kino|cinema""", RegexOption.IGNORE_CASE)
-    private val VIDEO_FILE = Regex("""\.(mp4|mkv|avi)(\?.*)?$""", RegexOption.IGNORE_CASE)
+    /**
+     * Address ends in .mp4, .mkv or .avi (case does not matter), optionally followed by a query ("?…").
+     * Same result as the regular expression `\.(mp4|mkv|avi)(\?.*)?$`, without scanning the whole address with it.
+     */
+    internal fun isVideoFile(url: String): Boolean {
+        var i = url.indexOf('.')
+        while (i >= 0) {
+            val end = i + 4
+            if (end <= url.length && (end == url.length || url[end] == '?') &&
+                (url.regionMatches(i + 1, "mp4", 0, 3, ignoreCase = true) ||
+                 url.regionMatches(i + 1, "mkv", 0, 3, ignoreCase = true) ||
+                 url.regionMatches(i + 1, "avi", 0, 3, ignoreCase = true))) return true
+            i = url.indexOf('.', i + 1)
+        }
+        return false
+    }
     private val Q4K = Regex("""\b(4K|UHD|2160p?)\b""", RegexOption.IGNORE_CASE)
     private val QFHD = Regex("""\b(FHD|1080[pi]?)\b""", RegexOption.IGNORE_CASE)
     private val QHD = Regex("""\b(HD|720p?)\b""", RegexOption.IGNORE_CASE)
 
+    /**
+     * Cheap necessary condition for a quality word ("4K", "UHD", "2160", "FHD", "1080", "HD", "720"): most names have none,
+     * so the three regular expressions only run when this passes (measured: ~25 % of the parse time on large lists).
+     */
+    internal fun mayHaveQuality(s: String): Boolean {
+        val n = s.length
+        var i = 0
+        while (i < n) {
+            when (s[i]) {
+                '4' -> if (i + 1 < n && (s[i + 1] == 'k' || s[i + 1] == 'K')) return true
+                '2' -> if (s.startsWith("2160", i)) return true
+                '7' -> if (s.startsWith("720", i)) return true
+                '1' -> if (s.startsWith("1080", i)) return true
+                'U', 'u' -> if (i + 2 < n && (s[i + 1] == 'h' || s[i + 1] == 'H') && (s[i + 2] == 'd' || s[i + 2] == 'D')) return true
+                'H', 'h' -> if (i + 1 < n && (s[i + 1] == 'd' || s[i + 1] == 'D')) return true
+            }
+            i++
+        }
+        return false
+    }
+
     private fun quality(name: String, group: String): String? {
+        if (!mayHaveQuality(name) && !mayHaveQuality(group)) return null
         val s = "$name $group"
         return when {
             Q4K.containsMatchIn(s) -> "4K"
@@ -202,12 +242,18 @@ object M3uParser {
 
     private fun rank(q: String?) = when (q) { "4K" -> 4; "FHD" -> 3; "HD" -> 2; else -> 1 }
 
-    // Built once instead of anew for every line (large playlists have 100,000+ lines)
-    private val ATTRS = listOf("tvg-logo", "tvg-id", "group-title", "url-tvg", "x-tvg-url")
-        .associateWith { Regex(it + "=\"([^\"]*)\"") }
-
-    private fun attr(line: String, key: String): String? =
-        (ATTRS[key] ?: Regex(key + "=\"([^\"]*)\"")).find(line)?.groupValues?.get(1)
+    /**
+     * Value of `key="…"` in an #EXTINF line (the first occurrence, as the regular expression `key="([^"]*)"` would find it).
+     * Plain text search instead of a regular expression: it runs 3 times for every entry.
+     */
+    private fun attr(line: String, key: String): String? {
+        val tag = key + "=\""
+        val at = line.indexOf(tag)
+        if (at < 0) return null
+        val from = at + tag.length
+        val end = line.indexOf('"', from)
+        return if (end < 0) null else line.substring(from, end)
+    }
 
     private fun epgFromHeader(first: String?): List<String> {
         if (first == null) return emptyList()
@@ -220,7 +266,7 @@ object M3uParser {
 
     private fun clean(raw: String): String {
         var t = LangTagLogic.stripDashTag(raw.replace(PREFIX, ""))
-        t = t.replace(BRACKETS, "")
+        if (t.indexOf('(') >= 0 || t.indexOf('[') >= 0) t = t.replace(BRACKETS, "")
         t = t.replace(TAGS, "")
         t = t.replace(SPACES, " ").trim().trim('-', '|', ':', '.', ' ')
         return if (t.isBlank()) raw.trim() else t
@@ -236,11 +282,12 @@ object M3uParser {
 
     /** Reads line by line from a Reader. This way the whole list never has to sit in memory as a single String. */
     fun parseStream(reader: java.io.Reader, hidden: Set<String> = emptySet(), check: (() -> Unit)? = null): ParsedPlaylist =
-        java.io.BufferedReader(reader, 1 shl 16).useLines { parseLines(it, hidden, check) }
+        LinePump(reader).use { parseLines(it.lines(), hidden, check) }
 
     /** Quick pass without creating titles: how many titles and how much data per language (for the language selection). */
     fun scanStream(reader: java.io.Reader, check: (() -> Unit)? = null): PlaylistScan =
-        java.io.BufferedReader(reader, 1 shl 16).useLines { lines ->
+        LinePump(reader).use { pump ->
+            val lines = pump.lines()
             val st = Stats()
             val langOf = LangOf(StringPool())
             var n = 0
@@ -292,12 +339,24 @@ object M3uParser {
         }
     }
 
+    /** The episode pattern needs an "S" directly followed by a digit; names without it skip the regular expression. */
+    internal fun mayBeEpisode(name: String): Boolean {
+        var i = name.indexOf('S')
+        var j = name.indexOf('s')
+        while (i >= 0 || j >= 0) {
+            val k = if (i < 0) j else if (j < 0) i else minOf(i, j)
+            if (k + 1 < name.length && name[k + 1] in '0'..'9') return true
+            if (k == i) i = name.indexOf('S', k + 1) else j = name.indexOf('s', k + 1)
+        }
+        return false
+    }
+
     /** Kind and language of an entry; counts it in [st]. null = separator, skipped. */
     private fun classify(e: Entry, st: Stats, langOf: LangOf): Kinded? {
         if (isSeparator(e.name)) return null
-        val m = SE.find(e.name)
+        val m = if (mayBeEpisode(e.name)) SE.find(e.name) else null
         val isSeriesUrl = e.url.contains("/series/")
-        val isMovie = e.url.contains("/movie/") || VIDEO_FILE.containsMatchIn(e.url) || VOD_GROUP.containsMatchIn(e.group)
+        val isMovie = e.url.contains("/movie/") || isVideoFile(e.url) || langOf.vod(e.group)
         val kind = if (m != null || isSeriesUrl) Kind.SERIES else if (isMovie) Kind.MOVIE else Kind.LIVE
         val lang = langOf.of(e.group, e.name, kind == Kind.LIVE)
         val countKey = if (kind == Kind.SERIES) (m?.groupValues?.get(1) ?: e.name).trim().lowercase() else null

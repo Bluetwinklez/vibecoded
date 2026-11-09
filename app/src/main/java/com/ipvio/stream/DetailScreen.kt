@@ -165,7 +165,9 @@ private fun DetailScreenFull(
     val startSE = retSE ?: resumeSE
     var season by remember(item.id) { mutableIntStateOf(startSE?.first?.takeIf { it in seasons } ?: seasons.firstOrNull() ?: 1) }
     val eps = remember(item, season) { item.episodes.filter { it.season == season } }
-    val progress = remember(item.id) { EpProgress.of(ctx, item.id) }
+    // Counter: raised after marking by hand so that checkmarks and buttons redraw
+    var progVer by remember(item.id) { mutableIntStateOf(0) }
+    val progress = remember(item.id, progVer) { EpProgress.of(ctx, item.id).toMap() }
 
     val saved = remember(item.id) { VariantPref.get(ctx, item.id) }
     var prefQ by remember(item.id) { mutableStateOf(saved.first) }
@@ -502,7 +504,7 @@ private fun DetailScreenFull(
                                     HeroButton("Von vorn", AIcon.Rewind, false, Modifier, bh) { playUrl?.let { onPlay(it, item.title + (if (item.kind == Kind.SERIES) " S" + season + "E" + (eps.firstOrNull()?.num ?: 1) else ""), 0L) } }
                                 } else {
                                     // Watched movie: "Play again" instead of "Play"
-                                    val seenMovie = item.kind == Kind.MOVIE && EpProgress.of(ctx, item.id)[ResumeLogic.key(0, 0)]?.done == true
+                                    val seenMovie = item.kind == Kind.MOVIE && progress[ResumeLogic.key(0, 0)]?.done == true
                                     HeroButton(if (seenMovie) "Erneut abspielen" else "Abspielen", if (seenMovie) AIcon.Rewind else AIcon.Play, true, Modifier.focusRequester(playFocus), bh) {
                                         playUrl?.let { onPlay(it, item.title + (if (item.kind == Kind.SERIES) " S" + season + "E" + (eps.firstOrNull()?.num ?: 1) else ""), 0L) }
                                     }
@@ -516,6 +518,44 @@ private fun DetailScreenFull(
                                 HeroButton(if (fav) "Favorit" else "Zu Favoriten", if (fav) AIcon.HeartFilled else AIcon.Heart, false, Modifier, bh) { Library.toggleFav(ctx, item.id) }
                                 HeroButton("Trailer", AIcon.Play, false, Modifier, bh) { openTrailer(ctx, meta?.trailerKey, item.title) }
                                 HeroButton("Extern", AIcon.External, false, Modifier, bh) { playUrl?.let { openExternal(ctx, it, item.title) } }
+                            }
+                            // Watched by hand: movie, season, whole series (also reachable per episode: long OK / menu key on the row)
+                            Row(horizontalArrangement = Arrangement.spacedBy(dpx(12))) {
+                                // A finished resume point would otherwise keep offering "Continue"
+                                fun dropResume(keys: Collection<Long>) {
+                                    if (resume == null) return
+                                    val rk = resumeSE?.let { ResumeLogic.key(it.first, it.second) }
+                                    if (item.kind != Kind.SERIES || rk in keys) WatchStore.remove(ctx, item.id)
+                                }
+                                if (item.kind == Kind.SERIES) {
+                                    val seasonKeys = eps.map { ResumeLogic.key(it.season, it.num) }
+                                    val seasonSeen = seasonKeys.isNotEmpty() && seasonKeys.all { progress[it]?.done == true }
+                                    HeroButton(if (seasonSeen) "Staffel zurücksetzen" else "Staffel gesehen", if (seasonSeen) AIcon.Rewind else AIcon.Check, false, Modifier, bh) {
+                                        EpProgress.mark(ctx, item.id, seasonKeys, !seasonSeen)
+                                        if (!seasonSeen) dropResume(seasonKeys)
+                                        progVer++
+                                    }
+                                    if (seasons.size > 1) {
+                                        val allKeys = item.episodes.map { ResumeLogic.key(it.season, it.num) }
+                                        val allSeen = allKeys.isNotEmpty() && allKeys.all { progress[it]?.done == true }
+                                        HeroButton(if (allSeen) "Serie zurücksetzen" else "Serie gesehen", if (allSeen) AIcon.Rewind else AIcon.Check, false, Modifier, bh) {
+                                            EpProgress.mark(ctx, item.id, allKeys, !allSeen)
+                                            if (!allSeen) dropResume(allKeys)
+                                            progVer++
+                                        }
+                                    }
+                                } else if (item.kind == Kind.MOVIE) {
+                                    val k = ResumeLogic.key(0, 0)
+                                    val seen = progress[k]?.done == true
+                                    HeroButton(if (seen) "Als ungesehen markieren" else "Als gesehen markieren", if (seen) AIcon.Rewind else AIcon.Check, false, Modifier, bh) {
+                                        EpProgress.mark(ctx, item.id, listOf(k), !seen)
+                                        if (!seen) dropResume(listOf(k))
+                                        progVer++
+                                    }
+                                }
+                                if (item.id in History.ids) {
+                                    HeroButton("Aus „Zuletzt geschaut“ entfernen", AIcon.Close, false, Modifier, bh) { History.remove(ctx, item.id) }
+                                }
                             }
                         }
                         if (item.kind == Kind.MOVIE && movieAlts.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -659,7 +699,14 @@ private fun DetailScreenFull(
                                                 else -> false
                                             }
                                         },
-                                    onFocus = { epFocusIdx[0] = i; focusedIdx = i }
+                                    onFocus = { epFocusIdx[0] = i; focusedIdx = i },
+                                    onToggleSeen = {
+                                        val k = ResumeLogic.key(ep.season, ep.num)
+                                        val seen = progress[k]?.done == true
+                                        EpProgress.mark(ctx, item.id, listOf(k), !seen)
+                                        if (!seen && resumeSE?.let { ResumeLogic.key(it.first, it.second) } == k) WatchStore.remove(ctx, item.id)
+                                        progVer++
+                                    }
                                 ) { onPlay(v.url, item.title + " S" + ep.season + "E" + ep.num, 0L) }
                             }
                         }
@@ -682,7 +729,7 @@ private fun DetailScreenFull(
 }
 
 @Composable
-private fun EpisodeRow(ep: Episode, em: EpMeta?, v: Variant, prog: ResumeLogic.EpPos?, modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit) {
+private fun EpisodeRow(ep: Episode, em: EpMeta?, v: Variant, prog: ResumeLogic.EpPos?, modifier: Modifier, onFocus: () -> Unit, onToggleSeen: () -> Unit, onClick: () -> Unit) {
     var f by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(dpx(16))
     // Round 17b: the selected episode floats forward (glass, shadow, slightly larger) instead of a white frame; the others stay calm
@@ -694,6 +741,7 @@ private fun EpisodeRow(ep: Episode, em: EpMeta?, v: Variant, prog: ResumeLogic.E
             .clip(shape).background(if (f) Color(0x1FFFFFFF) else Color(0x08FFFFFF))
             .border(1.dp, if (f) Color(0x33FFFFFF) else Color.Transparent, shape)
             .onFocusChanged { f = it.isFocused; if (it.isFocused) onFocus() }
+            .favKeys(onToggleSeen)
             .clickable(onClick = onClick)
             .padding(dpx(14)),
         horizontalArrangement = Arrangement.spacedBy(dpx(22)), verticalAlignment = Alignment.CenterVertically
@@ -726,6 +774,7 @@ private fun EpisodeRow(ep: Episode, em: EpMeta?, v: Variant, prog: ResumeLogic.E
             }
             em?.air?.let { Text(raw = true, text = it, color = Muted, fontSize = spx(16)) }
             em?.overview?.let { Text(raw = true, text = it, color = if (f) Tok.TextMid else Tok.TextLow, fontSize = spx(18), lineHeight = spx(25), maxLines = 3, overflow = TextOverflow.Ellipsis) }
+            if (f) Text(if (prog?.done == true) "OK lange drücken = als ungesehen markieren" else "OK lange drücken = als gesehen markieren", color = Muted, fontSize = spx(14))
         }
     }
 }

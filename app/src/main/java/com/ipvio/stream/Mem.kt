@@ -39,15 +39,17 @@ object Mem {
 
     /** Buffer sizes for the player: (min ms, max ms, start ms, rebuffer ms, byte limit). */
     fun bufferPlan(tier: Int): IntArray = when (tier) {
-        0 -> intArrayOf(10_000, 25_000, 1_500, 3_000, 14 * 1024 * 1024)
-        1 -> intArrayOf(20_000, 40_000, 2_000, 4_000, 28 * 1024 * 1024)
-        else -> intArrayOf(30_000, 60_000, 2_500, 5_000, -1)
+        // After a stall playback resumes only with a few seconds in the buffer (rebuffer ms); too little means stall, play 1 s, stall again
+        0 -> intArrayOf(10_000, 25_000, 1_500, 5_000, 14 * 1024 * 1024)
+        1 -> intArrayOf(20_000, 40_000, 2_000, 6_000, 28 * 1024 * 1024)
+        else -> intArrayOf(30_000, 60_000, 2_500, 8_000, -1)
     }
 
     fun loadControl(ctx: Context): DefaultLoadControl {
         val p = BufferLogic.scale(bufferPlan(tier(ctx)), BufferLogic.level(AppSettings.bufferMode, AppSettings.bufferLearned))
         val b = DefaultLoadControl.Builder().setBufferDurationsMs(p[0], p[1], p[2], p[3])
-        if (p[4] > 0) b.setTargetBufferBytes(p[4]).setPrioritizeTimeOverSizeThresholds(false)
+        val bytes = BufferLogic.byteLimit(p[4], Runtime.getRuntime().maxMemory())
+        if (bytes > 0) b.setTargetBufferBytes(bytes).setPrioritizeTimeOverSizeThresholds(false)
         return b.build()
     }
 

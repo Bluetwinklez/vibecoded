@@ -159,7 +159,7 @@ object PlaylistStore {
     @Volatile private var askNext = false
     @Volatile private var call: Call? = null
 
-    private val client = Net.withTimeouts(20, 120)
+    private val client = Net.withTimeouts(20, 120).newBuilder().addInterceptor(TlsFallback.interceptor()).build()
 
     private val XTREAM = Regex("""^(https?://[^/]+)/get\.php\?.*?username=([^&]+).*?password=([^&]+)""")
     // Common player identifier: some providers throttle unknown identifiers heavily (browser/VLC then load much faster)

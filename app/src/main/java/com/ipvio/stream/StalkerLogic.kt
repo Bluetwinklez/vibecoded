@@ -16,11 +16,20 @@ import java.security.MessageDigest
  * and episodes are fetched by [LazySeries] only when the series is opened ([StalkerApi.episodeList]), just like with Xtream.
  */
 object StalkerLogic {
-    data class Source(val portal: String, val mac: String) {
+    /**
+     * [sn] = serial number, [id1] = device ID, [id2] = device ID 2 (as in TiviMate / STB Emu). Optional: some providers
+     * identify the box by them in addition to the MAC. Empty = the app derives its own values from the MAC (as before).
+     */
+    data class Source(val portal: String, val mac: String, val sn: String = "", val id1: String = "", val id2: String = "") {
         /** Key of the source in the play addresses (hash of the stored details, without the details themselves). */
         val key: Int get() = encode().trim().hashCode()
-        fun encode(): String = "stalker:" + portal + "#mac=" + mac
+        /** Without the optional values exactly as before (so existing logins keep their key and their cache). */
+        fun encode(): String = "stalker:" + portal + "#mac=" + mac +
+            (if (sn.isNotEmpty()) "#sn=$sn" else "") + (if (id1.isNotEmpty()) "#id1=$id1" else "") + (if (id2.isNotEmpty()) "#id2=$id2" else "")
     }
+
+    /** Serial number / device ID as typed: only letters and digits (no separators, nothing that could break the stored text). */
+    fun cleanId(raw: String): String = raw.trim().filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' }.take(64)
 
     private val MAC = Regex("""^([0-9A-F]{2}[:-]){5}[0-9A-F]{2}$""")
 
@@ -33,13 +42,13 @@ object StalkerLogic {
     }
 
     /** Login from the inputs; null = portal address or MAC invalid. */
-    fun source(portalRaw: String, macRaw: String): Source? {
+    fun source(portalRaw: String, macRaw: String, snRaw: String = "", id1Raw: String = "", id2Raw: String = ""): Source? {
         var p = portalRaw.trim()
         if (p.isEmpty()) return null
         if (!p.startsWith("http://", true) && !p.startsWith("https://", true)) p = "http://$p"
         if (PlaylistLogic.normalizeUrl(p) == null) return null
         val m = normMac(macRaw) ?: return null
-        return Source(p, m)
+        return Source(p, m, cleanId(snRaw), cleanId(id1Raw), cleanId(id2Raw))
     }
 
     fun isSource(url: String): Boolean = url.trim().startsWith("stalker:", true) && !url.trim().startsWith("stalker://", true)
@@ -50,7 +59,15 @@ object StalkerLogic {
         val body = u.substring("stalker:".length)
         val i = body.lastIndexOf("#mac=")
         if (i <= 0) return null
-        return source(body.substring(0, i), body.substring(i + 5))
+        // After the MAC optionally "#sn=…", "#id1=…", "#id2=…"
+        val rest = body.substring(i + 5).split('#')
+        var sn = ""; var d1 = ""; var d2 = ""
+        for (p in rest.drop(1)) {
+            val kv = p.split('=', limit = 2)
+            if (kv.size != 2) continue
+            when (kv[0]) { "sn" -> sn = kv[1]; "id1" -> d1 = kv[1]; "id2" -> d2 = kv[1] }
+        }
+        return source(body.substring(0, i), rest[0], sn, d1, d2)
     }
 
     private val C_TAIL = Regex("""/c(/[^/]*)?$""", RegexOption.IGNORE_CASE)
@@ -108,10 +125,14 @@ object StalkerLogic {
     private fun hash(alg: String, s: String) = MessageDigest.getInstance(alg).digest(s.toByteArray()).joinToString("") { "%02X".format(it) }
 
     /** Device identifiers some portals expect when fetching the profile (derived from the MAC, always the same). */
-    fun profileExtra(mac: String): String {
-        val sn = hash("MD5", mac).take(13)
-        val dev = hash("SHA-256", mac)
-        return "&hd=1&stb_type=MAG250&client_type=STB&image_version=218&sn=$sn&device_id=$dev&device_id2=$dev&auth_second_step=1&not_valid_token=0"
+    fun profileExtra(mac: String): String = profileExtra(Source("", mac))
+
+    /** Same, but values the user entered (serial number, device ID, device ID 2) take the place of the derived ones. */
+    fun profileExtra(src: Source): String {
+        val sn = src.sn.ifEmpty { hash("MD5", src.mac).take(13) }
+        val dev = src.id1.ifEmpty { hash("SHA-256", src.mac) }
+        val dev2 = src.id2.ifEmpty { dev }
+        return "&hd=1&stb_type=MAG250&client_type=STB&image_version=218&sn=${enc(sn)}&device_id=${enc(dev)}&device_id2=${enc(dev2)}&auth_second_step=1&not_valid_token=0"
     }
 
     // ------------------------------------------------------------------ Play addresses in the list

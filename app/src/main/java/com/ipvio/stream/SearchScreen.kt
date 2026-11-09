@@ -161,6 +161,15 @@ fun SearchScreen(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SEARCH_FILTERS.forEachIndexed { i, name -> MiniChip(name, SearchState.filter == i) { SearchState.filter = i } }
                 }
+                if (AppSettings.systemKeyboard) {
+                    // The device's own keyboard (e.g. Gboard) in a normal text field: OK or a tap opens it
+                    Field(
+                        SearchState.query, { SearchState.query = it.take(60) }, "Filme, Serien oder Sender suchen…",
+                        Modifier.fillMaxWidth(),
+                        inner = Modifier.focusRequester(ContentFocus.req).onFocusChanged { fieldFocused = it.isFocused || it.hasFocus },
+                        onDone = { SearchState.query.trim().takeIf { it.length >= 2 }?.let { AppSettings.addSearch(ctx, it) } }
+                    )
+                } else {
                 QueryBox(SearchState.query, Modifier.fillMaxWidth())
                 // Own on-screen keyboard (instead of the TV's keyboard): hits appear while typing
                 SearchKeyboard(
@@ -178,6 +187,7 @@ fun SearchScreen(
                         target != null && runCatching { target.requestFocus() }.isSuccess
                     }
                 )
+                }
             }
             // Right: info panel of the highlighted title on top, the hits below
             Column(Modifier.weight(1f).fillMaxHeight()) {

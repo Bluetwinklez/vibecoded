@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * only when a series is opened.
  */
 object StalkerApi {
-    private val client: OkHttpClient = Net.base.newBuilder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
+    private val client: OkHttpClient = Net.base.newBuilder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).addInterceptor(TlsFallback.interceptor()).build()
 
     /** Logged-in session: API and token, reused for a few minutes. */
     private class Session(val src: StalkerLogic.Source, val endpoint: String, val token: String, val at: Long)
@@ -82,7 +82,7 @@ object StalkerApi {
                 if (note.isNotEmpty()) seen = note
             }
             val token = hs?.optString("token")?.takeIf { it.isNotBlank() } ?: continue
-            js(src, StalkerLogic.api(ep, "stb", "get_profile", StalkerLogic.profileExtra(src.mac)), token)
+            js(src, StalkerLogic.api(ep, "stb", "get_profile", StalkerLogic.profileExtra(src)), token)
             val s = Session(src, ep, token, System.currentTimeMillis())
             synchronized(sessions) { sessions[src.key] = s }
             return s

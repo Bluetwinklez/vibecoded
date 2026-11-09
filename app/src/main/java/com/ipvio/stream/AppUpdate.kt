@@ -37,6 +37,9 @@ object AppUpdate {
     var available by mutableStateOf<UpdateInfo?>(null)
         private set
 
+    /** "Später" tapped in the start dialog: stays hidden until the app is started again. */
+    var promptDismissed by mutableStateOf(false)
+
     private fun prefs(c: Context) = c.getSharedPreferences("ipvio_upd", Context.MODE_PRIVATE)
     fun url(c: Context) = prefs(c).getString("url", "").orEmpty().ifBlank { DEFAULT_URL }
     fun setUrl(c: Context, v: String) = prefs(c).edit().putString("url", v.trim()).apply()
@@ -102,6 +105,19 @@ object AppUpdate {
             // Remember a known update so the bell keeps showing it after a restart
             restore(c); return
         }
+        check(c)
+    }
+
+    /**
+     * At every app start (not only once a day): ask for a new version so the start dialog can offer it right away.
+     * At most every 10 minutes, so quick restarts do not use up GitHub's request limit. Errors stay invisible.
+     */
+    suspend fun startCheck(c: Context) {
+        if (!auto(c)) return
+        val now = System.currentTimeMillis()
+        val last = prefs(c).getLong("last_start", 0L)
+        if (now >= last && now - last < 10 * 60_000L) { restore(c); return }
+        prefs(c).edit().putLong("last_start", now).apply()
         check(c)
     }
 
