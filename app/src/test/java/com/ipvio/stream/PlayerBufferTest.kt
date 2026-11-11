@@ -22,11 +22,11 @@ class PlayerBufferTest {
     }
 
     @Test fun retry_nurWoSinnvoll() {
-        assertTrue(IptvLoadErrorPolicy.isFinalStatus(403))
-        assertTrue(IptvLoadErrorPolicy.isFinalStatus(404))
-        assertFalse(IptvLoadErrorPolicy.isFinalStatus(408))
-        assertFalse(IptvLoadErrorPolicy.isFinalStatus(429))
-        assertFalse(IptvLoadErrorPolicy.isFinalStatus(500))
-        assertFalse(IptvLoadErrorPolicy.isFinalStatus(512))
+        assertTrue(IptvRetryRules.isFinalStatus(403))
+        assertTrue(IptvRetryRules.isFinalStatus(404))
+        assertFalse(IptvRetryRules.isFinalStatus(408))
+        assertFalse(IptvRetryRules.isFinalStatus(429))
+        assertFalse(IptvRetryRules.isFinalStatus(500))
+        assertFalse(IptvRetryRules.isFinalStatus(512))
     }
 }

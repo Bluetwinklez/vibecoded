@@ -1,6 +1,5 @@
 package com.ipvio.stream
 
-import androidx.media3.common.PlaybackException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -179,8 +178,8 @@ http://h/x
     }
 
     @Test fun fehler_keineVerbindungUndFormat() {
-        assertTrue(playbackErrorText(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, 0, true).contains("Keine Verbindung"))
-        assertTrue(playbackErrorText(PlaybackException.ERROR_CODE_DECODING_FAILED, 0, false).contains("Videoformat"))
+        assertTrue(playbackErrorText(PlaybackErrorCodes.IO_NETWORK_CONNECTION_FAILED, 0, true).contains("Keine Verbindung"))
+        assertTrue(playbackErrorText(PlaybackErrorCodes.DECODING_FAILED, 0, false).contains("Videoformat"))
         assertEquals("Wiedergabe nicht möglich.", playbackErrorText(-1, 0, false))
     }
 

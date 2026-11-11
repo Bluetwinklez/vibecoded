@@ -22,9 +22,7 @@ class IptvLoadErrorPolicy : DefaultLoadErrorHandlingPolicy(RETRIES) {
     }
 
     companion object {
-        const val RETRIES = 6
-
-        /** HTTP answers where another attempt is pointless: client errors except "timeout" (408) and "too many requests" (429). */
-        fun isFinalStatus(code: Int): Boolean = code in 400..499 && code != 408 && code != 429
+        const val RETRIES = IptvRetryRules.RETRIES
+        fun isFinalStatus(code: Int): Boolean = IptvRetryRules.isFinalStatus(code)
     }
 }
