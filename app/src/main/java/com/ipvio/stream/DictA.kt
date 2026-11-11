@@ -1,6 +1,6 @@
 package com.ipvio.stream
 
-// Übersetzungen Teil A: Playlist hinzufügen, Durchsuchen, Detailseite, Startseite
+// Translations part A: add playlist, browse, detail page, home screen
 val DictA = """
 Playlist hinzufügen¦Add playlist¦Playlist ekle¦Dodaj playlistu¦Dodaj playlistu¦Dodaj plejlistu¦Añadir lista¦Ajouter une playlist¦Aggiungi playlist
 Dauert nur ein paar Sekunden.¦Only takes a few seconds.¦Yalnızca birkaç saniye sürer.¦Traje samo nekoliko sekundi.¦Traje samo nekoliko sekundi.¦Traje samo nekoliko sekundi.¦Solo tarda unos segundos.¦Ne prend que quelques secondes.¦Ci vogliono solo pochi secondi.
