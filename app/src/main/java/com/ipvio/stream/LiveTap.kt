@@ -45,7 +45,7 @@ class LiveTap(val id: Int, val url: String, private val dir: File, private val m
         .addInterceptor(TlsFallback.interceptor())
         .build()
 
-    /** Millisekunden seit Beginn des Puffers. */
+    /** Milliseconds since the start of the buffer. */
     fun nowMs(): Long = (System.nanoTime() - startedMono) / 1_000_000
 
     /** Time (ms since start) of the oldest data still present. */

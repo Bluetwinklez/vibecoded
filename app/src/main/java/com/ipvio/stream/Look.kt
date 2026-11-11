@@ -76,7 +76,7 @@ object Look {
         ReadyDesign("Sonnenbrand", 4, 9)
     )
 
-    /** Standard: 85 % (Index 1) – zeigt mehr Inhalt, Elemente bleiben gut lesbar. */
+    /** Default: 85 % (index 1) – shows more content, elements stay easy to read. */
     const val DEFAULT_SCALE = 1
 
     val MOTION = listOf("Aus", "Dezent", "Normal")

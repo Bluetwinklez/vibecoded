@@ -38,12 +38,12 @@ object EpTitles {
  * With large providers ~70 % of all entries are episodes: 581,000 episodes need ~12 MB instead of ~88 MB this way.
  */
 class EpisodeTable private constructor(
-    /** (Staffel shl 16) or Folge */
+    /** (season shl 16) or episode */
     private val se: IntArray,
     private val pre: Array<String>,
     /** Beginning per episode (index into [pre]); null = all [pre] 0 */
     private val preIdx: ByteArray?,
-    /** Adress-Enden hintereinander, [sufEnd] = Ende je Folge */
+    /** Address ends one after another, [sufEnd] = end per episode */
     private val suf: String,
     private val sufEnd: IntArray,
     /** Quality per episode as a code (see [Q]) */

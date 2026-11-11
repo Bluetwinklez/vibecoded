@@ -35,7 +35,7 @@ object General {
     var lang by mutableStateOf("")
     /** Time zone: "" = system time of the device */
     var tzId by mutableStateOf("")
-    /** Zeitformat: 0 = System, 1 = 24 Stunden, 2 = 12 Stunden */
+    /** Time format: 0 = system, 1 = 24 hours, 2 = 12 hours */
     var timeFmt by mutableIntStateOf(0)
     var sys24 by mutableStateOf(true)
     var fontIdx by mutableIntStateOf(0)
@@ -193,7 +193,7 @@ object General {
     /** Asked by the BootReceiver after system start. */
     fun autoStartEnabled(c: Context): Boolean = prefs(c).getBoolean("auto_start", false)
 
-    // ---- Speicher ----
+    // ---- Storage ----
     fun sizeOf(f: File): Long = if (!f.exists()) 0L else if (f.isFile) f.length() else (f.listFiles()?.sumOf { sizeOf(it) } ?: 0L)
 
     class Area(val name: String, val note: String, val files: (Context) -> List<File>)

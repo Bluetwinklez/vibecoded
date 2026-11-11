@@ -229,7 +229,7 @@ object QrCode {
 
         fun penalty(): Int {
             var p = 0
-            // Gleiche Felder in einer Reihe/Spalte
+            // Same cells in a row/column
             for (a in 0 until size) for (rowMode in 0..1) {
                 var run = 1
                 for (b in 1 until size) {

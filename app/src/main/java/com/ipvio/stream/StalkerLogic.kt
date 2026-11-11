@@ -4,7 +4,7 @@ import java.net.URLEncoder
 import java.security.MessageDigest
 
 /**
- * Stalker-/Ministra-Portale (Portal-Adresse + MAC-Adresse), Runde 20, erweitert in Runde 22 (Serien, robustere Anmeldung).
+ * Stalker/Ministra portals (portal address + MAC address), round 20, extended in round 22 (series, more robust login).
  * Without Android, testable.
  *
  * A login is stored as "stalker:" + portal address + "#mac=" + MAC (encrypted like all logins).
@@ -105,7 +105,7 @@ object StalkerLogic {
     fun createLink(endpoint: String, type: String, cmd: String, series: String? = null): String =
         api(endpoint, type, "create_link", "&cmd=" + enc(cmd) + "&series=" + (series?.let { enc(it) } ?: "") + "&forced_storage=undefined&disable_ad=0&download=0")
 
-    /** „ffmpeg http://…“ / „ffrt http://…“ / „auto http://…“ → reine Adresse. */
+    /** "ffmpeg http://…" / "ffrt http://…" / "auto http://…" → bare address. */
     fun stripCmd(cmd: String?): String? {
         val c = cmd?.trim() ?: return null
         val i = c.indexOf("http")
@@ -224,7 +224,7 @@ object StalkerLogic {
     private fun attr(s: String?) = (s ?: "").replace('"', '\'').replace('\n', ' ').trim()
     private fun name(s: String?) = (s ?: "").replace(',', '‚').replace('\n', ' ').trim()
 
-    /** Ein Sender als zwei M3U-Zeilen. */
+    /** A channel as two M3U lines. */
     fun liveEntry(src: Source, f: Map<String, String>, genres: Map<String, String>): String? {
         val cmd = f["cmd"]?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val n = name(f["name"]).ifEmpty { return null }
@@ -235,7 +235,7 @@ object StalkerLogic {
         return sb.append(',').append(n).append('\n').append(itemUrl(src.key, "live", cmd)).toString()
     }
 
-    /** Ein Film als zwei M3U-Zeilen. */
+    /** A movie as two M3U lines. */
     fun movieEntry(src: Source, f: Map<String, String>, category: String): String? {
         val cmd = f["cmd"]?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         var n = name(f["name"]).ifEmpty { return null }

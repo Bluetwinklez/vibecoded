@@ -150,7 +150,7 @@ object StalkerApi {
         var n = 0
         out.write("#EXTM3U\n")
 
-        // ---- Sender
+        // ---- Channels
         onPhase("Sender werden geladen …")
         val genres = categories(s, "itv", "get_genres")
         var live = 0
@@ -170,7 +170,7 @@ object StalkerApi {
         }
         val seenSeries = HashSet<String>()
 
-        // ---- Filme (Serien im Film-Bereich werden als Serie vermerkt)
+        // ---- Movies (series in the movie area are marked as series)
         onPhase("Filme werden geladen …")
         val cats = categories(s, "vod", "get_categories").filterKeys { it != "*" }
         val perCat = (MAX_MOVIES / cats.size.coerceAtLeast(1)).coerceIn(40, 600)

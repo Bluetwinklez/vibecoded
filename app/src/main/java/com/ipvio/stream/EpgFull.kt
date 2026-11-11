@@ -30,7 +30,7 @@ object EpgFull {
         return Epg.now(item)
     }
 
-    /** Vergangene Sendungen im Archiv eines Senders, neueste zuerst. */
+    /** Past shows in a channel's archive, newest first. */
     suspend fun archive(item: Item): List<EpgEntry> {
         val info = Catchup.of(item) ?: return emptyList()
         return CatchupLogic.archived(info, get(item), System.currentTimeMillis() / 1000)
