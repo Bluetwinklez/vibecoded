@@ -17,8 +17,8 @@ Backup-Server ungültig: Adresse wie http://server.tld:8080 eingeben.¦Invalid b
 Backup-Server¦Backup servers¦Yedek sunucular¦Rezervni serveri¦Rezervni poslužitelji¦Rezervni serveri¦Servidores de respaldo¦Serveurs de secours¦Server di riserva
 Backup-Server: {#0}¦Backup servers: {#0}¦Yedek sunucular: {#0}¦Rezervni serveri: {#0}¦Rezervni poslužitelji: {#0}¦Rezervni serveri: {#0}¦Servidores de respaldo: {#0}¦Serveurs de secours : {#0}¦Server di riserva: {#0}
 Backup-Server speichern¦Save backup servers¦Yedek sunucuları kaydet¦Sačuvaj rezervne servere¦Spremi rezervne poslužitelje¦Sačuvaj rezervne servere¦Guardar servidores de respaldo¦Enregistrer les serveurs de secours¦Salva server di riserva
-✓ Erreichbar¦✓ Reachable¦✓ Erişilebilir¦✓ Dostupan¦✓ Dostupan¦✓ Dostupan¦✓ Accesible¦✓ Joignable¦✓ Raggiungibile
-✗ Nicht erreichbar seit {0}¦✗ Not reachable since {0}¦✗ {0} tarihinden beri erişilemiyor¦✗ Nedostupan od {0}¦✗ Nedostupan od {0}¦✗ Nedostupan od {0}¦✗ No accesible desde {0}¦✗ Injoignable depuis {0}¦✗ Non raggiungibile dal {0}
+Erreichbar¦Reachable¦Erişilebilir¦Dostupan¦Dostupan¦Dostupan¦Accesible¦Joignable¦Raggiungibile
+Nicht erreichbar seit {0}¦Not reachable since {0}¦{0} tarihinden beri erişilemiyor¦Nedostupan od {0}¦Nedostupan od {0}¦Nedostupan od {0}¦No accesible desde {0}¦Injoignable depuis {0}¦Non raggiungibile dal {0}
 Nicht erreichbar: {0}¦Not reachable: {0}¦Erişilemiyor: {0}¦Nedostupno: {0}¦Nedostupno: {0}¦Nedostupno: {0}¦No accesible: {0}¦Injoignable : {0}¦Non raggiungibile: {0}
 Hauptserver: {0}¦Main server: {0}¦Ana sunucu: {0}¦Glavni server: {0}¦Glavni poslužitelj: {0}¦Glavni server: {0}¦Servidor principal: {0}¦Serveur principal : {0}¦Server principale: {0}
 Hinzufügen¦Add¦Ekle¦Dodaj¦Dodaj¦Dodaj¦Añadir¦Ajouter¦Aggiungi

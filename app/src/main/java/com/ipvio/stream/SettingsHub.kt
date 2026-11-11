@@ -1122,7 +1122,7 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
     val scope = rememberCoroutineScope()
     var editing by remember { mutableIntStateOf(-1) }
     var name by remember { mutableStateOf("") }
-    // Backup-Server einer Xtream-Playlist bearbeiten
+    // Editing the backup servers of an Xtream playlist
     var editingB by remember { mutableIntStateOf(-1) }
     var backups by remember { mutableStateOf(backupList(emptyList())) }
     var backupErr by remember { mutableStateOf<String?>(null) }

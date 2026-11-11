@@ -351,18 +351,18 @@ private fun Step(n: Int, text: String) {
     }
 }
 
-/** Erklärung unter den Backup-Feldern (Playlist hinzufügen und Einstellungen > Playlists). */
+/** Explanation under the backup fields (Add playlist and Settings > Playlists). */
 internal const val BACKUP_HINT = "Fällt der Server aus, wechselt die App von selbst zu einem Backup-Server. Anbieter nennen sie oft als weitere Server- oder DNS-Adressen; Benutzername und Passwort bleiben gleich."
 internal const val BACKUP_INVALID = "Backup-Server ungültig: Adresse wie http://server.tld:8080 eingeben."
 
-/** Leere Felder sind erlaubt, ausgefüllte müssen eine gültige Server-Adresse sein. */
+/** Empty fields are allowed; filled ones must be a valid server address. */
 internal fun backupsValid(b: List<String>): Boolean = b.all { it.isBlank() || HostFailoverLogic.normalize(it) != null }
 
-/** Bearbeitbare Liste der Backup-Server, mit mindestens einem (leeren) Feld. */
+/** Editable list of backup servers, with at least one (empty) field. */
 internal fun backupList(saved: List<String>): SnapshotStateList<String> =
     mutableStateListOf<String>().apply { addAll(saved); if (isEmpty()) add("") }
 
-/** Ein Feld je Backup-Server; weitere kommen über den „+“-Knopf dazu, leere Felder werden beim Speichern ignoriert. */
+/** One field per backup server; the "+" button adds more, empty fields are ignored when saving. */
 @Composable
 internal fun BackupFields(list: SnapshotStateList<String>) {
     for (i in list.indices) {
@@ -371,14 +371,19 @@ internal fun BackupFields(list: SnapshotStateList<String>) {
     }
 }
 
-/** „Erreichbar“ bzw. „Nicht erreichbar seit …“ unter einer Server-Adresse; nichts, solange die App sie nie benutzt hat. */
+/** "Reachable" or "Not reachable since …" under a server address; nothing while the app has never used it. */
 @Composable
 internal fun HostHealthLine(addr: String) {
-    HostFailover.healthVersion   // neu zeichnen, wenn sich der Zustand ändert
+    HostFailover.healthVersion   // recompose when the state changes
     val h = HostFailoverLogic.normalize(addr)?.let { HostFailover.health(it) } ?: return
-    if (h.ok) Text("✓ Erreichbar", color = Accent2, fontSize = 14.sp)
-    else {
-        val t = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT, Lang.locale()).format(java.util.Date(h.at))
-        Text("✗ Nicht erreichbar seit $t", color = DS.Danger, fontSize = 14.sp)
+    // Symbols are drawn (AppIcons), the dictionary texts contain none (I18nCoreTest.noEmojisInDictionaries)
+    val color = if (h.ok) Accent2 else DS.Danger
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        AppIcon(if (h.ok) AIcon.Check else AIcon.Close, color, size = 16.dp)
+        if (h.ok) Text("Erreichbar", color = color, fontSize = 14.sp)
+        else {
+            val t = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT, Lang.locale()).format(java.util.Date(h.at))
+            Text("Nicht erreichbar seit $t", color = color, fontSize = 14.sp)
+        }
     }
 }

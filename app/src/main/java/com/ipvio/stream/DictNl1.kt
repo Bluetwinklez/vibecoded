@@ -17,8 +17,8 @@ Backup-Server ungültig: Adresse wie http://server.tld:8080 eingeben.¦Ongeldige
 Backup-Server¦Back-upservers
 Backup-Server: {#0}¦Back-upservers: {#0}
 Backup-Server speichern¦Back-upservers opslaan
-✓ Erreichbar¦✓ Bereikbaar
-✗ Nicht erreichbar seit {0}¦✗ Niet bereikbaar sinds {0}
+Erreichbar¦Bereikbaar
+Nicht erreichbar seit {0}¦Niet bereikbaar sinds {0}
 Nicht erreichbar: {0}¦Niet bereikbaar: {0}
 Hauptserver: {0}¦Hoofdserver: {0}
 Hinzufügen¦Toevoegen

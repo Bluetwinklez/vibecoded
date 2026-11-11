@@ -47,7 +47,7 @@ class HostFailoverLogicTest {
     @Test fun group_any_number_without_empty_or_duplicates() {
         assertEquals(
             listOf("http://main.tld:8080", "http://b1.tld", "http://b2.tld", "http://b3.tld", "http://b4.tld"),
-            HostFailoverLogic.group("http://main.tld:8080/", listOf("b1.tld", "", "http://MAIN.tld:8080", "b2.tld", "b1.tld", "b3.tld", "b4.tld", "kaputt adresse"))
+            HostFailoverLogic.group("http://main.tld:8080/", listOf("b1.tld", "", "http://MAIN.tld:8080", "b2.tld", "b1.tld", "b3.tld", "b4.tld", "broken address"))
         )
         assertEquals(listOf("http://main.tld:8080"), HostFailoverLogic.group("http://main.tld:8080", listOf("", " ")))
     }
