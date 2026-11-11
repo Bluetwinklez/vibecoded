@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Internal: player helper code split from Media3 (no user-visible change).
+
 ## 1.3
 [PENDING: Änderung eintragen]
 
