@@ -11,6 +11,8 @@ object Net {
     val base: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        // Backup servers: if an Xtream server fails, requests go to one of the backup servers entered for it
+        .addInterceptor(HostFailover.Interceptor)
         .build()
 
     fun withTimeouts(connectSec: Long, readSec: Long): OkHttpClient =

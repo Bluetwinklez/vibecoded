@@ -235,6 +235,8 @@ object PlaylistStore {
         if (lists.isEmpty() && old != null) lists.add(PL(hostOf(old), old))
         active = p.getInt("active", 0).coerceIn(0, maxOf(lists.size - 1, 0))
         multi = MultiLogic.decodeKeys(p.getString("multi", null))
+        initHealth(c)
+        syncFailover(c)
         if (enc == null && lists.isNotEmpty()) persist(c)   // taking over the old plaintext list (after "active" is set)
     }
 
@@ -277,7 +279,11 @@ object PlaylistStore {
         e.commit()   // straight to disk: a crash right afterwards must not lose anything
     }
 
-    fun clearPending(c: Context) = writePending(c, null)
+    fun clearPending(c: Context) {
+        writePending(c, null)
+        // A finished or cancelled add no longer needs its own failover group (see [adding])
+        if (adding != null) { adding = null; if (inited) syncFailover(c) }
+    }
 
     private fun failPending(c: Context, msg: String) {
         runCatching { pending(c)?.let { writePending(c, it.copy(state = LoadLogic.FAILED, msg = msg)) } }
@@ -287,7 +293,11 @@ object PlaylistStore {
     fun exportLists(c: Context): JSONArray {
         ensure(c)
         val a = JSONArray()
-        for (l in lists) a.put(JSONObject().put("name", l.name).put("url", l.url))
+        for (l in lists) {
+            val o = JSONObject().put("name", l.name).put("url", l.url)
+            backups(c, l.url).takeIf { it.isNotEmpty() }?.let { o.put("backups", JSONArray(it)) }
+            a.put(o)
+        }
         return a
     }
 
@@ -298,10 +308,14 @@ object PlaylistStore {
             val o = a.optJSONObject(i) ?: continue
             val u = PlaylistLogic.normalizeUrl(o.optString("url")) ?: continue
             if (u.startsWith("file://")) continue   // files exist only on the old device
-            if (lists.none { it.url == u }) lists.add(PL(o.optString("name").ifBlank { hostOf(u) }, u))
+            if (lists.none { it.url == u }) {
+                lists.add(PL(o.optString("name").ifBlank { hostOf(u) }, u))
+                o.optJSONArray("backups")?.let { b -> setBackups(c, u, (0 until b.length()).map { b.optString(it) }) }
+            }
         }
         active = active.coerceIn(0, maxOf(lists.size - 1, 0))
         persist(c)
+        syncFailover(c)
         // Write to disk immediately (the app restarts right away)
         prefs(c).edit().commit()
     }
@@ -319,6 +333,77 @@ object PlaylistStore {
     /** Xtream address (user and password URL-encoded) or null if a value is missing or invalid. */
     fun xtreamUrl(host: String, user: String, pass: String): String? = PlaylistLogic.xtreamUrl(host, user, pass)
 
+    // ------------------------------------------------------------------ Backup servers (Xtream)
+
+    private const val BACKUP_PREFIX = "xt_backup_"
+    private fun backupKey(u: String) = BACKUP_PREFIX + key(u)
+
+    /** Saved backup servers of an Xtream playlist (without the main server), otherwise empty. */
+    fun backups(c: Context, url: String): List<String> {
+        val s = prefs(c).getString(backupKey(url), null) ?: return emptyList()
+        return runCatching { JSONArray(s).let { a -> (1 until a.length()).map { a.getString(it) } } }.getOrDefault(emptyList())
+    }
+
+    /**
+     * Save the backup servers of an Xtream playlist (empty entries are dropped, any number). Stored as
+     * [main server, backup…] so failover also applies to a playlist that is still being added ([adding]).
+     */
+    fun setBackups(c: Context, url: String, backups: List<String>) {
+        ensure(c)
+        val base = XtreamLogic.fromUrl(url)?.base ?: return
+        adding = url
+        val g = HostFailoverLogic.group(base, backups)
+        val e = prefs(c).edit()
+        if (g.size > 1) e.putString(backupKey(url), JSONArray(g).toString()) else e.remove(backupKey(url))
+        e.apply()
+        syncFailover(c)
+    }
+
+    private const val HEALTH_KEY = "xt_host_health"
+
+    /** Load the saved server state and save future changes (once at start). */
+    private fun initHealth(c: Context) {
+        val app = c.applicationContext
+        runCatching {
+            val o = JSONObject(prefs(app).getString(HEALTH_KEY, null) ?: "{}")
+            HostFailover.loadHealth(o.keys().asSequence().associateWith { k ->
+                val a = o.getJSONArray(k); HostFailover.Health(a.getInt(0) == 1, a.getLong(1))
+            })
+        }
+        HostFailover.onHealthChange = { m ->
+            val o = JSONObject()
+            for ((k, h) in m) o.put(k, JSONArray().put(if (h.ok) 1 else 0).put(h.at))
+            prefs(app).edit().putString(HEALTH_KEY, o.toString()).apply()
+        }
+    }
+
+    /** Servers of this playlist (main and backups) that were not reachable last time. */
+    fun downServers(c: Context, url: String): List<String> {
+        HostFailover.healthVersion   // recompose when the state changes
+        val base = XtreamLogic.fromUrl(url)?.base ?: return emptyList()
+        return (listOf(base) + backups(c, url)).filter { HostFailover.health(it)?.ok == false }
+    }
+
+    /** Playlist URL passed to [setBackups] that may not be in [lists] yet (new playlist while it loads). */
+    @Volatile private var adding: String? = null
+
+    /**
+     * Hand the groups to [HostFailover]: one per Xtream playlist in [lists] (plus [adding]), also for playlists without
+     * backups, so their requests never go to another playlist's servers. Saved groups of playlists that no longer
+     * exist (e.g. a failed add, or a changed password) are ignored.
+     */
+    private fun syncFailover(c: Context) {
+        val p = prefs(c)
+        val urls = lists.map { it.url } + listOfNotNull(adding?.takeIf { a -> lists.none { it.url == a } })
+        HostFailover.setGroups(urls.mapNotNull { u ->
+            val base = XtreamLogic.fromUrl(u)?.base ?: return@mapNotNull null
+            val saved = p.getString(backupKey(u), null)?.let { v ->
+                runCatching { JSONArray(v).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrNull()
+            }
+            saved?.takeIf { it.isNotEmpty() } ?: listOf(base)
+        })
+    }
+
     fun activate(c: Context, i: Int) { ensure(c); if (i in lists.indices) { active = i; persist(c) } }
 
     fun rename(c: Context, i: Int, name: String) {
@@ -330,11 +415,14 @@ object PlaylistStore {
         ensure(c)
         if (i !in lists.indices) return
         deleteFiles(c, lists[i].url)
+        prefs(c).edit().remove(backupKey(lists[i].url)).apply()
+        if (adding == lists[i].url) adding = null
         extras.remove(lists[i].url)
         multi = multi - key(lists[i].url)
         lists.removeAt(i)
         active = active.coerceIn(0, maxOf(lists.size - 1, 0))
         persist(c)
+        syncFailover(c)
         if (lists.isEmpty()) setItems(emptyList())
     }
 
@@ -1054,6 +1142,7 @@ object PlaylistStore {
         val idx = lists.indexOfFirst { it.url == u }
         if (idx >= 0) active = idx else { lists.add(PL(hostOf(u), u)); active = lists.size - 1 }
         persist(c)
+        syncFailover(c)
         clearPending(c)
     }
 
