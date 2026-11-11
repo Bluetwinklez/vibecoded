@@ -22,7 +22,7 @@ Working rules for AI-assisted changes to this repository. Read this file first i
 ## 3. Environment limits
 
 - The assistant cannot run Gradle, has no Android SDK, and cannot test on a device.
-- Checks that can run: syntax checks of changed files, pure-Kotlin logic tests (JUnit, no Android imports), `npm test` for the license server.
+- Checks that can run: syntax checks of changed files and pure-Kotlin logic tests (JUnit, no Android imports).
 - The maintainer builds in Android Studio and tests on device or Fire TV. Every change ends with concrete test steps for the maintainer.
 - Never report tests as passed unless they were actually run. State which checks ran and which did not.
 - The maintainer commits and pushes. Commit messages are proposed in English.
@@ -123,7 +123,7 @@ Maintained in `docs/` (English), kept in line with the code:
 
 Documentation must describe the actual code. Mark unknowns as unknown.
 
-Not created yet: `docs/tasks/WORK_STATE.md` and `docs/REFACTORING-PROGRESS.md` are added with the documentation skeleton (T-005). Until then, treat them as planned, not as existing files.
+Task state and progress live in `docs/tasks/WORK_STATE.md` and `docs/REFACTORING-PROGRESS.md` (the restructuring steps U-1 to U-5 are listed there).
 
 ## 14. Uncertainty
 
@@ -131,8 +131,8 @@ If you do not know how something works: read the code first. Do not guess. Ask b
 
 ## 15. Current state
 
-- Current phase: **P1 (baseline), finishing**. P0 (audit) and the documentation skeleton are done. S1 from P3 was done early as T-002.
-- Completed tasks: T-001 (test expectation for 10 languages), T-001b (`org.json` test dependency), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected), T-005 (documentation skeleton; CHANGELOG content for 1.2 and 1.3 still pending).
-- Open tasks: T-004 (quality baseline, values pending), T-006 (add five missing stores to the backup `NAMES`).
-- Next step: finish T-004, then T-006.
+- Current phase: **P2 (comments to English) done** with batch 8 (final sweep). Next: restructuring steps U-1 to U-5 (P4 names, P5 file splits, package structure). P1 still has PENDING values (T-004). S1 from P3 was done early as T-002.
+- Completed tasks: T-001 (test expectation for 10 languages), T-001b (`org.json` test dependency), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected), T-005 (documentation skeleton; CHANGELOG content for 1.2 and 1.3 still pending), P2 batches 1-8 (comments to English), P6 (repository documents checked, already English).
+- Open tasks: T-004 (quality baseline, values pending), T-006 (add five missing stores to the backup `NAMES`; also translate the last German comment, `Backup.kt:17`), U-1 to U-5.
+- Next step: U-1 (move the Media3-dependent code out of `PlayerLogic.kt` without changing behaviour). T-004 and T-006 stay open in parallel.
 - Details: `docs/REFACTORING-PROGRESS.md` and `docs/tasks/WORK_STATE.md`.
