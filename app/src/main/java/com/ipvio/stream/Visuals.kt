@@ -82,7 +82,7 @@ fun ArtPlaceholder(item: Item, modifier: Modifier = Modifier, showTitle: Boolean
 
 /**
  * Fading in a screen: softly from a slight shift, only transparency/shift (without an intermediate buffer).
- * Neuer [key] = neu einblenden (z. B. anderer Reiter).
+ * New [key] = fade in again (e.g. a different tab).
  */
 @Composable
 fun Modifier.screenEnter(key: Any? = Unit): Modifier {

@@ -1062,7 +1062,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
                         true
                     }
                     !cur.live && !controls && panel == Panel.NONE && !showChannels && !showGuide && digitOf(k) >= 0 && player.duration > 0 -> {
-                        // Zifferntaste springt zu 0–90 % des Films
+                        // Digit key jumps to 0–90 % of the movie
                         val n = digitOf(k)
                         player.seekTo(player.duration * n / 10)
                         flash = Flash(null, (n * 10).toString() + " %")

@@ -26,7 +26,7 @@ object ContentMemory {
     fun restore(): Boolean = last?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
 }
 
-/** Merkt sich dieses Element als zuletzt fokussiert (siehe [ContentMemory]). */
+/** Remembers this element as last focused (see [ContentMemory]). */
 @Composable
 fun Modifier.trackFocus(): Modifier {
     val fr = remember { FocusRequester() }

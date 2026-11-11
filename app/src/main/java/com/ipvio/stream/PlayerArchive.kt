@@ -97,7 +97,7 @@ fun BoxScope.ArchivePanel(
         Modifier.align(Alignment.TopEnd).padding(top = PT.MarginY, end = PT.MarginY).width(w).heightIn(max = maxH)
             .clip(shape).background(PT.PanelBg).border(1.dp, PT.PanelBorder, shape).padding(22.dp)
     ) {
-        // Kopf: welcher Sender, welcher Tag
+        // Header: which channel, which day
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(46.dp).clip(RoundedCornerShape(DS.RadiusS)).background(DS.Overlay2), contentAlignment = Alignment.Center) {
                 val lg = ch?.logo
@@ -148,7 +148,7 @@ fun BoxScope.ArchivePanel(
                     }
                 }
             }
-            // 2) Tage des Senders
+            // 2) Days of the channel
             ArchiveColumn("Tag", Modifier.width(210.dp)) {
                 if (progs == null) Text("lädt …", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(12.dp))
                 else if (days.isEmpty()) Text("Keine vergangenen Sendungen im Programm.", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(12.dp).focusRequester(daySel).focusable())
@@ -173,7 +173,7 @@ fun BoxScope.ArchivePanel(
                     }
                 }
             }
-            // 3) Sendungen des Tages
+            // 3) Programs of the day
             ArchiveColumn("Sendungen", Modifier.weight(1f)) {
                 if (dayProgs.isEmpty()) Text(if (progs == null) "lädt …" else "", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(12.dp))
                 else {

@@ -195,7 +195,7 @@ private fun DetailScreenFull(
     val tmdbId = meta?.tmdbId
     val imdbId = meta?.imdbId
     val isTv = meta?.isTv == true
-    // Lange Staffeln (One Piece & Co.): TMDB-Staffeln holen, um sie als Abschnitte zu nutzen
+    // Long seasons (One Piece & co.): fetch TMDB seasons to use them as sections
     val needTmdbSeasons = remember(item) {
         item.kind == Kind.SERIES && item.episodes.groupBy { it.season }.values.any { it.size > EpisodeLogic.LONG || it.first().num > 1 }
     }

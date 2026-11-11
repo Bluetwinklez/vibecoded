@@ -54,7 +54,7 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
             drawLine(color, Offset(x1 * s, y1 * s), Offset(x2 * s, y2 * s), strokeWidth = w, cap = StrokeCap.Round)
         fun rect(x: Float, y: Float, rw: Float, rh: Float, r: Float) =
             drawRoundRect(color, topLeft = Offset(x * s, y * s), size = Size(rw * s, rh * s), cornerRadius = CornerRadius(r * s), style = sw)
-        // Symbole wie im Entwurf (Umriss-Stil)
+        // Icons as in the design draft (outline style)
         when (id) {
             0 -> { // Home: Haus
                 val p = Path().apply {

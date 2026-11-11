@@ -106,7 +106,7 @@ fun Badge(text: String, bg: Color = Color(0x26FFFFFF), fg: Color = Color.White, 
     }
 }
 
-/** Bewertung als Abzeichen: Stern-Symbol + Zahl. */
+/** Rating as a badge: star symbol + number. */
 @Composable
 fun RatingBadge(r: Double, bg: Color = DS.Scrim) = Badge(String.format("%.1f", r), bg, DS.Gold, AIcon.Star)
 
@@ -125,7 +125,7 @@ fun SectionHeader(title: String) {
     }
 }
 
-/** Untertitel einer Serienkarte: „5 Staffeln · 62 Folgen“. */
+/** Subtitle of a series card, e.g. "5 Staffeln · 62 Folgen" (German key text). */
 fun seriesInfo(item: Item): String {
     // Series with a placeholder: seasons and episodes are not known yet (loaded on opening)
     if (XtreamLogic.isLazy(item) || StalkerLogic.isLazy(item)) return ""

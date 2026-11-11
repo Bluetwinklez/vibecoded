@@ -490,7 +490,7 @@ private fun AppContent() {
             SettingsNav.openPage = 2
             goTab(MenuLogic.SETTINGS)
         }
-        // Genre-Erkennung im Hintergrund: dezent oben rechts, nie im Player
+        // Genre detection in the background: unobtrusive at the top right, never in the player
         if (p == null && !adding) MetaBadge(Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 22.dp))
         remindNow?.let { r ->
             ReminderCard(r, Modifier.align(Alignment.TopCenter).padding(top = 24.dp), onClose = { remindNow = null }) {

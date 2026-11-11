@@ -33,7 +33,7 @@ enum class AIcon {
     Grid, Categories, Lists, Refresh, External, Up, Down, Left, Right, Caret, Dot, Gear,
     Sparkle, Music, Tag, Live, Download, Person, Lock, Storage, Pulse, Backspace, History,
     Tomato, Rewind, FastForward, Catchup, Eye, EyeOff, Globe,
-    // Runde 14
+    // Round 14
     Edit, Heart, HeartFilled, Sliders, Layers
 }
 

@@ -91,7 +91,7 @@ import androidx.compose.foundation.layout.requiredWidth
 /** Side margin of the rows (design: cards from x 252, i.e. 22–24 px after the sidebar). */
 val RowPadX: Dp get() = dpx(24)
 
-/** Kartenfarben des Entwurfs. */
+/** Card colors of the design draft. */
 private val CardBg = Color(0xFF141418)
 private val CardLine = Tok.Line
 private val SoftInk = Tok.TextLow
@@ -118,7 +118,7 @@ fun cardGrid(contentW: Dp, size: Int = General.cardSize, perRow: Int = 0): CardG
 /** Landscape image from TMDB in a suitable size for cards (w780 instead of w1280). */
 fun cardBackdrop(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
 
-/** „2016 | Abenteuer | 1h 47min | ★ 7.6“ wie im Entwurf. */
+/** "2016 | Abenteuer | 1h 47min | ★ 7.6" as in the design draft. */
 @Composable
 fun HeroMetaLine(item: Item, m: Meta?, dots: Boolean = false) {
     val parts = ArrayList<Pair<String, Boolean>>()   // Text, roh (nicht übersetzen)
@@ -243,7 +243,7 @@ fun DetailPill(text: String, modifier: Modifier = Modifier, light: Boolean = fal
 @Composable
 fun RowTitle(
     title: String, linkReq: FocusRequester?, firstCard: FocusRequester?, raw: Boolean = false,
-    /** Erste Reihe des Bildschirms: Hoch = Profil (ganz rechts oben), Links = letzter Knopf im Bild oben. */
+    /** First row of the screen: Up = profile (far top right), Left = last button at the top of the picture. */
     upReq: FocusRequester? = null, leftReq: FocusRequester? = null,
     /** State of the card row below: if the first card is shifted/not composed, scroll to the start first */
     rowState: LazyListState? = null,
@@ -327,7 +327,7 @@ class QuickTile(
     val title: String, val sub: String, val icon: Int, val c1: Color, val c2: Color, val iconColor: Color,
     /** Round 15: real image from the own library (scene image of a top title) instead of the drawn shape */
     val image: String? = null,
-    /** Live TV: Senderlogos (Favoriten, zuletzt gesehen) */
+    /** Live TV: channel logos (favorites, recently watched) */
     val logos: List<String> = emptyList(),
     val onClick: () -> Unit
 )
@@ -569,7 +569,7 @@ fun LandscapeCard(item: Item, modifier: Modifier, onClick: () -> Unit) {
     }
 }
 
-/** „2 Staffeln“ (Querformat-Karten haben wenig Platz). */
+/** "2 Staffeln" (landscape cards have little room). */
 fun seasonsText(item: Item): String { val n = seasonCount(item); return if (n == 1) "1 Staffel" else "$n Staffeln" }
 
 const val CARD_POSTER = 0
@@ -805,7 +805,7 @@ fun PreviewQualityBadge(q: String) {
 fun CardGridRows(list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
     val g = LocalCardGrid.current
     val live = list.firstOrNull()?.kind == Kind.LIVE
-    // gleiche Spaltenzahl wie cardGrid (Knopf „Ansicht“)
+    // same column count as cardGrid ("Ansicht" button)
     val sz = General.cardSize.coerceIn(0, 2)
     val perRow = if (style == CARD_LAND || live) intArrayOf(8, 6, 5)[sz] else intArrayOf(10, 8, 6)[sz]
     val gap = if (style == CARD_LAND || live) g.gap else g.posterGap

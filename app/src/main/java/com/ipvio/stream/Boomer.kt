@@ -102,7 +102,7 @@ object Boomer {
     var logos by mutableStateOf(true)
         private set
 
-    /** Selbst zusammengestellte Kacheln (Sender-IDs in Reihenfolge). Leer = automatisch (Live-Favoriten). */
+    /** Self-assembled tiles (channel IDs in order). Empty = automatic (live favorites). */
     val custom = mutableStateListOf<String>()
 
     /** Self-selected movies and series (IDs in order of selection). */

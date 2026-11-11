@@ -43,7 +43,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     val pend = remember { PlaylistStore.pending(ctx) }
     val pendX = remember { pend?.let { LoadLogic.xtreamParts(it.url) } }
     var xtream by remember { mutableStateOf(pendX != null) }
-    // Runde 20: Stalker-Portal (Portal-Adresse + MAC-Adresse)
+    // Round 20: Stalker portal (portal address + MAC address)
     val pendS = remember { pend?.url?.let { StalkerLogic.parse(it) } }
     var stalker by remember { mutableStateOf(pendS != null) }
     var portal by remember { mutableStateOf(pendS?.portal ?: "") }
@@ -72,7 +72,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     }
     var serving by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
-        // Runde 20: Playlist-Datei vom Handy hochladen, Absturzbericht am Handy lesen
+        // Round 20: upload a playlist file from the phone, read the crash report on the phone
         receiver.uploadDir = ImportFiles.tmpDir(ctx)
         receiver.saveUpload = { name, f -> ImportFiles.save(ctx, name, f) }
         receiver.crash = { ImportFiles.crashText(ctx) }
