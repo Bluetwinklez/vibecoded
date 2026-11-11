@@ -354,12 +354,17 @@ object StalkerApi {
      */
     @Volatile var lastDetail = ""
 
-    /** One create_link request: the "js" part (or null) and a short, masked description for [lastDetail]. */
-    private class LinkAnswer(val js: Any?, val what: String, val authFailed: Boolean)
+    /**
+     * One create_link request: the "js" part (or null) and a short, masked description for [lastDetail].
+     * [stop] = more requests now cannot help: no connection (each further form would wait for the same timeout), or still
+     * "429 Too Many Requests" after the wait in [call] (each further form would make the limit worse).
+     */
+    private class LinkAnswer(val js: Any?, val what: String, val authFailed: Boolean, val stop: Boolean = false)
 
     private fun linkCall(src: StalkerLogic.Source, url: String, token: String): LinkAnswer {
-        val (code, body) = call(src, url, token) ?: return LinkAnswer(null, "no connection", false)
+        val (code, body) = call(src, url, token) ?: return LinkAnswer(null, "no connection", false, stop = true)
         if (authFailed(body)) return LinkAnswer(null, "Authorization failed", true)
+        if (code == 429) return LinkAnswer(null, "HTTP 429", false, stop = true)
         val o = if (code in 200..299) jsonOf(body) else null
         val what = if (code !in 200..299) "HTTP $code" else o?.opt("js")?.toString() ?: ("no JSON: " + body.take(80))
         return LinkAnswer(o?.opt("js"), StalkerLink.mask(what, src.mac, token), false)
@@ -378,40 +383,54 @@ object StalkerApi {
         val src = sourceOf(ref.key) ?: return@withContext fail("portal login not found")
         val item = StalkerLink.Play.of(ref.type, ref.cmd, ref.series)
 
-        /** create_link in its request forms. Address, or null; [rejected] = the portal rejected the session. */
+        /**
+         * create_link in its request forms. Address, or null; [rejected] = the portal rejected the session,
+         * [stopped] = the portal cannot give an address right now (no connection, request limit, stream limit).
+         */
         var rejected = false
+        var stopped = false
         fun ask(s: Session, cmd: String, series: String?, tag: String): String? {
             for ((i, link) in StalkerLink.requests(s.endpoint, item.linkType, cmd, series).withIndex()) {
                 val a = linkCall(src, link, s.token)
                 trace.add("$tag.${i + 1}: ${a.what}")
                 // Session no longer accepted: other request forms would fail the same way
                 if (a.authFailed) { rejected = true; return null }
+                if (a.stop) { stopped = true; return null }
                 val f = when (val r = a.js) {
                     is JSONObject -> fields(r)
                     is String -> mapOf("cmd" to r)
                     else -> continue
                 }
                 StalkerLink.address(s.endpoint, src.mac, f, item.linkType, cmd)?.let { return it }
+                // Stream limit of the account reached: every other form gets the same answer
+                if (StalkerLink.isFinal(StalkerLink.error(f))) { stopped = true; return null }
             }
             return null
         }
 
-        for (attempt in 0 until 3) {
-            // A new login only after the portal rejected the session; short pause so a request limit can recover
-            if (attempt > 0) delay(1500)
+        // Channels: one new login after any failure, without a pause, as before (zapping stays as it was).
+        // Movies/episodes: a new login only after the portal rejected the session, with a short pause so a request
+        // limit can recover.
+        val live = ref.type == "itv"
+        for (attempt in 0 until (if (live) 2 else 3)) {
+            if (attempt > 0 && !live) delay(1500)
             rejected = false
+            stopped = false
             val s = runCatching { login(src, force = attempt > 0) }.getOrNull() ?: return@withContext fail("login failed ($note)")
             val n = attempt + 1
             // 1. The command from the list (not for movies that are known to need their file)
             if (item.cmd != null) {
                 ask(s, item.cmd, item.series, "$n")?.let { lastDetail = ""; return@withContext it }
-                if (rejected) { if (ref.type == "itv") break else continue }
+                if (live) continue
+                if (stopped) break
+                if (rejected) continue
             }
             // 2. Movie/episode with its own files (Ministra video club, "nothing_to_play" above): ask for its first file
             if (item.lookup != null) {
                 val fc = fileCmd(src, s, item.lookupType, item.lookup)
                 trace.add("$n.file: ${fc ?: "none ($note)"}")
                 if (fc != null) ask(s, fc, null, "$n.F")?.let { lastDetail = ""; return@withContext it }
+                if (stopped) break
                 if (rejected || note == "Authorization failed") continue
             }
             break

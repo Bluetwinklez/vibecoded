@@ -57,20 +57,40 @@ object StalkerLink {
         return m.groupValues[1] + path
     }
 
+    /** Error field of a create_link answer ("nothing_to_play", "limit", …); null = none ("", "0", "null", "false"). */
+    fun error(f: Map<String, String>): String? =
+        f["error"]?.trim()?.takeIf { it.isNotEmpty() && it != "0" && !it.equals("null", true) && !it.equals("false", true) }
+
+    /**
+     * true = no other request form and no file lookup can help, so stop asking: the account's stream limit is reached
+     * ("limit", the value the MAG client reports as too many users). Other errors such as "nothing_to_play" can depend on
+     * the request form, so the next form is still tried.
+     */
+    fun isFinal(error: String?): Boolean = error.equals("limit", ignoreCase = true)
+
+    /** A bare video club command ("/media/<id>.mpg", "/media/file_<id>.mpg"): an identifier, not a path to play. */
+    private val VIRTUAL_CMD = Regex("""^/media/(?:file_)?\d+\.mpg$""", RegexOption.IGNORE_CASE)
+
     /**
      * Play address from the "js" part of a create_link answer ([f] = its fields; a bare string counts as "cmd").
      * [endpoint] = the portal API that answered, [sent] = the command that was asked for. null = nothing playable.
      */
     fun address(endpoint: String, mac: String, f: Map<String, String>, type: String, sent: String = ""): String? {
         val base = installation(endpoint)
+        // With an error set ("nothing_to_play", …) only a full address counts, as before: a path or an address built
+        // from the answer would not play, and the next request form or the file lookup would never be tried
+        val err = error(f)
         for (k in listOf("url", "cmd")) {
             val v = f[k]?.trim()?.takeIf { it.isNotEmpty() && it != "null" } ?: continue
             strip(v)?.let { return it }
-            // Path without a server ("/media/…", "/play/movie.php?…"): served by the portal installation.
-            // Not when the portal only echoes the command it was sent (that means: no address).
+            if (err != null) continue
+            // Path without a server ("/media/…?…", "/play/movie.php?…"): served by the portal installation.
+            // Not when the portal only echoes the command it was sent, and not a bare video club command: both mean
+            // no address.
             val p = v.substringAfterLast(' ')
-            if (base != null && p.startsWith("/") && p != sent.trim().substringAfterLast(' ')) return base + p
+            if (base != null && p.startsWith("/") && p != sent.trim().substringAfterLast(' ') && !VIRTUAL_CMD.matches(p)) return base + p
         }
+        if (err != null) return null
         // Only file id + play token: build the address of the portal's movie player
         val host = origin(endpoint)
         if (type == "vod" && host != null) {
@@ -107,18 +127,22 @@ object StalkerLink {
     /** Movie ID of a video club command "/media/<id>.mpg" (not "/media/file_<id>.mpg"); null otherwise. */
     fun movieIdOf(cmd: String): String? = MEDIA_ID.find(cmd.trim())?.groupValues?.get(1)
 
+    /** More entries than this in a file list means the portal ignored movie_id and sent a whole category. */
+    private const val MAX_FILES = 20
+
     /**
      * Play command of a movie's first file from the answer to get_ordered_list with movie_id ([items], [total] = total_items).
-     * Prefers an entry that already carries "/media/file_…". An entry's bare ID only counts if the answer is a short file
-     * list – a portal that ignores movie_id returns a whole category, and its first movie must not be played instead.
+     * Only a short file list counts: a portal that ignores movie_id returns a whole category, and none of its entries
+     * (not even one that carries "/media/file_…") may be played instead. In a short list an entry that carries
+     * "/media/file_…" wins, otherwise the first entry's bare ID.
      */
     fun fileCmd(items: List<Map<String, String>>, total: Int): String? {
+        if (items.isEmpty() || total > MAX_FILES || items.size > MAX_FILES) return null
         for (f in items) {
             val c = f["cmd"]?.trim().orEmpty()
             val i = c.indexOf("/media/file_")
             if (i >= 0) return c.substring(i).substringBefore(' ')
         }
-        if (items.isEmpty() || total > 20 || items.size > 20) return null
         val id = items[0]["id"]?.trim()?.takeIf { it.isNotEmpty() && it != "null" && it != "0" } ?: return null
         return "/media/file_$id.mpg"
     }

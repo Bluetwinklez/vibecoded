@@ -86,6 +86,47 @@ class StalkerLinkTest {
         // Portal ignored movie_id and sent a whole category: no guessing
         assertNull(StalkerLink.fileCmd(listOf(mapOf("id" to "3", "cmd" to "/media/3.mpg")), 4200))
         assertNull(StalkerLink.fileCmd(emptyList(), 0))
+        // ...also when the category's entries carry their own "/media/file_…" (another title would start)
+        assertNull(StalkerLink.fileCmd(listOf(mapOf("id" to "3", "cmd" to "/media/file_3.mpg")), 4200))
+        assertNull(StalkerLink.fileCmd(List(21) { mapOf("id" to "$it", "cmd" to "/media/file_$it.mpg") }, 21))
+        // A short list with a file entry further down: that file
+        assertEquals("/media/file_9.mpg", StalkerLink.fileCmd(listOf(mapOf("id" to "1"), mapOf("id" to "9", "cmd" to "auto /media/file_9.mpg")), 2))
+    }
+
+    @Test fun portalErrorMeansNoAddress() {
+        val lp = "http://p/stalker_portal/server/load.php"
+        // Another video club command with an error: not playable, so the file lookup still runs
+        assertNull(StalkerLink.address(lp, mac, mapOf("cmd" to "/media/file_123.mpg", "error" to "nothing_to_play"), "vod", "/media/77.mpg"))
+        // Relative path or play token with an error: no address
+        assertNull(StalkerLink.address(lp, mac, mapOf("cmd" to "ffmpeg /play/movie.php?stream=1.mkv", "error" to "limit"), "vod"))
+        assertNull(StalkerLink.address(ep, mac, mapOf("id" to "55", "play_token" to "abc", "cmd" to "", "error" to "nothing_to_play"), "vod"))
+        // A full address still counts, as before this PR
+        assertEquals("http://s/a.mkv", StalkerLink.address(ep, mac, mapOf("cmd" to "ffmpeg http://s/a.mkv", "error" to "link_fault"), "vod"))
+        // Spellings of "no error"
+        assertEquals("http://p/stalker_portal/play/movie.php?stream=1.mkv",
+            StalkerLink.address(lp, mac, mapOf("cmd" to "ffmpeg /play/movie.php?stream=1.mkv", "error" to "0"), "vod"))
+        assertNull(StalkerLink.error(mapOf("error" to "")))
+        assertNull(StalkerLink.error(mapOf("error" to "null")))
+        assertNull(StalkerLink.error(emptyMap()))
+        assertEquals("nothing_to_play", StalkerLink.error(mapOf("error" to " nothing_to_play ")))
+    }
+
+    @Test fun onlyTheStreamLimitStopsTheForms() {
+        assertTrue(StalkerLink.isFinal("limit"))
+        assertTrue(StalkerLink.isFinal("LIMIT"))
+        assertTrue(!StalkerLink.isFinal("nothing_to_play"))
+        assertTrue(!StalkerLink.isFinal(null))
+    }
+
+    @Test fun bareVideoClubCommandIsNoAddress() {
+        val lp = "http://p/stalker_portal/server/load.php"
+        // Form 4 sends "/media/file_123.mpg" for the bare id "123": its echo is not an address
+        assertNull(StalkerLink.address(lp, mac, mapOf("cmd" to "/media/file_123.mpg"), "vod", "123"))
+        // Answer with a different video club command than the one sent
+        assertNull(StalkerLink.address(lp, mac, mapOf("cmd" to "ffmpeg /media/77.mpg"), "vod", "/media/file_5.mpg"))
+        // Other relative paths still count
+        assertEquals("http://p/stalker_portal/play/movie.php?stream=1.mkv",
+            StalkerLink.address(lp, mac, mapOf("url" to "/play/movie.php?stream=1.mkv"), "vod", "/media/77.mpg"))
     }
 
     @Test fun whatToAskFor() {
