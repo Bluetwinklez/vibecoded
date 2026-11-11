@@ -21,6 +21,9 @@
 - Stalker: movies and episodes play on more portals: several `create_link` request forms, addresses from `url`, relative paths or `play_token`, file lookup for episodes, a new login when the portal rejects the session, a short wait on HTTP 429; when nothing plays, the error shows a masked summary of the portal's answer (Stalker part of PR #19)
 - Stalker: a `create_link` answer with an error (e.g. `nothing_to_play`) or a bare video club command no longer counts as a play address, so the file lookup still runs; a file list that is really a whole category no longer starts another title; after a timeout, "429 Too Many Requests" or the account's stream limit no further request forms are sent; live channels log in again once after a failed start, as before PR #19 (follow-up to PR #19)
 
+**Playlists (T-008)**
+- Xtream logins loaded via the API: the loading screen now counts movies and series while they download. Before, it stood still at the size of the channel list (often "256 KB") until everything was there
+
 ## 1.3
 **Playlists and loading**
 - Large playlists load faster: reading, unpacking and parsing now overlap, and the category and quality checks are cheaper
