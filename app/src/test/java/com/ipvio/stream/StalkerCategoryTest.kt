@@ -63,31 +63,35 @@ class StalkerCategoryTest {
         assertEquals(false, StalkerLogic.needsFileLookup(f + ("cmd" to "/media/file_9.mpg"), "/media/file_9.mpg"))
     }
 
+    /** Play address from a create_link answer that only carries "cmd" (see [StalkerLink.address]). */
+    private fun play(endpoint: String, cmd: String, sent: String = "") =
+        StalkerLink.address(endpoint, "00:1A:79:12:34:56", mapOf("cmd" to cmd), "vod", sent)
+
     @Test fun relativePlayUrlUsesPortalInstallation() {
-        assertEquals("http://p.tld/x.m3u8", StalkerLogic.playUrl("http://p.tld/stalker_portal/server/load.php", "ffmpeg http://p.tld/x.m3u8"))
-        assertEquals("http://p.tld:81/stalker_portal/media/vod/i.m3u8", StalkerLogic.playUrl("http://p.tld:81/stalker_portal/server/load.php", "/media/vod/i.m3u8"))
-        assertEquals("http://p.tld/media/1.mp4", StalkerLogic.playUrl("http://p.tld/portal.php", "ffmpeg /media/1.mp4"))
-        assertNull(StalkerLogic.playUrl("http://p.tld/portal.php", ""))
+        assertEquals("http://p.tld/x.m3u8", play("http://p.tld/stalker_portal/server/load.php", "ffmpeg http://p.tld/x.m3u8"))
+        assertEquals("http://p.tld:81/stalker_portal/media/vod/i.m3u8", play("http://p.tld:81/stalker_portal/server/load.php", "/media/vod/i.m3u8"))
+        assertEquals("http://p.tld/media/1.mp4", play("http://p.tld/portal.php", "ffmpeg /media/1.mp4"))
+        assertNull(play("http://p.tld/portal.php", ""))
     }
 
     @Test fun echoedCommandIsNoPlayUrl() {
         val ep = "http://p.tld/stalker_portal/server/load.php"
-        assertNull(StalkerLogic.playUrl(ep, "ffmpeg /media/file_9.mpg", "/media/file_9.mpg"))
-        assertNull(StalkerLogic.playUrl(ep, "/media/77.mpg", "ffmpeg /media/77.mpg"))
-        assertEquals("http://p.tld/stalker_portal/media/vod/9.m3u8", StalkerLogic.playUrl(ep, "/media/vod/9.m3u8", "/media/file_9.mpg"))
-        assertEquals("http://p.tld/x.mp4", StalkerLogic.playUrl(ep, "ffmpeg http://p.tld/x.mp4", "ffmpeg http://p.tld/x.mp4"))
+        assertNull(play(ep, "ffmpeg /media/file_9.mpg", "/media/file_9.mpg"))
+        assertNull(play(ep, "/media/77.mpg", "ffmpeg /media/77.mpg"))
+        assertEquals("http://p.tld/stalker_portal/media/vod/9.m3u8", play(ep, "/media/vod/9.m3u8", "/media/file_9.mpg"))
+        assertEquals("http://p.tld/x.mp4", play(ep, "ffmpeg http://p.tld/x.mp4", "ffmpeg http://p.tld/x.mp4"))
     }
 
     @Test fun fileLookupNeverPlaysAnotherMovie() {
         // Proper file list: the entry carrying its own file command wins
-        assertEquals("/media/file_5.mpg", StalkerLogic.fileCmdOf(listOf(mapOf("id" to "1"), mapOf("id" to "5", "cmd" to "ffmpeg /media/file_5.mpg")), 2))
+        assertEquals("/media/file_5.mpg", StalkerLink.fileCmd(listOf(mapOf("id" to "1"), mapOf("id" to "5", "cmd" to "ffmpeg /media/file_5.mpg")), 2))
         // Short list without commands: first entry ID
-        assertEquals("/media/file_42.mpg", StalkerLogic.fileCmdOf(listOf(mapOf("id" to "42")), 1))
+        assertEquals("/media/file_42.mpg", StalkerLink.fileCmd(listOf(mapOf("id" to "42")), 1))
         // Portal ignored movie_id and sent a category (many entries / large total): no guess
-        assertNull(StalkerLogic.fileCmdOf(listOf(mapOf("id" to "42")), 4200))
-        assertNull(StalkerLogic.fileCmdOf((1..21).map { mapOf("id" to "$it") }, 21))
-        assertNull(StalkerLogic.fileCmdOf(emptyList(), 0))
-        assertNull(StalkerLogic.fileCmdOf(listOf(mapOf("id" to "0")), 1))
+        assertNull(StalkerLink.fileCmd(listOf(mapOf("id" to "42")), 4200))
+        assertNull(StalkerLink.fileCmd((1..21).map { mapOf("id" to "$it") }, 21))
+        assertNull(StalkerLink.fileCmd(emptyList(), 0))
+        assertNull(StalkerLink.fileCmd(listOf(mapOf("id" to "0")), 1))
     }
 
     @Test fun categoryAreasWithTheSameNameStaySeparate() {

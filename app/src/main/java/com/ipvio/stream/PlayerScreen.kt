@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -111,6 +112,8 @@ private fun digitOf(k: Key): Int = when (k) {
     Key.Six, Key.NumPad6 -> 6; Key.Seven, Key.NumPad7 -> 7; Key.Eight, Key.NumPad8 -> 8
     Key.Nine, Key.NumPad9 -> 9; else -> -1
 }
+/** Error when a Stalker portal gives no play address (details: [StalkerApi.lastDetail]). */
+private const val STALKER_NO_ADDRESS = "Das Portal hat keine Abspiel-Adresse geliefert. Später erneut versuchen."
 
 private val SLEEP_MIN = listOf(0, 15, 30, 45, 60, 90, 120)
 
@@ -852,7 +855,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         // Stalker portal: fetch the real address from the portal only now (it is valid only briefly)
         val playUrl = if (StalkerLogic.isItem(cur.url)) StalkerApi.resolve(ctx, cur.url) else cur.url
         if (playUrl == null) {
-            msg = "Das Portal hat keine Abspiel-Adresse geliefert. Später erneut versuchen."; buffering = false
+            msg = STALKER_NO_ADDRESS; buffering = false
             return@LaunchedEffect
         }
         resolvedUrl = playUrl
@@ -1190,7 +1193,17 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             Box(
                 Modifier.align(Alignment.Center).clip(RoundedCornerShape(DS.RadiusM)).background(PT.PanelBg)
                     .padding(horizontal = 28.dp, vertical = 18.dp)
-            ) { Text(m, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold) }
+            ) {
+                Column {
+                    Text(m, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    // Stalker portal: what the portal answered (masked), so the cause can be found
+                    val detail = if (m == STALKER_NO_ADDRESS) StalkerApi.lastDetail else ""
+                    if (detail.isNotEmpty()) {
+                        Text(detail, color = Color(0xCCFFFFFF), fontSize = 12.sp, raw = true, maxLines = 6,
+                            modifier = Modifier.padding(top = 8.dp).widthIn(max = 720.dp))
+                    }
+                }
+            }
         }
         flash?.let { fl ->
             if (fl.icon != null) {

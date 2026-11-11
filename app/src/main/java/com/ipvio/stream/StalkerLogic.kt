@@ -101,9 +101,7 @@ object StalkerLogic {
     fun api(endpoint: String, type: String, action: String, extra: String = ""): String =
         "$endpoint?type=$type&action=$action$extra&JsHttpRequest=1-xml"
 
-    /** Request a play address. [series] = episode number if the command belongs to a whole season. */
-    fun createLink(endpoint: String, type: String, cmd: String, series: String? = null): String =
-        api(endpoint, type, "create_link", "&cmd=" + enc(cmd) + "&series=" + (series?.let { enc(it) } ?: "") + "&forced_storage=undefined&disable_ad=0&download=0")
+    // Requesting a play address ("create_link"): see StalkerLink
 
     /** "ffmpeg http://…" / "ffrt http://…" / "auto http://…" → bare address. */
     fun stripCmd(cmd: String?): String? {
@@ -121,6 +119,8 @@ object StalkerLogic {
 
     const val UA = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3"
     const val X_UA = "Model: MAG250; Link: WiFi"
+    private const val VER = "ImageDescription: 0.2.18-r23-250; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.6.1; " +
+        "API Version: JS API version: 343; STB API version: 146; Player Engine version: 0x58c"
 
     private fun hash(alg: String, s: String) = MessageDigest.getInstance(alg).digest(s.toByteArray()).joinToString("") { "%02X".format(it) }
 
@@ -132,7 +132,10 @@ object StalkerLogic {
         val sn = src.sn.ifEmpty { hash("MD5", src.mac).take(13) }
         val dev = src.id1.ifEmpty { hash("SHA-256", src.mac) }
         val dev2 = src.id2.ifEmpty { dev }
-        return "&hd=1&stb_type=MAG250&client_type=STB&image_version=218&sn=${enc(sn)}&device_id=${enc(dev)}&device_id2=${enc(dev2)}&auth_second_step=1&not_valid_token=0"
+        // As a MAG250 sends it (TiviMate / STB Emu do the same); some portals only accept the token for playback after this
+        return "&hd=1&ver=${enc(VER)}&num_banks=2&sn=${enc(sn)}&stb_type=MAG250&client_type=STB&image_version=218&video_out=hdmi" +
+            "&device_id=${enc(dev)}&device_id2=${enc(dev2)}&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0" +
+            "&api_signature=262"
     }
 
     // ------------------------------------------------------------------ Play addresses in the list
@@ -153,9 +156,12 @@ object StalkerLogic {
      * [series] = episode number (episodes of a season share the season's command).
      */
     fun itemUrl(key: Int, kind: String, cmd: String, series: String? = null): String =
-        "stalker://$key/$kind/" + hex(if (series != null) cmd + SEP + series else cmd) + (if (kind == "movie" || kind == "mfile") ".mp4" else ".ts")
+        "stalker://$key/$kind/" + hex(if (series != null) cmd + SEP + series else cmd) + (if (kind == "movie" || kind == "mfile" || kind == "efile") ".mp4" else ".ts")
 
-    /** [type] = "itv", "vod" or "mfile" (movie whose file is looked up at play time, [cmd] is then the movie ID). */
+    /**
+     * [type] = "itv", "vod", "mfile" (movie whose file is looked up at play time; [cmd] is then the movie ID) or
+     * "efile" (episode of a season; [cmd] also says where it sits, see [StalkerLink.Play.episode]).
+     */
     class ItemRef(val key: Int, val type: String, val cmd: String, val series: String? = null)
 
     fun itemRef(url: String): ItemRef? {
@@ -163,7 +169,7 @@ object StalkerLogic {
         val rest = url.removePrefix("stalker://").split('/')
         if (rest.size != 3) return null
         val key = rest[0].toIntOrNull() ?: return null
-        val type = when (rest[1]) { "live" -> "itv"; "movie" -> "vod"; "mfile" -> "mfile"; else -> return null }
+        val type = when (rest[1]) { "live" -> "itv"; "movie" -> "vod"; "mfile" -> "mfile"; "efile" -> "efile"; else -> return null }
         val raw = unhex(rest[2].substringBefore('.')) ?: return null
         val p = raw.split(SEP, limit = 2)
         return ItemRef(key, type, p[0], p.getOrNull(1))
@@ -253,48 +259,18 @@ object StalkerLogic {
         return sb.append(',').append(n).append('\n').append(url).toString()
     }
 
-    /** Cover of a movie/series; relative paths are resolved against the portal. */
+    /** Cover of a movie/series; relative paths ("/stalker_portal/screenshots/…") are resolved against the portal. */
     private fun cover(src: Source, f: Map<String, String>): String? =
         listOf("screenshot_uri", "cover_big", "cover", "logo").firstNotNullOfOrNull { k ->
             f[k]?.trim()?.takeIf { it.isNotEmpty() && it != "null" }?.let { if (it.startsWith("http")) it else logoUrl(src.portal, it) }
         }
 
-    /** Movie whose play command only comes from its file ID (otherwise the portal returns no address). */
+    /**
+     * Movie whose play command only comes from its file ID: Ministra video club with "has_files" and cmd "/media/<id>.mpg".
+     * create_link with the movie's own cmd returns no address there; it needs "/media/file_<file ID>.mpg".
+     */
     fun needsFileLookup(f: Map<String, String>, cmd: String): Boolean =
         f.containsKey("has_files") && !f["id"].isNullOrBlank() && !cmd.contains("://") && cmd.contains("/media/") && !cmd.contains("/media/file_")
-
-    /**
-     * Answer of create_link as a playable address: "ffmpeg http://…" → http://…; an address without a server
-     * ("/media/…") is resolved against the portal installation ([endpoint] without "/server/load.php" or "/portal.php").
-     * [sent] = the command that was asked for: a portal that only echoes it back has no address, so null.
-     */
-    fun playUrl(endpoint: String, cmd: String?, sent: String = ""): String? {
-        stripCmd(cmd)?.let { return it }
-        val c = cmd?.trim()?.substringAfterLast(' ')?.takeIf { it.startsWith("/") } ?: return null
-        if (c == sent.trim().substringAfterLast(' ')) return null
-        val m = Regex("""^(https?://[^/]+)(/.*)?$""").find(endpoint) ?: return null
-        val path = m.groupValues[2].replace(Regex("""/(?:server/load\.php|[^/]*\.php)$""", RegexOption.IGNORE_CASE), "")
-        return m.groupValues[1] + path + c
-    }
-
-    /** More entries than this in a file list means the portal ignored movie_id and sent a whole category. */
-    private const val MAX_FILES = 20
-
-    /**
-     * Play command of a movie's first file from get_ordered_list with movie_id ([items], [total] = total_items).
-     * An entry that already carries "/media/file_…" wins. A bare entry ID only counts for a short list: a portal that
-     * ignores movie_id returns a whole category, and its first movie must not be played instead. null = no file.
-     */
-    fun fileCmdOf(items: List<Map<String, String>>, total: Int): String? {
-        for (f in items) {
-            val c = f["cmd"]?.trim().orEmpty()
-            val i = c.indexOf("/media/file_")
-            if (i >= 0) return c.substring(i).substringBefore(' ')
-        }
-        if (items.isEmpty() || items.size > MAX_FILES || total > MAX_FILES) return null
-        val id = items[0]["id"]?.trim()?.takeIf { it.isNotEmpty() && it != "null" && it != "0" } ?: return null
-        return "/media/file_$id.mpg"
-    }
 
     /** A series as a placeholder (two M3U lines); the name ends in "S01E01" so parsing recognizes it as a series. */
     fun seriesEntry(src: Source, f: Map<String, String>, catId: String, catName: String, mode: String): String? {

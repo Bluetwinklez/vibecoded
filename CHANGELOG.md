@@ -5,6 +5,7 @@
 - Stalker/Ministra portals load movie and series categories on demand: the first load fetches all channels plus the newest page of each category, further titles come when a category is opened, previewed or scrolled (PR #7)
 - Stalker: movies with their own files (`has_files`) play, relative covers are shown, channels in movie-named genres stay in Live TV (PR #7)
 - Stalker: a portal that only echoes the requested command no longer yields a broken play address, and a portal that ignores `movie_id` no longer plays the first movie of a category instead; movie and series categories with the same name keep separate title counts (follow-up to PR #7)
+- Stalker: movies and episodes play on more portals: several `create_link` request forms, addresses from `url`, relative paths or `play_token`, file lookup for episodes, a new login when the portal rejects the session, a short wait on HTTP 429; when nothing plays, the error shows a masked summary of the portal's answer (Stalker part of PR #19)
 
 ## 1.3
 [PENDING: Änderung eintragen]
