@@ -92,9 +92,9 @@ class CatchupLogicTest {
     @Test fun zeitfenster() {
         val i = CatchupInfo(CatchupLogic.XC, 2)
         assertTrue(CatchupLogic.canPlay(i, start, end, now))
-        assertTrue(CatchupLogic.canPlay(i, now - 600, now + 600, now))              // läuft gerade: von Anfang an
-        assertFalse(CatchupLogic.canPlay(i, now + 600, now + 1200, now))            // kommt erst
-        assertFalse(CatchupLogic.canPlay(i, now - 3 * 86400, now - 3 * 86400 + 60, now))   // zu alt
+        assertTrue(CatchupLogic.canPlay(i, now - 600, now + 600, now))              // running now: from the start
+        assertFalse(CatchupLogic.canPlay(i, now + 600, now + 1200, now))            // not started yet
+        assertFalse(CatchupLogic.canPlay(i, now - 3 * 86400, now - 3 * 86400 + 60, now))   // too old
         assertFalse(CatchupLogic.canPlay(null, start, end, now))
         val list = listOf(EpgEntry("A", "", start, end), EpgEntry("B", "", end, end + 600), EpgEntry("Jetzt", "", now - 60, now + 600), EpgEntry("Alt", "", now - 5 * 86400, now - 5 * 86400 + 600))
         assertEquals(listOf("B", "A"), CatchupLogic.archived(i, list, now).map { it.title })

@@ -56,20 +56,20 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
             drawRoundRect(color, topLeft = Offset(x * s, y * s), size = Size(rw * s, rh * s), cornerRadius = CornerRadius(r * s), style = sw)
         // Icons as in the design draft (outline style)
         when (id) {
-            0 -> { // Home: Haus
+            0 -> { // Home: house
                 val p = Path().apply {
                     moveTo(.12f * s, .5f * s); lineTo(.5f * s, .15f * s); lineTo(.88f * s, .5f * s)
                     moveTo(.22f * s, .44f * s); lineTo(.22f * s, .86f * s); lineTo(.78f * s, .86f * s); lineTo(.78f * s, .44f * s)
                 }
                 drawPath(p, color, style = sw)
             }
-            1 -> { // Filme: Filmstreifen
+            1 -> { // Movies: film strip
                 rect(.14f, .14f, .72f, .72f, .1f)
                 line(.32f, .14f, .32f, .86f); line(.68f, .14f, .68f, .86f)
                 line(.14f, .38f, .32f, .38f); line(.14f, .62f, .32f, .62f)
                 line(.68f, .38f, .86f, .38f); line(.68f, .62f, .86f, .62f)
             }
-            2 -> { // Serien: Filmklappe
+            2 -> { // Series: clapperboard
                 rect(.12f, .38f, .76f, .48f, .08f)
                 val p = Path().apply {
                     moveTo(.12f * s, .38f * s); lineTo(.16f * s, .2f * s); lineTo(.86f * s, .12f * s); lineTo(.88f * s, .3f * s); close()
@@ -77,15 +77,15 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
                 drawPath(p, color, style = sw)
                 line(.36f, .17f, .42f, .34f); line(.6f, .14f, .66f, .32f)
             }
-            3 -> { // Live TV: Fernseher mit Antenne
+            3 -> { // Live TV: television with antenna
                 rect(.1f, .3f, .8f, .56f, .1f)
                 line(.34f, .12f, .5f, .3f); line(.66f, .12f, .5f, .3f)
             }
-            4 -> { // Suche: Lupe
+            4 -> { // Search: magnifying glass
                 drawCircle(color, radius = .26f * s, center = Offset(.44f * s, .44f * s), style = sw)
                 line(.63f, .63f, .86f, .86f)
             }
-            5 -> { // Einstellungen: Zahnrad
+            5 -> { // Settings: gear
                 val c = Offset(.5f * s, .5f * s)
                 for (k in 0 until 8) {
                     val a = Math.toRadians(k * 45.0)
@@ -95,13 +95,13 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
                 drawCircle(color, radius = .27f * s, center = c, style = sw)
                 drawCircle(color, radius = .1f * s, center = c, style = sw)
             }
-            6 -> { // EPG: Liste mit Punkten
+            6 -> { // EPG: list with dots
                 for (y in listOf(.26f, .5f, .74f)) {
                     drawCircle(color, radius = .055f * s, center = Offset(.18f * s, y * s))
                     line(.34f, y, .88f, y)
                 }
             }
-            7 -> { // Favoriten: Herz
+            7 -> { // Favorites: heart
                 val p = Path().apply {
                     moveTo(.5f * s, .84f * s)
                     cubicTo(.08f * s, .56f * s, .06f * s, .2f * s, .3f * s, .18f * s)
@@ -112,19 +112,19 @@ fun MenuIcon(id: Int, color: Color, modifier: Modifier = Modifier) {
                 }
                 drawPath(p, color, style = sw)
             }
-            8 -> { // Meine Liste: Lesezeichen
+            8 -> { // My List: bookmark
                 val p = Path().apply {
                     moveTo(.26f * s, .12f * s); lineTo(.74f * s, .12f * s); lineTo(.74f * s, .88f * s)
                     lineTo(.5f * s, .68f * s); lineTo(.26f * s, .88f * s); close()
                 }
                 drawPath(p, color, style = sw)
             }
-            9 -> { // Verlauf: Uhr mit Zeigern
+            9 -> { // History: clock with hands
                 drawCircle(color, radius = .38f * s, center = Offset(.5f * s, .5f * s), style = sw)
                 line(.5f, .5f, .5f, .28f)
                 line(.5f, .5f, .66f, .6f)
             }
-            10 -> { // Sport: Ball mit Nähten
+            10 -> { // Sport: ball with seams
                 val c = Offset(.5f * s, .5f * s)
                 drawCircle(color, radius = .36f * s, center = c, style = sw)
                 drawArc(color, 200f, 140f, false, topLeft = Offset(.14f * s, .02f * s), size = Size(.72f * s, .5f * s), style = sw)
@@ -183,7 +183,7 @@ val SideStart: androidx.compose.ui.unit.Dp get() = if (SidebarPrefs.pos == Sideb
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: FocusRequester, onFocusIn: (Boolean) -> Unit) {
-    var focusIn by remember { mutableStateOf(false) }   // = Seitenleiste hat den Fokus
+    var focusIn by remember { mutableStateOf(false) }   // = the sidebar has focus
     val pos = SidebarPrefs.pos
     // While the View live preview is open the app is only looked at: the bar does not open by itself (only "always with text" does)
     val expanded = (focusIn && !ViewLive.active) || SidebarPrefs.labels

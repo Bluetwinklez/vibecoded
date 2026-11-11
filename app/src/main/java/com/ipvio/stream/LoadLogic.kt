@@ -94,7 +94,7 @@ object LoadLogic {
     /** What to do with the response: append to the partial file, write from the start or error. */
     fun resumeAction(code: Int, contentRange: String?, offset: Long): Int = when {
         code == 206 && offset > 0 && rangeStart(contentRange) == offset -> APPEND
-        code == 206 -> ERROR           // Teil-Antwort, die nicht passt: lieber neu versuchen als eine kaputte Liste
+        code == 206 -> ERROR           // partial response that does not fit: better to retry than keep a broken list
         code in 200..299 -> RESTART
         else -> ERROR
     }

@@ -235,7 +235,7 @@ object PlaylistStore {
         if (lists.isEmpty() && old != null) lists.add(PL(hostOf(old), old))
         active = p.getInt("active", 0).coerceIn(0, maxOf(lists.size - 1, 0))
         multi = MultiLogic.decodeKeys(p.getString("multi", null))
-        if (enc == null && lists.isNotEmpty()) persist(c)   // Übernahme der alten Klartext-Liste (nach dem Setzen von "active")
+        if (enc == null && lists.isNotEmpty()) persist(c)   // taking over the old plaintext list (after "active" is set)
     }
 
     /** Delete leftovers of aborted downloads older than two days (a raw file can be over 200 MB). */
@@ -274,7 +274,7 @@ object PlaylistStore {
             val token = Secrets.encrypt(v.encode())
             if (token != null) e.putString("pending_enc", token).remove("pending") else e.putString("pending", v.encode()).remove("pending_enc")
         }
-        e.commit()   // sofort auf die Platte: ein Absturz direkt danach darf nichts verlieren
+        e.commit()   // straight to disk: a crash right afterwards must not lose anything
     }
 
     fun clearPending(c: Context) = writePending(c, null)
@@ -297,7 +297,7 @@ object PlaylistStore {
         for (i in 0 until a.length()) {
             val o = a.optJSONObject(i) ?: continue
             val u = PlaylistLogic.normalizeUrl(o.optString("url")) ?: continue
-            if (u.startsWith("file://")) continue   // Dateien liegen nur auf dem alten Gerät
+            if (u.startsWith("file://")) continue   // files exist only on the old device
             if (lists.none { it.url == u }) lists.add(PL(o.optString("name").ifBlank { hostOf(u) }, u))
         }
         active = active.coerceIn(0, maxOf(lists.size - 1, 0))
@@ -587,7 +587,7 @@ object PlaylistStore {
                     LoadLogic.APPEND -> append = true
                     LoadLogic.RESTART -> offset = 0L
                     else -> {
-                        if (offset > 0) { part.delete(); info.delete() }   // Fortsetzen ging schief: beim nächsten Versuch von vorn
+                        if (offset > 0) { part.delete(); info.delete() }   // resuming went wrong: start from the beginning on the next attempt
                         throw PlaylistError(if (r.code == 206 || r.code == 416) "Download konnte nicht fortgesetzt werden. Bitte erneut versuchen." else PlaylistLogic.httpError(r.code))
                     }
                 }
@@ -764,7 +764,7 @@ object PlaylistStore {
     suspend fun switchTo(c: Context, i: Int) {
         ensure(c)
         if (i !in lists.indices) return
-        if (loadLock.isLocked) return   // es läuft gerade ein Laden: nicht dazwischenfunken
+        if (loadLock.isLocked) return   // a load is already running: do not interfere
         activate(c, i)
         primaryItems = emptyList(); primaryUrl = null
         merged = MultiLogic.Merged(emptyList(), emptySet(), emptyMap()); sourceNames = emptyList()
@@ -966,7 +966,7 @@ object PlaylistStore {
         try {
             return loadInner(c, url, save, skipNetworkWhenCached, ask, resumed)
         } finally {
-            loading = false   // auch bei Abbruch: sonst bliebe der Ladezustand (und die Bildschirm-Wachhaltung) hängen
+            loading = false   // also on cancel: otherwise the loading state (and the screen keep-awake) would stay stuck
             heavy = false
             langAsk = null
             loadStarted = 0L

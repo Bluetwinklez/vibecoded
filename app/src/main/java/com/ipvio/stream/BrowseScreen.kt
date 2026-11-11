@@ -406,7 +406,7 @@ private fun CinemaView(
         val baseW = posterH / 1.5f
         val aspect = 1.5f
         val rowH = posterH + dpx(56)
-        val peekY = rowH - dpx(24)                       // Detail-Screen ragt so weit unter die Reihe
+        val peekY = rowH - dpx(24)                       // the detail screen reaches this far under the row
         var cur by remember(jumpTick) { mutableIntStateOf(state.focused.coerceIn(0, maxOf(list.lastIndex, 0))) }
         var open by remember { mutableStateOf(false) }
         val t by animateFloatAsState(

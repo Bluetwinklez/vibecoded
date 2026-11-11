@@ -6,7 +6,7 @@ package com.ipvio.stream
  * The result is a grid: true = dark module.
  */
 object QrCode {
-    private val ECC_PER_BLOCK = intArrayOf(0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30)   // Stufe M, ab Version 1
+    private val ECC_PER_BLOCK = intArrayOf(0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30)   // level M, from version 1
     private val BLOCKS = intArrayOf(0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5)
     const val MAX_VERSION = 11
 

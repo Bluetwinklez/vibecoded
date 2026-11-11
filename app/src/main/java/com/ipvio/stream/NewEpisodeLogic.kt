@@ -19,7 +19,7 @@ object NewEpisodeLogic {
         for (s in shows) {
             val n = s.episodes.size
             val old = known[s.id]
-            if (n == 0) { if (old != null) out[s.id] = old; continue }   // noch nicht geladen: Stand behalten
+            if (n == 0) { if (old != null) out[s.id] = old; continue }   // not loaded yet: keep the stored count
             out[s.id] = n
             if (old != null && n > old) {
                 val last = s.episodes.maxWithOrNull(compareBy({ it.first }, { it.second }))!!

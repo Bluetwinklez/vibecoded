@@ -10,7 +10,7 @@ object LiveGenre {
     private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
 
     val ALL = listOf(
-        Genre("GEN:sport", "Sport", null),   // Sport erkennt SportLogic
+        Genre("GEN:sport", "Sport", null),   // sport is detected by SportLogic
         Genre("GEN:movies", "Filme", rx("""\b(films?|movies?|cinema\w*|kino|cine\w*|sinema\w*|filmovi|premiere|cinemax|hbo|serien|series|serije|dizi)\b""")),
         Genre("GEN:doku", "Dokumentationen", rx("""documentar\w*|\bdoku\w*|discovery|nat\s?geo|national\s?geographic|\bhistory\b|animal\s?planet|\bdmax\b|nautilus|explore|\bscience\b|dokumentar\w*""")),
         Genre("GEN:kids", "Kinder", rx("""\bkids?\b|kinder|children|cartoon\w*|\bnick\w*|disney|junior|\bbaby\w*|toon\w*|boomerang|ragazzi|çocuk|djeca|dječji|\bkika\b|jetix|\bpogo\b""")),

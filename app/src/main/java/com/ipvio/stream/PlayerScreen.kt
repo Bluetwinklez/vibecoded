@@ -330,7 +330,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
 
     fun repeatSeek(d: Int) {
         val now = System.currentTimeMillis()
-        if (now - lastRepeatT > 700) { holdStartT = now; turbo = 0 }   // neue Haltephase
+        if (now - lastRepeatT > 700) { holdStartT = now; turbo = 0 }   // new hold phase
         lastRepeatT = now
         val lvl = turboLevel(now - holdStartT)
         turbo = lvl

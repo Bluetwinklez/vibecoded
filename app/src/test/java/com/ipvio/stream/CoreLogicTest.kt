@@ -40,7 +40,7 @@ http://h/x
         assertEquals(1, items.count { it.kind == Kind.LIVE })
         assertEquals(1, items.count { it.kind == Kind.MOVIE })
         assertEquals(1, items.count { it.kind == Kind.SERIES })
-        assertEquals(3, items.size) // der Trenner "*** Trenner ***" fällt weg
+        assertEquals(3, items.size) // the separator "*** Trenner ***" is dropped
     }
 
     @Test fun playlist_folgenSortiert() {
@@ -96,7 +96,7 @@ http://h/x
         assertEquals(ThemeMath.INK, ThemeMath.onAccent(Look.BRAND_GREEN))
         assertEquals(0xFFFFFF, ThemeMath.onAccent(0x7C5CFF))
         assertTrue(ThemeMath.contrast(ThemeMath.onAccent(Look.BRAND_GREEN), Look.BRAND_GREEN) >= 7.0)
-        assertTrue(ThemeMath.contrast(Look.BRAND_GREEN, 0x0B0F19) >= 7.0)   // Grün als Schrift auf Navy
+        assertTrue(ThemeMath.contrast(Look.BRAND_GREEN, 0x0B0F19) >= 7.0)   // green as text on navy
         for (rgb in Look.SWATCHES) assertTrue(ThemeMath.hexOf(rgb), ThemeMath.contrast(ThemeMath.onAccent(rgb), rgb) >= 3.0)
     }
 

@@ -29,9 +29,9 @@ class Round22Test {
         val now = 1_793_966_400L // 2026-11-06 12:00 UTC
         assertTrue(SportLogic.startsIn(0, now + 3 * 3600, now, tz))
         assertFalse(SportLogic.startsIn(0, now + 3 * 3600 + 1, now, tz))
-        assertTrue(SportLogic.startsIn(1, now + 11 * 3600, now, tz))   // 23:00 heute
-        assertFalse(SportLogic.startsIn(1, now + 13 * 3600, now, tz))  // 01:00 morgen
+        assertTrue(SportLogic.startsIn(1, now + 11 * 3600, now, tz))   // 23:00 today
+        assertFalse(SportLogic.startsIn(1, now + 13 * 3600, now, tz))  // 01:00 tomorrow
         assertTrue(SportLogic.startsIn(2, now + 13 * 3600, now, tz))
-        assertFalse(SportLogic.startsIn(2, now + 37 * 3600, now, tz))  // übermorgen
+        assertFalse(SportLogic.startsIn(2, now + 37 * 3600, now, tz))  // day after tomorrow
     }
 }

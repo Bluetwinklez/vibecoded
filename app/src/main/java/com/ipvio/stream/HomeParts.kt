@@ -121,7 +121,7 @@ fun cardBackdrop(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
 /** "2016 | Abenteuer | 1h 47min | ★ 7.6" as in the design draft. */
 @Composable
 fun HeroMetaLine(item: Item, m: Meta?, dots: Boolean = false) {
-    val parts = ArrayList<Pair<String, Boolean>>()   // Text, roh (nicht übersetzen)
+    val parts = ArrayList<Pair<String, Boolean>>()   // text, raw (do not translate)
     // Bild 1: „2016 | Abenteuer | 1h 47min | ★ 7.6“; Bild 2: „Drama · 2023 · 2 Staffeln“
     if (dots) m?.genres?.firstOrNull()?.let { parts.add(it to true) }
     (m?.year ?: item.year?.toString())?.let { parts.add(it to true) }
@@ -393,14 +393,14 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.tileArt(id: Int, c:
     val line = Stroke(width = h * 0.045f, cap = StrokeCap.Round)
     val soft = c.copy(alpha = .22f); val mid = c.copy(alpha = .45f); val strong = c.copy(alpha = .7f)
     when (id) {
-        3 -> { // Live TV: Bildschirm mit Sendewellen
+        3 -> { // Live TV: screen with broadcast waves
             drawRoundRect(soft, Offset(w * .38f, h * .22f), Size(w * .5f, h * .62f), CornerRadius(h * .08f))
             drawRoundRect(strong, Offset(w * .38f, h * .22f), Size(w * .5f, h * .62f), CornerRadius(h * .08f), style = line)
             for (k in 1..3) drawArc(mid, -60f, 120f, false, Offset(w * .2f - k * h * .16f, h * .5f - k * h * .16f - h * .06f),
                 Size(k * h * .32f + h * .12f, k * h * .32f + h * .12f), style = line)
             drawCircle(strong, h * .06f, Offset(w * .63f, h * .53f))
         }
-        1 -> { // Filme: Filmrolle und Filmstreifen
+        1 -> { // Movies: film reel and film strip
             val cx = w * .72f; val cy = h * .5f; val r = h * .46f
             drawCircle(soft, r, Offset(cx, cy)); drawCircle(strong, r, Offset(cx, cy), style = line)
             for (k in 0 until 6) {
@@ -410,7 +410,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.tileArt(id: Int, c:
             drawRoundRect(mid, Offset(w * .2f, h * .62f), Size(w * .34f, h * .26f), CornerRadius(h * .04f), style = line)
             for (k in 0 until 5) drawRect(mid, Offset(w * .23f + k * w * .065f, h * .68f), Size(w * .03f, h * .05f))
         }
-        2 -> { // Serien: gestaffelte Bildschirme mit Abspielzeichen
+        2 -> { // Series: staggered screens with play symbol
             for (k in 2 downTo 0) {
                 val o = k * h * .14f
                 drawRoundRect(if (k == 0) soft else c.copy(alpha = .12f), Offset(w * .36f + o, h * .2f - o * .4f), Size(w * .46f, h * .6f), CornerRadius(h * .07f))
@@ -419,7 +419,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.tileArt(id: Int, c:
             val p = Path().apply { moveTo(w * .54f, h * .36f); lineTo(w * .54f, h * .64f); lineTo(w * .54f + h * .26f, h * .5f); close() }
             drawPath(p, strong)
         }
-        7 -> { // Favoriten: großes Herz, kleine Herzen
+        7 -> { // Favorites: large heart, small hearts
             fun heart(cx: Float, cy: Float, r: Float, col: Color, fill: Boolean) {
                 val p = Path().apply {
                     moveTo(cx, cy + r * .9f)
@@ -432,7 +432,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.tileArt(id: Int, c:
             heart(w * .7f, h * .52f, h * .5f, soft, true); heart(w * .7f, h * .52f, h * .5f, strong, false)
             heart(w * .36f, h * .3f, h * .16f, mid, true); heart(w * .45f, h * .78f, h * .11f, mid, true)
         }
-        8 -> { // Meine Liste: Lesezeichen-Stapel
+        8 -> { // My List: bookmark stack
             for (k in 0..2) {
                 val x = w * .44f + k * h * .3f; val top = h * .14f + k * h * .05f
                 val p = Path().apply { moveTo(x, top); lineTo(x + h * .34f, top); lineTo(x + h * .34f, h * .92f); lineTo(x + h * .17f, h * .74f); lineTo(x, h * .92f); close() }

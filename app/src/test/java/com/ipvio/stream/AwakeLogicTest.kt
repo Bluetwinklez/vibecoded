@@ -12,15 +12,15 @@ class AwakeLogicTest {
 
     @Test fun laeuftOderLaedt_bleibtWach() {
         assertTrue(need(true, AwakeLogic.STATE_READY))
-        assertTrue(need(true, AwakeLogic.STATE_BUFFERING))   // Nachladen und Neuverbinden
+        assertTrue(need(true, AwakeLogic.STATE_BUFFERING))   // reloading and reconnecting
     }
 
     @Test fun pause_ende_fehler_hintergrund_geben_frei() {
-        assertFalse(need(false, AwakeLogic.STATE_READY))      // Pause / Sleep-Timer
-        assertFalse(need(true, AwakeLogic.STATE_ENDED))       // Ende
-        assertFalse(need(true, AwakeLogic.STATE_IDLE))        // gestoppt / nach Fehler
+        assertFalse(need(false, AwakeLogic.STATE_READY))      // pause / sleep timer
+        assertFalse(need(true, AwakeLogic.STATE_ENDED))       // end
+        assertFalse(need(true, AwakeLogic.STATE_IDLE))        // stopped / after error
         assertFalse(need(true, AwakeLogic.STATE_READY, err = true))
-        assertFalse(need(true, AwakeLogic.STATE_READY, fg = false))  // App im Hintergrund
+        assertFalse(need(true, AwakeLogic.STATE_READY, fg = false))  // app in background
     }
 
     @Test fun ablauf_mitAbbruchUndReconnect() {
@@ -40,9 +40,9 @@ class AwakeLogicTest {
         val t = AwakeTags()
         assertTrue(t.set("player", true))
         assertTrue(t.set("playlist", true))
-        assertTrue(t.set("playlist", false))   // Playlist fertig, Player läuft noch
+        assertTrue(t.set("playlist", false))   // playlist done, player still running
         assertFalse(t.set("player", false))
         assertFalse(t.active)
-        assertFalse(t.set("player", false))    // doppeltes Freigeben ist harmlos
+        assertFalse(t.set("player", false))    // releasing twice is harmless
     }
 }

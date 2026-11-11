@@ -48,7 +48,7 @@ http://h/series/u/p/8.mkv
         assertTrue(e1.variants.isEmpty())
         assertEquals("http://h/series/u/p/6.mkv", pickVariant(e1, null, null, null).url)
         assertEquals(2, e2.variants.size)
-        assertEquals("FHD", e2.quality)          // beste Quelle zuerst
+        assertEquals("FHD", e2.quality)          // best source first
         assertEquals("http://h/series/u/p/8.mkv", e2.url)
     }
 

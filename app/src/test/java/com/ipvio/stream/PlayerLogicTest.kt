@@ -64,11 +64,11 @@ class PlayerLogicTest {
 
     @Test fun turbo_sprungweite() {
         assertEquals(10_000L, turboStepMs(0, 10_000L, 7_200_000L))
-        assertEquals(120_000L, turboStepMs(1, 10_000L, 7_200_000L))       // 1/60 von 2 h
-        assertEquals(480_000L, turboStepMs(3, 10_000L, 7_200_000L))       // 1/15 von 2 h
-        assertEquals(900_000L, turboStepMs(4, 10_000L, 7_200_000L))       // 1/8 von 2 h
-        assertTrue(turboStepMs(1, 10_000L, 60_000L) >= 20_000L)            // nie kleiner als Vielfaches der Basis
-        assertTrue(turboStepMs(2, 10_000L, 0L) > 0)                        // unbekannte Länge
+        assertEquals(120_000L, turboStepMs(1, 10_000L, 7_200_000L))       // 1/60 of 2 h
+        assertEquals(480_000L, turboStepMs(3, 10_000L, 7_200_000L))       // 1/15 of 2 h
+        assertEquals(900_000L, turboStepMs(4, 10_000L, 7_200_000L))       // 1/8 of 2 h
+        assertTrue(turboStepMs(1, 10_000L, 60_000L) >= 20_000L)            // never smaller than a multiple of the base
+        assertTrue(turboStepMs(2, 10_000L, 0L) > 0)                        // unknown length
     }
 
     @Test fun xmltvTime_mitZone() {

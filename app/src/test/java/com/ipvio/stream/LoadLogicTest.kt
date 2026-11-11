@@ -47,7 +47,7 @@ http://h/x
         assertTrue(p.items.all { it.lang == "de" })
         assertEquals(3, p.items.size)                       // Das Erste, Matrix (DE), Breaking Bad
         val bb = p.items.first { it.kind == Kind.SERIES }
-        assertTrue(bb.episodes.all { it.variants.isEmpty() })  // die englische Quelle wurde gar nicht erst angelegt
+        assertTrue(bb.episodes.all { it.variants.isEmpty() })  // the English source was never even created
         // titles per language: series count once, not per episode
         assertEquals(mapOf("de" to 3, "tr" to 1, "en" to 3), p.counts)
         assertTrue(p.bytes.getValue("de") > 0 && p.bytes.getValue("en") > 0)
@@ -58,7 +58,7 @@ http://h/x
         val p = M3uParser.parseStream(StringReader(m3u))
         assertEquals(p.counts, s.counts)
         assertEquals(p.bytes, s.bytes)
-        assertEquals(8, s.entries + 0 - 1)   // 9 Einträge inkl. Trenner
+        assertEquals(8, s.entries + 0 - 1)   // 9 entries incl. separator
     }
 
     @Test fun waecheKannAbbrechen() {
@@ -78,11 +78,11 @@ http://h/x
         val counts = mapOf("de" to 4, "en" to 10, "tr" to 3, "?" to 1)
         assertEquals(175L, LoadLogic.estimate(bytes, emptySet()))
         assertEquals(45L, LoadLogic.estimate(bytes, setOf("en", "tr")))
-        assertTrue(LoadLogic.fits(emptyMap(), emptySet(), 1))        // unbekannt = passt
+        assertTrue(LoadLogic.fits(emptyMap(), emptySet(), 1))        // unknown = fits
         assertFalse(LoadLogic.fits(bytes, emptySet(), 100))
         assertEquals(setOf("de", "?"), LoadLogic.preselect(counts, bytes, "de", 100))
-        assertEquals(setOf("de"), LoadLogic.preselect(counts, bytes, "de", 42))     // mit "ohne Kennung" zu groß
-        assertEquals(setOf("tr"), LoadLogic.preselect(counts, bytes, "fr", 35))     // App-Sprache fehlt: größte, die passt
+        assertEquals(setOf("de"), LoadLogic.preselect(counts, bytes, "de", 42))     // too big with "ohne Kennung"
+        assertEquals(setOf("tr"), LoadLogic.preselect(counts, bytes, "fr", 35))     // app language missing: the largest that fits
         // 40 % of memory, converted to bytes of the list (compact episodes: ~0.65 bytes of memory per byte of list)
         assertEquals((400L * 1024 * 1024 * 0.40 / 0.65).toLong(), LoadLogic.budget(400L * 1024 * 1024))
     }
@@ -98,7 +98,7 @@ http://h/x
     @Test fun antwortAufFortsetzen() {
         assertEquals(LoadLogic.APPEND, LoadLogic.resumeAction(206, "bytes 1000-1999/2000", 1000))
         assertEquals(LoadLogic.ERROR, LoadLogic.resumeAction(206, "bytes 0-1999/2000", 1000))
-        assertEquals(LoadLogic.RESTART, LoadLogic.resumeAction(200, null, 1000))   // Server schickt alles neu (Inhalt geändert)
+        assertEquals(LoadLogic.RESTART, LoadLogic.resumeAction(200, null, 1000))   // server sends everything anew (content changed)
         assertEquals(LoadLogic.RESTART, LoadLogic.resumeAction(200, null, 0))
         assertEquals(LoadLogic.ERROR, LoadLogic.resumeAction(403, null, 0))
         assertEquals(2000L, LoadLogic.rangeTotal("bytes 1000-1999/2000"))
@@ -120,8 +120,8 @@ http://h/x
         val again = LoadLogic.started(first, url, resumed = true)
         val third = LoadLogic.started(again, url, resumed = true)
         assertEquals(3, third.attempts)
-        assertFalse(third.autoResume)                                   // nach 3 Unterbrechungen nicht mehr automatisch
-        assertEquals(1, LoadLogic.started(third, url, resumed = false).attempts)   // von Hand: neu zählen
+        assertFalse(third.autoResume)                                   // after 3 interruptions no longer automatic
+        assertEquals(1, LoadLogic.started(third, url, resumed = false).attempts)   // by hand: count anew
         val failed = first.copy(state = LoadLogic.FAILED, msg = "Zeitüberschreitung")
         assertEquals(failed, LoadLogic.Pending.decode(failed.encode()))
         assertFalse(failed.autoResume)
@@ -149,8 +149,8 @@ http://h/x
     @Test fun vorauswahlNachGeraetesprache() {
         val counts = mapOf("de" to 50, "en" to 80, "tr" to 20, "yu" to 5, "?" to 3)
         assertEquals(setOf("de"), LoadLogic.systemPreselect(counts, "de"))
-        assertEquals(setOf("yu"), LoadLogic.systemPreselect(counts, "sr"))       // Serbisch → Ex-YU
-        assertEquals(setOf("en"), LoadLogic.systemPreselect(counts, "fr"))       // nicht vorhanden → Englisch
+        assertEquals(setOf("yu"), LoadLogic.systemPreselect(counts, "sr"))       // Serbian → Ex-YU
+        assertEquals(setOf("en"), LoadLogic.systemPreselect(counts, "fr"))       // not present → English
         assertEquals(emptySet<String>(), LoadLogic.systemPreselect(mapOf("tr" to 1), "fr"))
         assertEquals("he", LoadLogic.langCodeOf("iw"))
         assertEquals("nb", LoadLogic.langCodeOf("no"))
@@ -165,6 +165,6 @@ http://h/x
         assertEquals(2, LoadFun.stage(10 * 60_000L))
         assertNull(LoadFun.line(10 * 60_000L)!!.second)
         assertEquals(3, LoadFun.stage(15 * 60_000L))
-        assertTrue(LoadFun.line(3 * 3_600_000L) != null)   // auch nach Stunden kein Absturz (Rotation)
+        assertTrue(LoadFun.line(3 * 3_600_000L) != null)   // no crash even after hours (rotation)
     }
 }

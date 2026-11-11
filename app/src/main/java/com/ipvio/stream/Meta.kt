@@ -218,7 +218,7 @@ object MetaRepo {
     fun trim() { synchronized(mem) { mem.clear() }; seasons.clear() }
 
     fun cached(i: Item): Meta? = key(i).let { k ->
-        memGet(k) ?: slim[k] ?: (if (!enabled() || k in misses) provMem["P|$k"] else null)   // Anbieter-Infos nur ohne TMDB-Treffer
+        memGet(k) ?: slim[k] ?: (if (!enabled() || k in misses) provMem["P|$k"] else null)   // provider info only without a TMDB hit
     }
     fun missed(i: Item): Boolean = key(i) in misses
 
@@ -370,7 +370,7 @@ object MetaRepo {
 
     suspend fun fillCountry(ctx: Context, i: Item) {
         val k = key(i)
-        val m = memGet(k) ?: load(ctx, k) ?: return   // vollständigen Eintrag nehmen, nie den schlanken (sonst ginge die Beschreibung auf dem Gerät verloren)
+        val m = memGet(k) ?: load(ctx, k) ?: return   // take the full entry, never the slim one (otherwise the description would be lost on the device)
         if (m.tmdbId <= 0) return
         if (m.countries.isNotEmpty()) {
             // Country is already on the device but missing in the slim cache: add it there (otherwise the title would come up again at every start)

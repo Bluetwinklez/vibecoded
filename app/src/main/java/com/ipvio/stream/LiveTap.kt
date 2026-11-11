@@ -120,7 +120,7 @@ class LiveTap(val id: Int, val url: String, private val dir: File, private val m
                         backoff = 1000L
                         while (!closed) {
                             val n = ins.read(buf)
-                            if (n < 0) break   // Server hat den Stream beendet: neu verbinden
+                            if (n < 0) break   // server ended the stream: reconnect
                             if (n > 0) append(buf, n)
                         }
                     }
@@ -217,7 +217,7 @@ object LiveTaps {
         taps.values.firstOrNull { it.url == url && !it.closed && it.failure == null }?.let { return it.acquire() }
         taps.entries.removeAll { it.value.closed }
         val root = File(c.cacheDir, "livetap")
-        if (taps.isEmpty()) runCatching { root.deleteRecursively() }   // Reste nach einem Absturz
+        if (taps.isEmpty()) runCatching { root.deleteRecursively() }   // leftovers after a crash
         root.mkdirs()
         val budget = TapLogic.budget(LiveSettings.bufferMb, root.usableSpace)
         if (budget <= 0) return null

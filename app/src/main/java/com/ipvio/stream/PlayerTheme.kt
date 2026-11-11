@@ -7,14 +7,14 @@ import androidx.compose.ui.unit.dp
 /** Design values of the player. Same spacing and sizes everywhere so everything looks calm and even. */
 object PT {
     // Colors (base colors Bg/Surf/Accent1/Accent2/Muted come from Ui.kt)
-    val T2 = Color(0xFFB8BDCC)          // zweite Textfarbe
+    val T2 = Color(0xFFB8BDCC)          // second text color
     val Live = Color(0xFFFF3B5C)
     val Gold = DS.Gold
-    val Ink = Color(0xFF0B0C12)         // dunkle Schrift auf weißem Fokus
+    val Ink = Color(0xFF0B0C12)         // dark text on white focus
     val InkSoft = Color(0xFF3C4256)
-    val PanelBg = Color(0xF2111320)     // Menüflächen
+    val PanelBg = Color(0xF2111320)     // menu surfaces
     val PanelBorder = DS.Overlay1
-    val BtnBg = Color(0x24FFFFFF)       // runde Knöpfe im Ruhezustand
+    val BtnBg = Color(0x24FFFFFF)       // round buttons at rest
     val Track = DS.Overlay3
     val Buffered = Color(0x6BFFFFFF)
     val ScrimTop = Color(0xCC000000)

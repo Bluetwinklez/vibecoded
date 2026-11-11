@@ -15,7 +15,7 @@ import java.io.OutputStream
  */
 object PlaylistCacheIO {
     const val VERSION = 5
-    private const val MAX_STR = 1 shl 20      // 1 MB pro Text: mehr kann nur eine beschädigte Datei sein
+    private const val MAX_STR = 1 shl 20      // 1 MB per text: anything larger can only be a corrupt file
     private const val MAX_COUNT = 2_000_000
 
     /**
@@ -191,7 +191,7 @@ object PlaylistCacheIO {
     }
 
     private fun DataInputStream.skipItemRest() {
-        skipStr(); readInt(); skipStr(); skipStr(); skipStr(); skipStr(); skipStr()   // Titel, Jahr, Adresse, Logo, Kategorie, Qualität, tvg-id
+        skipStr(); readInt(); skipStr(); skipStr(); skipStr(); skipStr(); skipStr()   // title, year, URL, logo, category, quality, tvg-id
         val n = count()
         for (k in 0 until n) {
             readInt(); readInt(); skipStr(); skipStr(); skipStr()

@@ -203,7 +203,7 @@ private fun AppContent() {
 
     // New app version on GitHub? Check silently once a day; a find appears in the bell at the top right.
     LaunchedEffect(Unit) {
-        delay(3_000)   // erst nach dem Start, die Playlist hat Vorrang
+        delay(3_000)   // only after the start, the playlist takes priority
         runCatching { AppUpdate.startCheck(ctx) }
     }
 

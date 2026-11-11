@@ -471,7 +471,7 @@ object M3uParser {
         for ((key, acc) in series) {
             if (acc.done) continue
             val raw = acc.raw()
-            acc.free()   // sofort freigeben: Folgen werden Serie für Serie umgebaut
+            acc.free()   // release immediately: episodes are rebuilt series by series
             raw.sortWith(compareBy({ it.season }, { it.num }))
             val eps = ArrayList<Episode>()
             var i = 0
