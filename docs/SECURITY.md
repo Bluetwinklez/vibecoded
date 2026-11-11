@@ -4,7 +4,7 @@ Status of known security items. Source: refactoring audit of 2026-11-11, section
 
 Status values: **open**, **partly fixed**, **fixed**.
 
-State after T-002: `/listimport` requires the access code (commit `a804180`). Push status of that commit: PENDING. Emulator test reported as passing by the maintainer; test on a TV or Fire TV: PENDING.
+State after T-002: `/listimport` requires the access code (commit `a804180`). The commit is pushed. Emulator test reported as passing by the maintainer; test on a TV or Fire TV: PENDING.
 
 ## Items
 

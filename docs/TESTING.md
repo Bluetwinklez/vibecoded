@@ -11,17 +11,15 @@ Run in Android Studio, terminal in the project folder (Windows):
 | `gradlew.bat testDebugUnitTest` | all unit tests |
 | `gradlew.bat lintDebug` | Android Lint; report `app/build/reports/lint-results-debug.html` |
 
-CI (`.github/workflows/build.yml`) runs unit tests and a debug build on every push. Status of the runs: PENDING (check the Actions tab on GitHub; the audit expected it to be red since 1.1 because of the `PhoneImportTest` expectation, which T-001 fixed).
+CI (`.github/workflows/build.yml`) runs unit tests and a debug build on every push. Status of the runs: PENDING (check the Actions tab on GitHub; the audit expected it to be red since 1.1 because of the `PhoneImportTest` expectation, which T-001 fixed, and the `org.json` stub, which T-001b fixed).
 
 ## Known state
 
 - The audit counted 231 `@Test` functions in 31 test files.
 - `PhoneImportTest`: 10 of 10 passed in the maintainer's run on 2026-11-11 (T-001 done).
-- `Round25Test`: 8 tests, 1 failure, `parsesTraktJsonTolerantly` (`Round25Test.kt:70`): expected `[Heat, Lost]`, was `[]`.
-  - Suspected cause (**hypothesis, not verified**): `org.json` is only a stub in local unit tests. A `testImplementation("org.json:json:...")` line is missing.
-  - Adding it is a dependency change and needs approval (T-001b). The test stays red until that decision.
-  - The test probably failed before T-002.
-- Total counts from Gradle and results of the other test classes: PENDING.
+- `Round25Test.parsesTraktJsonTolerantly` (`Round25Test.kt:70`) was red (expected `[Heat, Lost]`, was `[]`) because `org.json` is only a stub in local unit tests. T-001b added `testImplementation("org.json:json:20250517")` (commit `75e1892`). After that the maintainer reported a successful test run on 2026-11-11.
+  - `org.json:json` is used for unit tests only; it is not part of the APK. Its "JSON License" is not OSI-approved (see [SECURITY.md](SECURITY.md), item 14).
+- Exact Gradle totals ("X tests completed, Y failed") after T-001b: PENDING.
 - Lint: 9 errors, 203 warnings, 10 hints (baseline 2026-11-11). Details in the baseline file.
 
 ## Tests that cannot run as plain JVM tests

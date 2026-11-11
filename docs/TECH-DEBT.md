@@ -40,12 +40,12 @@ Planned split order (P5, each with tests and approval): `SettingsHub`, `LiveTab`
 | 14 | Lint check disabled | `UnsafeOptInUsageError` is off globally (`app/build.gradle.kts:85-87`) | later |
 | 15 | CI | actions pinned to `@v4`, not SHAs; Java 21 in CI vs toolchain 25; run status unknown (`build.yml:13-25`, `gradle-daemon-jvm.properties`) | later (approval needed) |
 | 16 | Lint findings | 9 errors (3 ByteOrderMark in `ListImport.kt:19, 38` and `XtreamLogic.kt:183`), 203 warnings, 10 hints (baseline 2026-11-11) | after baseline |
-| 17 | Unit test with `org.json` | `Round25Test.parsesTraktJsonTolerantly` red; decision T-001b open | see [TESTING.md](TESTING.md) |
 
 ## Resolved since the audit
 
 - Documentation drift: `docs/REFACTORING-PROGRESS.md`, `docs/tasks/WORK_STATE.md` and `docs/SECURITY.md` did not exist; added in T-005.
 - `PhoneImportTest` expectation for 10 languages (T-001).
+- `Round25Test.parsesTraktJsonTolerantly` red because `org.json` is a stub in unit tests: test dependency added (T-001b, commit `75e1892`).
 - `*.apk` not ignored in `.gitignore` (T-003).
 
 Not debt (checked): `BuildStamp` in `Brand.kt` is already removed.

@@ -131,8 +131,8 @@ If you do not know how something works: read the code first. Do not guess. Ask b
 
 ## 15. Current state
 
-- Current phase: **P1 (baseline and documentation skeleton)**. P0 (audit) is done. S1 from P3 was done early as T-002.
-- Completed tasks: T-001 (test expectation for 10 languages), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected).
-- Open tasks: T-001b (decision on `org.json` in unit tests; `Round25Test` stays red until then), T-004 (quality baseline, values pending), T-005 (documentation skeleton, in progress), T-006 (add five missing stores to the backup `NAMES`).
-- Next step: finish T-004 and T-005, decide T-001b, then T-006.
+- Current phase: **P1 (baseline), finishing**. P0 (audit) and the documentation skeleton are done. S1 from P3 was done early as T-002.
+- Completed tasks: T-001 (test expectation for 10 languages), T-001b (`org.json` test dependency), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected), T-005 (documentation skeleton; CHANGELOG content for 1.2 and 1.3 still pending).
+- Open tasks: T-004 (quality baseline, values pending), T-006 (add five missing stores to the backup `NAMES`).
+- Next step: finish T-004, then T-006.
 - Details: `docs/REFACTORING-PROGRESS.md` and `docs/tasks/WORK_STATE.md`.

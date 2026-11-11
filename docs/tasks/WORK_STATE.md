@@ -4,7 +4,7 @@ Last update: 2026-11-11. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-**T-005**: documentation skeleton, CHANGELOG entries for 1.2 and 1.3, `CLAUDE.md` section 15. Documents only; no Kotlin file is touched.
+None active. **T-005** (documentation skeleton, CHANGELOG headings for 1.2 and 1.3, `CLAUDE.md` section 15) and **T-001b** (`org.json` test dependency, commit `75e1892`) are done and pushed. T-005 touched documents only.
 
 ## Completed steps
 
@@ -27,15 +27,15 @@ None run. This task changes documents only. Mermaid diagrams in `docs/DIAGRAMS.m
 ## Open problems
 
 - `CHANGELOG.md`: content of 1.2 and 1.3 is `[PENDING: Änderung eintragen]`. Only the removal of Google Drive in 1.2 is documented (audit section 14).
-- T-001b: decision on `org.json` for unit tests. `Round25Test` stays red until then.
+- T-001b: exact Gradle totals after the fix are PENDING.
 - T-004: baseline values are PENDING (Gradle totals, remaining 6 lint errors, hash of the T-003 commit, CI status).
-- T-002: push status, device test on TV or Fire TV.
+- T-002: device test on TV or Fire TV.
+- CI status on GitHub (Actions tab): PENDING.
 - Documents contain TODO and PENDING markers for facts the audit did not cover (see the end of the T-005 report).
 - `CLAUDE.md` section 3 still mentions `npm test` for the licence server, and section 13 still says that `docs/tasks/WORK_STATE.md` and `docs/REFACTORING-PROGRESS.md` do not exist yet. Both are outside T-005 scope; proposed for the next `CLAUDE.md` update.
 
 ## Next step
 
-1. Maintainer reviews the T-005 files and fills in the PENDING values.
-2. Commit T-005 (and T-004 when its values are filled in).
-3. Decide T-001b.
-4. T-006: backup `NAMES`.
+1. Fill in the PENDING values (CI status, Gradle totals, CHANGELOG content, T-003 commit hash) and finish T-004.
+2. T-006: backup `NAMES` (`Backup.kt`), with a test step.
+3. Then P3 tasks S2, S3, S4, each with its own approval.
