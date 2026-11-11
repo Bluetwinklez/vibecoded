@@ -180,7 +180,7 @@ fun SportTab(live: List<Item>, onPlay: (Item, List<Item>) -> Unit) {
             return@Box
         }
         Row(Modifier.fillMaxSize()) {
-            // Sportarten
+            // Sports
             LazyColumn(
                 Modifier.width(dpx(270)).fillMaxHeight(),
                 contentPadding = PaddingValues(start = dpx(30), end = dpx(10), top = dpx(30), bottom = dpx(40)),

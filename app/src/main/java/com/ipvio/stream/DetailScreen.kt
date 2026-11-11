@@ -757,7 +757,7 @@ private fun EpisodeRow(ep: Episode, em: EpMeta?, v: Variant, prog: ResumeLogic.E
             if (f) Box(Modifier.align(Alignment.Center).size(dpx(58)).clip(RoundedCornerShape(50)).background(Color(0xEBF4F6FB)), contentAlignment = Alignment.Center) {
                 AppIcon(AIcon.Play, Color(0xFF05070D), size = dpx(26))
             }
-            // Fortschritt: Balken unten, gesehen = Haken oben rechts
+            // Progress: bar at the bottom, watched = check mark top right
             if (prog != null && prog.done) Box(Modifier.align(Alignment.TopEnd).padding(6.dp)) { Badge("Gesehen", DS.Scrim, Accent2, AIcon.Check) }
             else if (prog != null && prog.fraction > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66FFFFFF))) {
                 Box(Modifier.fillMaxWidth(prog.fraction).fillMaxHeight().background(Accent2))

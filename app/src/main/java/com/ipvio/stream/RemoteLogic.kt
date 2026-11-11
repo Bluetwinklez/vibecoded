@@ -45,7 +45,7 @@ object RemoteLogic {
     /** The buttons jump at least this many seconds; larger values are limited. */
     fun clampSkip(sec: Int): Int = sec.coerceIn(-600, 600)
 
-    /** mm:ss bzw. h:mm:ss. */
+    /** mm:ss or h:mm:ss. */
     fun clock(sec: Long): String {
         val s = sec.coerceAtLeast(0)
         val h = s / 3600; val m = (s % 3600) / 60; val r = s % 60

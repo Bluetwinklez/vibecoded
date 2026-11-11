@@ -40,7 +40,7 @@ object General {
     var sys24 by mutableStateOf(true)
     var fontIdx by mutableIntStateOf(0)
     var textScaleIdx by mutableIntStateOf(1)
-    /** Standard-Bildformat im Player (Index in [ASPECT_NAMES]). */
+    /** Default aspect ratio in the player (index in [ASPECT_NAMES]). */
     var defaultAspect by mutableIntStateOf(0)
     /**
      * Aspect ratios (round 14). 0–2 differ only if the picture has a different aspect ratio than the TV

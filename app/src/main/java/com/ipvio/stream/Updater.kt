@@ -26,7 +26,7 @@ class UpdateWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         // App closed: only renew the cache – nothing in working memory, no TV guide download.
         val ok = if (PlaylistStore.hasData) PlaylistStore.load(c, url, false, ask = false) && PlaylistStore.error == null
         else PlaylistStore.refreshCacheOnly(c, url).also { ok0 ->
-            // Weitere gleichzeitig gezeigte Playlists ebenfalls erneuern
+            // Also refresh the other playlists shown at the same time
             if (ok0) for (u in PlaylistStore.extraUrls(c)) runCatching { PlaylistStore.refreshCacheOnly(c, u) }
         }
         if (ok) General.markRefreshed(c)

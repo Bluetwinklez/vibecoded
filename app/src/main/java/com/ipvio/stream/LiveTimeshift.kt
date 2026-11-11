@@ -202,7 +202,7 @@ object LiveTimeshift {
         openAt(player, t, b)
     }
 
-    /** Aktuelle Stelle in Pufferzeit. */
+    /** Current position in buffer time. */
     fun posMs(player: ExoPlayer): Long = baseMs + player.currentPosition.coerceAtLeast(0)
 
     /** Distance to the live picture in ms. */

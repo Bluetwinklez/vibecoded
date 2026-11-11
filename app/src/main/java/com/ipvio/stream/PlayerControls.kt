@@ -85,7 +85,7 @@ fun PRoundButton(
     }
 }
 
-/** Kleine Info-Marke, z. B. "4K", "HEVC", "Staffel 2". */
+/** Small info badge, e.g. "4K", "HEVC", "Staffel 2". */
 @Composable
 fun PChip(text: String, modifier: Modifier = Modifier, filled: Boolean = false, icon: AIcon? = null, raw: Boolean = false) {
     Box(

@@ -20,7 +20,7 @@ object QualityLogic {
      */
     fun deviceMax(displayHeight: Int, hevc4k: Boolean, learnedCap: Int): Int {
         val disp = when {
-            displayHeight <= 0 -> 3            // unbekannt: Full HD
+            displayHeight <= 0 -> 3            // unknown: Full HD
             displayHeight >= 2000 -> 4
             displayHeight >= 1000 -> 3
             displayHeight >= 700 -> 2
@@ -113,7 +113,7 @@ object TrackLogic {
 
     /**
      * Language of a track: from the language code, for "und"/empty (common with IPTV files) from the label
-     * („Deutsch 5.1“, „German AC3“, „DE“). Unbekannt → null.
+     * („Deutsch 5.1“, „German AC3“, „DE“). Unknown → null.
      */
     fun guess(language: String?, label: String?): String? {
         norm(language)?.let { return it }
@@ -131,7 +131,7 @@ object TrackLogic {
         SUB_ALWAYS -> true
         else -> {
             val a = norm(audio)
-            // Sprache unbekannt: lieber nichts einblenden
+            // Language unknown: better show nothing
             a != null && a !in setOfNotNull(norm(subLang), norm(primaryAudio))
         }
     }

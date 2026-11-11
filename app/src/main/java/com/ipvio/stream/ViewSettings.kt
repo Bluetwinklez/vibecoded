@@ -164,7 +164,7 @@ private fun MiniScreen(pos: Int, labels: Boolean, content: @Composable (Dp, Dp) 
     }
 }
 
-// ───────── 1. Karten ─────────
+// ───────── 1. Cards ─────────
 
 @Composable
 private fun CardsTab(ctx: Context) {
@@ -222,7 +222,7 @@ private fun CardsTab(ctx: Context) {
     }
 }
 
-// ───────── 2. Seitenleiste ─────────
+// ───────── 2. Sidebar ─────────
 
 @Composable
 private fun SidebarTab(ctx: Context) {
@@ -254,7 +254,7 @@ private fun SidebarTab(ctx: Context) {
     }
 }
 
-// ───────── 3. Raster & Ansicht ─────────
+// ───────── 3. Grid & view ─────────
 
 @Composable
 private fun GridTab(ctx: Context) {
@@ -268,7 +268,7 @@ private fun GridTab(ctx: Context) {
         MiniScreen(SidebarPrefs.pos, SidebarPrefs.labels) { maxWidth, maxHeight ->
             val gap = 4.dp
             if (view == 0) {
-                // Raster: Spalten × Zeilen
+                // grid: columns × rows
                 val w = (maxWidth - gap * (cols - 1)) / cols
                 val h = minOf(if (land) w * 9 / 16 else w * 3 / 2, (maxHeight - gap * (rows - 1)) / rows)
                 Column(verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -309,7 +309,7 @@ private fun GridTab(ctx: Context) {
     }
 }
 
-// ───────── 4. Startseite ─────────
+// ───────── 4. Home screen ─────────
 
 @Composable
 private fun HomeTab(ctx: Context) {
@@ -358,7 +358,7 @@ private fun HomeTab(ctx: Context) {
     }
 }
 
-// ───────── 5. Kategorien ─────────
+// ───────── 5. Categories ─────────
 
 @Composable
 private fun CategoriesTab(ctx: Context) {

@@ -13,7 +13,7 @@ import java.util.Locale
  * All names are deliberately "player"-specific so nothing collides with other files.
  */
 
-/** 3725000 ms -> "01:02:05" bzw. "02:05" */
+/** 3725000 ms -> "01:02:05" or "02:05" */
 fun fmtTime(ms: Long): String {
     val s = (ms / 1000).coerceAtLeast(0)
     val h = s / 3600
@@ -33,7 +33,7 @@ fun fmtShort(ms: Long): String {
     else String.format(Locale.US, "%d:%02d", m, sec)
 }
 
-/** "+2:40" bzw. "−0:30" */
+/** "+2:40" or "−0:30" */
 fun fmtDelta(ms: Long): String = (if (ms >= 0) "+" else "−") + fmtShort(kotlin.math.abs(ms))
 
 /** Fast seeking: level 0..4 depending on how long a direction key is held. */
@@ -151,7 +151,7 @@ fun xmltvTime(s: String?): Long? {
         val om = rest.substring(3, 5).toIntOrNull() ?: return null
         off = (if (rest[0] == '-') -1 else 1) * (oh * 3600 + om * 60)
     }
-    // Tage seit 1970 (proleptischer gregorianischer Kalender)
+    // Days since 1970 (proleptic Gregorian calendar)
     val yy = if (mo <= 2) y - 1 else y
     val era = (if (yy >= 0) yy else yy - 399) / 400
     val yoe = yy - era * 400

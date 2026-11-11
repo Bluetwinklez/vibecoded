@@ -40,7 +40,7 @@ object DesignPreview {
     val WIDTH = 330.dp
     /** Design page is open. */
     var visible by mutableStateOf(false)
-    /** Probehalber markiert (null = aktuelle Einstellung). */
+    /** Marked on trial (null = current setting). */
     var accent by mutableStateOf<Int?>(null)
     var bg by mutableStateOf<Int?>(null)
     var custom by mutableStateOf<Int?>(null)
@@ -90,7 +90,7 @@ fun DesignPreviewPanel(modifier: Modifier) {
         // Small screen in the chosen design
         val screen = RoundedCornerShape(DS.RadiusM)
         Row(Modifier.fillMaxWidth().height(196.dp).clip(screen).background(p.bg)) {
-            // Seitenleiste
+            // Sidebar
             Column(
                 Modifier.width(34.dp).fillMaxHeight().background(lerp(p.bg, Color.Black, 0.25f)).padding(vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)

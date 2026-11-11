@@ -77,7 +77,7 @@ object Tok {
     val TextHi = Color(0xFFF4F6FB)
     val TextMid = Color(0xFFD3D7E2)
     val TextLow = Color(0xFFA0A6B8)
-    /** Ruhende Karte/Zeile, markierte Zeile */
+    /** Card/row at rest, marked row */
     val Card: Color get() = lerp(Look.surf, Color.White, 0.03f)
     val CardFocus: Color get() = lerp(Look.surf2, Color.White, 0.08f)
     /** Glass over images (bars, pills), strong for cards with a lot of text */
@@ -111,14 +111,14 @@ object DS {
     /** Width of the expanded sidebar. */
     val SidebarOpenW: Dp get() = dpx(250)
 
-    // Ecken
+    // Corners
     val RadiusXs = 8.dp
     val RadiusS = 12.dp
     val RadiusM = 16.dp
     val RadiusL = 20.dp
     val RadiusXl = 24.dp
 
-    // Rahmen
+    // Border
     val Border = 2.dp
     val FocusBorder = 3.dp
 

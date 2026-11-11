@@ -8,7 +8,7 @@ import coil.Coil
 /**
  * Adaptation to the device's working memory. Many TV boxes and sticks have only 1 GB RAM:
  * there the image cache and player buffer are kept smaller so the app is not ended by the system.
- * Stufen: 0 = wenig (< 1,5 GB), 1 = mittel (< 3 GB), 2 = viel.
+ * Tiers: 0 = low (< 1.5 GB), 1 = medium (< 3 GB), 2 = high.
  */
 object Mem {
     private var cachedTier = -1

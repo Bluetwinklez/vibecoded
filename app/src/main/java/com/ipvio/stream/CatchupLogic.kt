@@ -138,7 +138,7 @@ object CatchupLogic {
     private fun shift(live: String, start: Long, now: Long): String =
         live + (if (live.contains('?')) "&" else "?") + "utc=$start&lutc=$now"
 
-    /** Flussonic: …/index.m3u8 → …/index-START-DAUER.m3u8, …/mpegts → …/timeshift_abs-START.ts */
+    /** Flussonic: …/index.m3u8 → …/index-START-DURATION.m3u8, …/mpegts → …/timeshift_abs-START.ts */
     private fun flussonic(live: String, start: Long, dur: Long): String? {
         val q = live.indexOf('?')
         val path = if (q >= 0) live.substring(0, q) else live

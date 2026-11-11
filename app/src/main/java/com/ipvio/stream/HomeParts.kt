@@ -122,7 +122,7 @@ fun cardBackdrop(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
 @Composable
 fun HeroMetaLine(item: Item, m: Meta?, dots: Boolean = false) {
     val parts = ArrayList<Pair<String, Boolean>>()   // text, raw (do not translate)
-    // Bild 1: „2016 | Abenteuer | 1h 47min | ★ 7.6“; Bild 2: „Drama · 2023 · 2 Staffeln“
+    // Image 1: „2016 | Abenteuer | 1h 47min | ★ 7.6“; image 2: „Drama · 2023 · 2 Staffeln“
     if (dots) m?.genres?.firstOrNull()?.let { parts.add(it to true) }
     (m?.year ?: item.year?.toString())?.let { parts.add(it to true) }
     if (!dots) m?.genres?.firstOrNull()?.let { parts.add(it to true) }
@@ -693,7 +693,7 @@ fun RowPosterCard(item: Item, baseW: Dp, modifier: Modifier, overlay: Int = 0, a
     val rowF = LocalRowFocus.current
     val dimA by animateFloatAsState(if (rowF && !f) 0.5f else 1f, tween(if (Look.motion == 0) 0 else 320), label = "dim")
     val shape = RoundedCornerShape(dpx(10))
-    // Aufgeklapptes Szenenbild zeichnet seinen Rahmen selbst
+    // The expanded scene image draws its own frame
     // Image only. The focus sits on the poster slot (bottom), not on the wide card: otherwise Right/Left skips
     // the covered neighbor (bug "jumps 2 titles").
     val visual: @Composable (Modifier) -> Unit = { mod ->

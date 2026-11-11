@@ -153,7 +153,7 @@ internal fun BlockLayoutPage(ctx: Context, layout: BlockLayout, intro: String) {
     ConfirmPill("Auf Standard zurücksetzen") { layout.reset(ctx) }
 }
 
-/** Einstellungsseite „Startseite anpassen“. */
+/** Settings page „Startseite anpassen“. */
 @Composable
 internal fun HomeLayoutPage(ctx: Context) {
     PillButton("Direkt auf der Startseite bearbeiten", light = true, icon = AIcon.Sliders) { HomeEdit.active = true; AppNav.homeSignal++ }

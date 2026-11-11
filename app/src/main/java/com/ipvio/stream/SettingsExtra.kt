@@ -110,7 +110,7 @@ fun ChannelListsSection(ctx: Context) {
     )
 }
 
-/** Live-TV: Erinnerungen an Sendungen (Vorlauf, anstehende Erinnerungen). */
+/** Live TV: reminders for shows (lead time, upcoming reminders). */
 @Composable
 fun ReminderSettingsSection(ctx: Context) {
     Reminders.init(ctx)

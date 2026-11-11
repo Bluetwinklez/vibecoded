@@ -312,7 +312,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
 
     fun togglePlay() { if (player.isPlaying) player.pause() else player.play() }
 
-    // Springen: Einzeldruck = eingestellte Sprungweite. Halten beschleunigt in Stufen (Schnellspulen).
+    // Seeking: single press = configured jump size. Holding speeds up in levels (fast seeking).
     // Several jumps are collected and executed only after a short pause.
     // fromBar = true: control bar disappears immediately, only the seek display and a thin timeline remain.
     fun stepSeek(d: Int, amount: Long = step, fromBar: Boolean = true) {
@@ -573,7 +573,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         ping()
     }
 
-    // ---------------------------------------------------------------- Archiv (Catchup)
+    // ---------------------------------------------------------------- Archive (catchup)
     // Schedule of the channel whose archive show is currently playing (for "Previous/Next show" and continued playback)
     var archProg by remember { mutableStateOf<List<EpgEntry>>(emptyList()) }
     LaunchedEffect(cur.archive?.chId) {
@@ -1182,7 +1182,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             }
         )
 
-        // ---------------------------------------------------------------- Meldungen
+        // ---------------------------------------------------------------- Messages
         if (buffering && msg == null && !showGuide) {
             Spinner(Accent2, Modifier.align(Alignment.Center).size(48.dp))
         }
@@ -1296,7 +1296,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             }
         }
 
-        // ---------------------------------------------------------------- Steuerleiste
+        // ---------------------------------------------------------------- Control bar
         AnimatedVisibility(
             // No control bar under the TV guide: otherwise focus could slip from the guide into this menu
             visible = controls && !showGuide,
@@ -1340,7 +1340,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
                     }
                 }
 
-                // Marken oben rechts
+                // Badges top right
                 Row(
                     Modifier.align(Alignment.TopEnd).padding(end = PT.MarginX, top = PT.MarginY),
                     horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically
@@ -1555,7 +1555,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             }
         }
 
-        // ---------------------------------------------------------------- Senderliste & TV-Guide
+        // ---------------------------------------------------------------- Channel list & TV guide
         if (showChannels) {
             ChannelOverlay(
                 liveAll, cur.itemId, curItem,

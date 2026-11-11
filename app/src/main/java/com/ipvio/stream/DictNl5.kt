@@ -1,6 +1,6 @@
 package com.ipvio.stream
 
-// Nederlandse vertalingen (deel 5/5): rijen Duits-Nederlands, aanvulling op de 9 talen in DictA–J
+// Dutch translations (part 5/5): German-Dutch rows, in addition to the 9 languages in DictA–J
 val DictNl5 = """
 Dunkler Kasten hinter der Uhr. Aus = nur die Zahlen.¦Donker vak achter de klok. Uit = alleen de cijfers.
 Puffer (bei langsamem Internet)¦Buffer (bij traag internet)
@@ -400,7 +400,7 @@ Sicherung gespeichert.¦Back-up opgeslagen.
 Auf diesem Gerät gibt es keine Dateiauswahl. Nutze „Sicherung erstellen“.¦Dit apparaat heeft geen bestandskiezer. Gebruik “Back-up maken”.
 Auf diesem Gerät gibt es keine Dateiauswahl.¦Dit apparaat heeft geen bestandskiezer.
 „Speichern unter“ lässt dich den Ort wählen, zum Beispiel Google Drive, Downloads oder einen USB-Stick – so nimmst du die Sicherung auf ein anderes Gerät mit.¦“Opslaan als” laat je de locatie kiezen, bijvoorbeeld Google Drive, Downloads of een USB-stick – zo neem je de back-up mee naar een ander apparaat.
-# Sports Hub Premium (Runde 24)
+# Sports Hub Premium (round 24)
 Übersicht¦Overzicht
 Spielplan¦Speelschema
 Teams¦Teams
@@ -524,7 +524,7 @@ Trakt · Gesehen¦Trakt · Gezien
 Trakt · Merkliste¦Trakt · Kijklijst
 MyAnimeList · Gesehen¦MyAnimeList · Gezien
 MyAnimeList · Merkliste¦MyAnimeList · Kijklijst
-# Sports Hub (Runde 26)
+# Sports Hub (round 26)
 1 Spiel¦1 wedstrijd
 {#0} Spiele¦{#0} wedstrijden
 Spiel¦Wedstrijd

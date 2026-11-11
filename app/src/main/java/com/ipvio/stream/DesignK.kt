@@ -19,7 +19,7 @@ object Design {
     var k by mutableFloatStateOf(0.68f)
 }
 
-/** Entwurfs-Pixel → dp. */
+/** Design pixels → dp. */
 fun dpx(v: Number): Dp = (v.toFloat() * Design.k).dp
 
 /** Design pixels → sp (font size). */

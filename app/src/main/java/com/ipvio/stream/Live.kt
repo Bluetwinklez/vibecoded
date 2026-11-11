@@ -17,7 +17,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 
-/** Eigene Senderlisten (je Profil). Logik in [ChannelListLogic]. */
+/** Own channel lists (per profile). Logic in [ChannelListLogic]. */
 object ChannelLists {
     val lists = mutableStateListOf<ChList>()
     private var inited = false
@@ -59,7 +59,7 @@ object Reminders {
     const val EXTRA_CH = "ipvio_remind_ch"
     private const val CHANNEL = "reminders"
     val list = mutableStateListOf<Reminder>()
-    /** Vorlauf in Minuten. */
+    /** Lead time in minutes. */
     var leadMin by mutableIntStateOf(5)
         private set
     /** Already reported (card or notification) – not twice. */

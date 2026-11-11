@@ -44,7 +44,7 @@ object SportAlerts {
     val DELAYS = listOf(0, 30, 60)
     // Mini score (window in the corner while one of your teams plays live)
     var miniOn by mutableStateOf(false)
-    /** 0 = oben links, 1 = oben rechts, 2 = unten links, 3 = unten rechts */
+    /** 0 = top left, 1 = top right, 2 = bottom left, 3 = bottom right */
     var miniPos by mutableIntStateOf(3)
     /** 0 = small, 1 = normal, 2 = large */
     var miniSize by mutableIntStateOf(1)

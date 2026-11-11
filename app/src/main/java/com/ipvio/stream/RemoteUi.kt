@@ -36,7 +36,7 @@ object RemoteUi {
 
 /**
  * Card with a large QR code. The server keeps running when the card is closed (the phone stays connected);
- * „Beenden“ schaltet ihn ab.
+ * „Beenden“ switches it off.
  */
 @Composable
 fun RemoteOverlay(modifier: Modifier = Modifier) {

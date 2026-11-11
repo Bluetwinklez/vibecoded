@@ -1,6 +1,6 @@
 package com.ipvio.stream
 
-// Nederlandse vertalingen (deel 1/5): rijen Duits-Nederlands, aanvulling op de 9 talen in DictA–J
+// Dutch translations (part 1/5): German-Dutch rows, in addition to the 9 languages in DictA–J
 val DictNl1 = """
 Playlist hinzufügen¦Playlist toevoegen
 Dauert nur ein paar Sekunden.¦Duurt maar een paar seconden.

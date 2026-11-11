@@ -116,7 +116,7 @@ fun PlaylistLoadingOverlay() {
                 Text(p, color = Muted, fontSize = 14.sp)
             }
             Spacer(Modifier.height(28.dp))
-            // feine Fortschrittslinie
+            // thin progress line
             Box(Modifier.width(barW).height(3.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f))) {
                 if (known) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(frac).clip(RoundedCornerShape(50)).background(line))

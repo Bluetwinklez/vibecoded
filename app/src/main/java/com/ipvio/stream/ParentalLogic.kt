@@ -27,7 +27,7 @@ class PinGuard(private val maxFails: Int = 5, private val lockMs: Long = 60_000L
     private var fails = 0
     private var lockedUntil = 0L
 
-    /** Restliche Sperrzeit in Sekunden (0 = Eingabe erlaubt). */
+    /** Remaining lock time in seconds (0 = input allowed). */
     fun waitSec(now: Long): Long = if (now >= lockedUntil) 0L else (lockedUntil - now + 999) / 1000
 
     /** Report the result of an attempt. Returns true if locked from now on. */

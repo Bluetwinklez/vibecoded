@@ -271,7 +271,7 @@ private fun DrawScope.drawAIcon(icon: AIcon, c: Color) {
             l(c, u, 3.5f, 9f, 20.5f, 9f, 1.8f)
             l(c, u, 3.5f, 15f, 20.5f, 15f, 1.8f)
         }
-        // Stift (umbenennen)
+        // Pencil (rename)
         AIcon.Edit -> {
             poly(c, u, 2f, true, 15.5f, 4.5f, 19.5f, 8.5f, 9f, 19f, 4.5f, 19.5f, 5f, 15f)
             l(c, u, 13.5f, 6.5f, 17.5f, 10.5f)
@@ -290,12 +290,12 @@ private fun DrawScope.drawAIcon(icon: AIcon, c: Color) {
             if (icon == AIcon.HeartFilled) drawPath(p, c)
             drawPath(p, c, style = Stroke(width = 2f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
-        // Regler (Ansicht anpassen)
+        // Sliders (adjust view)
         AIcon.Sliders -> {
             l(c, u, 4f, 7f, 20f, 7f); l(c, u, 4f, 17f, 20f, 17f)
             drawCircle(c, 2.6f * u, Offset(9f * u, 7f * u)); drawCircle(c, 2.6f * u, Offset(15f * u, 17f * u))
         }
-        // Gestapelte Ebenen (mehrere Quellen)
+        // Stacked layers (several sources)
         AIcon.Layers -> {
             poly(c, u, 2f, true, 12f, 4f, 21f, 9f, 12f, 14f, 3f, 9f)
             poly(c, u, 2f, false, 3f, 13f, 12f, 18f, 21f, 13f)

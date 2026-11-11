@@ -261,7 +261,7 @@ fun Guide(
             Spacer(Modifier.width(400.dp))
         }
         Row(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
-            // Kategorien
+            // Categories
             LazyColumn(
                 Modifier.width(206.dp).fillMaxHeight().clip(RoundedCornerShape(DS.RadiusL)).background(Color(0x0FFFFFFF)),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
@@ -320,7 +320,7 @@ fun Guide(
                 }
             }
         }
-        // Tastenhilfe
+        // Key hints
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             GuideHint(null, "Sendungen", AIcon.Left, AIcon.Right)
             GuideHint(null, "Sender", AIcon.Up, AIcon.Down)
@@ -595,7 +595,7 @@ private fun GuideRow(
                     ) {
                         if (reminded) AppIcon(AIcon.Bell, if (bf) Color.White else Accent2, Modifier.align(Alignment.TopEnd), 13.dp)
                         if (inArchive && dw >= 30f) AppIcon(AIcon.Catchup, if (bf) Color.White else Accent2, Modifier.align(Alignment.TopEnd), 13.dp)
-                        // Entwurf: Titel oben, Zeit darunter
+                        // Design: title on top, time below
                         if (dw >= 44f) Column {
                             if (dw >= 72f) Text(
                                 e.title, color = if (past && !inArchive && !bf) Color(0xFF9AA0B2) else Color.White,
