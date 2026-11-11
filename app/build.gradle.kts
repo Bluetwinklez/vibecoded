@@ -107,4 +107,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     testImplementation("junit:junit:4.13.2")
+    // Real JSON implementation for JVM unit tests (the Android android.jar only has stubs that throw).
+    // Needed by ListImportLogic.parseTrakt, which swallows the stub exception and returns an empty list.
+    testImplementation("org.json:json:20250517")
 }

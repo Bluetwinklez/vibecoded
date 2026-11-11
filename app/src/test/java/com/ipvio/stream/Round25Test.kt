@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+
 class Round25Test {
     @Test fun regionPrefixBeforeLanguageTagIsGerman() {
         assertEquals("de", LangTagLogic.detect("EU | DE | Filme und Serie"))
