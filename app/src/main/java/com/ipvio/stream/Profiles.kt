@@ -81,7 +81,7 @@ object Profiles {
     /** Display name: default names are translated, custom names stay as they are. */
     fun displayName(p: Profile): String = if (p.name == defaultName(p.id)) Lang.tr(p.name) else p.name
 
-    /** Einstellungsdatei des aktiven Profils. */
+    /** Settings file of the active profile. */
     fun sp(c: Context, name: String): SharedPreferences {
         init(c)
         return c.applicationContext.getSharedPreferences(scopedName(name, active), Context.MODE_PRIVATE)

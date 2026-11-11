@@ -133,7 +133,7 @@ object PlaylistStore {
     val lists = mutableStateListOf<PL>()
     var active by mutableIntStateOf(0)
 
-    // ------------------------------------------------------------------ mehrere Playlists gleichzeitig (Runde 20)
+    // ------------------------------------------------------------------ several playlists at the same time (round 20)
     /** Further playlists shown in addition to the active one (key = hash of the address, see [MultiLogic]). */
     var multi by mutableStateOf<Set<Int>>(emptySet())
         private set
@@ -258,7 +258,7 @@ object PlaylistStore {
         e.apply()
     }
 
-    // ------------------------------------------------------------------ gemerkter Ladeauftrag
+    // ------------------------------------------------------------------ remembered load job
 
     /** The playlist currently being added (or not finished last time), otherwise null. */
     fun pending(c: Context): LoadLogic.Pending? {
@@ -358,7 +358,7 @@ object PlaylistStore {
         return out
     }
 
-    // ------------------------------------------------------------------ Dateien je Playlist
+    // ------------------------------------------------------------------ files per playlist
 
     private fun key(url: String) = url.trim().hashCode()
     private fun cacheFile(c: Context, url: String) = File(c.filesDir, "pl_" + key(url) + ".bin")
@@ -633,7 +633,7 @@ object PlaylistStore {
         return raw to charsetOf(LoadLogic.PartInfo.decode(runCatching { info.readText() }.getOrNull())?.charset)
     }
 
-    // ------------------------------------------------------------------ Einlesen
+    // ------------------------------------------------------------------ Reading
 
     private class Built(val parsed: ParsedPlaylist, val hidden: Set<String>)
 
@@ -911,7 +911,7 @@ object PlaylistStore {
 
     /**
      * Load without network: from the cache if it matches the current language selection, otherwise from the compressed
-     * gespeicherten ganzen Liste neu einlesen ([allowGz]).
+     * stored whole list, read in again ([allowGz]).
      */
     private suspend fun fromLocal(c: Context, u: String, allowGz: Boolean, ask: Boolean): Local {
         val hidden = LangFilter.hidden
@@ -1023,7 +1023,7 @@ object PlaylistStore {
                 val list = parsed.items
                 if (sig(list) != before || !usedCache || b.hidden != shownHidden) show(c, u, list, urls, order, parsed.counts, parsed.bytes, b.hidden)
                 else { primaryEpg = urls; primaryOrder = order; langCounts = parsed.counts; langBytes = parsed.bytes; restartCatchup(c) }
-                // Weitere gezeigte Playlists ebenfalls vom Server erneuern
+                // Renew further shown playlists from the server as well
                 loadExtras(c, network = true)
                 if (save) finishSave(c, u)
                 askNext = false

@@ -46,7 +46,7 @@ object LiveMemory {
     fun setSel(c: android.content.Context, k: String) { Profiles.sp(c, "ipvio_live").edit().putString("sel", k).apply() }
 }
 
-/** Eingabe eines Namens (neue Senderliste, Umbenennen). */
+/** Entering a name (new channel list, rename). */
 private class NameAsk(val title: String, val initial: String, val onSave: (String) -> Unit)
 
 /** Chosen source in Live TV with several playlists (-1 = all), valid for the running session. */
@@ -112,7 +112,7 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     // Only built when an own channel list needs it (thousands of channels, not needed for opening the tab)
     val byIdLazy = remember(live) { lazy { live.associateBy { it.id } } }
     // Order: favorites, own channel lists, "New channel list", all channels, categories
-    // Aufnahmen (Runde 20): eigene Kategorie, sobald es welche gibt
+    // Recordings (round 20): own category as soon as there are any
     val recs = remember(Recorder.active.size, sel == "REC") { Recorder.list(ctx).map { Recorder.itemOf(it) } }
     val names = (if (PlaylistStore.lists.size > 1) listOf("PL") else emptyList()) + listOf("HOME", "GUIDE", "SEARCH", "MULTI", FAV_CAT) + (if (recs.isNotEmpty()) listOf("REC") else emptyList()) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + genres.keys + favCats + groups.keys.filter { it !in favCats && it !in HiddenCats.list } + (if (HiddenCats.list.any { it in groups }) listOf("HIDDEN") else emptyList())
     val curList = ChannelLists.byKey(sel)

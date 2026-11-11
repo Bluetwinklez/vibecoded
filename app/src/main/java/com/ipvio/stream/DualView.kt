@@ -98,7 +98,7 @@ internal fun SecondStream(item: Item, split: Boolean, audioOn: Boolean, modifier
     LaunchedEffect(item.url, retryTick) {
         if (retryTick > 0) kotlinx.coroutines.delay(1_500) else { retries = 0; tip = "" }
         failed = false
-        // Stalker-Portal: echte Adresse erst jetzt vom Portal holen
+        // Stalker portal: fetch the real address from the portal only now
         val playUrl = runCatching { if (StalkerLogic.isItem(item.url)) StalkerApi.resolve(ctx, item.url) else item.url }.getOrNull()
         if (p == null || playUrl == null || !openStream(p, playUrl, C.TIME_UNSET)) failed = true
     }

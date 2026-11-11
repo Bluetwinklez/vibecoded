@@ -179,11 +179,11 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
     var uploadDir: java.io.File? = null
     /** Create the backup as text; parameter = with playlists. */
     var backup: ((Boolean) -> String?)? = null
-    /** Sicherung einspielen; true = erfolgreich. */
+    /** Restore a backup; true = success. */
     var restore: ((String) -> Boolean)? = null
     /** Receives a TV guide (XMLTV) address typed on the phone; set = the field appears on the page. */
     var onEpg: ((String) -> Unit)? = null
-    /** Letzter Absturzbericht als Text, null = keiner. */
+    /** Last crash report as text, null = none. */
     var crash: (() -> String?)? = null
     /** Phone search: answer a request under /api/<name> (JSON) or null = unknown. Set = the /r page is active. */
     var api: ((String, Map<String, String>) -> String?)? = null
