@@ -51,10 +51,14 @@ object StalkerMore {
         return more.filter { it.id !in have } + loaded
     }
 
+    /** Categories named [group] that fit a view showing [kinds] (movie and series areas can share a name). */
+    private fun refsFor(c: Context, u: String, group: String, kinds: Set<Kind>): List<StalkerLogic.CatRef> =
+        synchronized(lock) { StalkerLogic.catsFor(refsOf(c, u).values, group, Kind.MOVIE in kinds, Kind.SERIES in kinds) }
+
     /** Number of titles according to the portal if the category is not fully loaded yet; otherwise null. */
-    fun total(c: Context, group: String): Int? {
+    fun total(c: Context, group: String, kinds: Set<Kind>): Int? {
         val u = PlaylistStore.shownUrl ?: return null
-        val t = synchronized(lock) { refsOf(c, u).values.filter { it.name == group }.map { it.total } }
+        val t = refsFor(c, u, group, kinds).map { it.total }
         return if (t.isEmpty() || t.any { it <= 0 }) null else t.sum()
     }
 
@@ -129,7 +133,7 @@ object StalkerMore {
         val src = StalkerLogic.parse(u) ?: return
         val now = System.currentTimeMillis()
         val ref = synchronized(lock) {
-            refsOf(c, u).values.firstOrNull { it.name == group && now - (failedAt[refKey(it)] ?: 0L) > RETRY_AFTER_MS }
+            refsFor(c, u, group, kinds).firstOrNull { now - (failedAt[refKey(it)] ?: 0L) > RETRY_AFTER_MS }
         } ?: return
         val ctx = coroutineContext
         fun live() = ctx.isActive && myGen == gen
