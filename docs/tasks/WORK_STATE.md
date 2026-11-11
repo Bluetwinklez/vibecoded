@@ -4,6 +4,8 @@ Last update: 2026-11-11. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
+**T-009 Xtream backup servers** on branch `feature/xtream-backup-servers` (see `docs/tasks/T-009-xtream-backup-servers.md`): #3 rebased onto `main` with the review fixes from #35, without the commit of #2. CI on the pull request; device test PENDING. Not merged into `main`. After merge: close #3 and #35.
+
 None active. **P2 batch 8** (final comment sweep) is done in the working copy; the commit by the maintainer is pending. The restructuring plan U-0 is recorded in `docs/REFACTORING-PROGRESS.md`.
 
 ## Completed steps
