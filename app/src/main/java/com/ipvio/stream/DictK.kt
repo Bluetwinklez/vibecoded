@@ -27,4 +27,11 @@ OK lange drücken = als gesehen markieren¦Hold OK = mark as watched
 OK lange drücken = als ungesehen markieren¦Hold OK = mark as unwatched
 Tastatur des Geräts in der Suche¦Device keyboard in search
 Aus: die eingebaute Tastatur der App. An: die Tastatur deines Geräts (z. B. Gboard) mit allen Sprachen, Sprachfunktion und Einfügen. Mit OK auf das Suchfeld wird sie geöffnet.¦Off: the app's built-in keyboard. On: your device's keyboard (e.g. Gboard) with all languages, voice input and paste. Press OK on the search field to open it.
+# Category sorting (Live TV, movies, series)
+Nach oben verschieben¦Move up¦Yukarı taşı¦Pomjeri gore¦¦¦Subir¦Monter¦Sposta su¦Omhoog verplaatsen
+Nach unten verschieben¦Move down¦Aşağı taşı¦Pomjeri dolje¦¦¦Bajar¦Descendre¦Sposta giù¦Omlaag verplaatsen
+An den Anfang verschieben¦Move to top¦En başa taşı¦Pomjeri na početak¦¦¦Mover al principio¦Placer en premier¦Sposta all'inizio¦Naar het begin verplaatsen
+Kategorien sortieren …¦Sort categories …¦Kategorileri sırala …¦Sortiraj kategorije …¦¦¦Ordenar categorías …¦Trier les catégories …¦Ordina categorie …¦Categorieën sorteren …
+Anbieter-Reihenfolge¦Provider order¦Sağlayıcı sırası¦Redoslijed provajdera¦¦¦Orden del proveedor¦Ordre du fournisseur¦Ordine del fornitore¦Volgorde van aanbieder
+Eigene Reihenfolge¦Own order¦Kendi sıram¦Vlastiti redoslijed¦¦¦Orden propio¦Ordre personnel¦Ordine personale¦Eigen volgorde
 """

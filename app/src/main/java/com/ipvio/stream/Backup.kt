@@ -21,7 +21,9 @@ object Backup {
         // Home block builder and Boomer mode
         "ipvio_homelayout", "ipvio_boomerlayout", "ipvio_boomer",
         // T-006: dual view, last live category, new episodes, imported lists, resume log (profile-scoped like the others)
-        "ipvio_dual", "ipvio_live", "ipvio_newep", "ipvio_importedlists", "ipvio_resumelog"
+        "ipvio_dual", "ipvio_live", "ipvio_newep", "ipvio_importedlists", "ipvio_resumelog",
+        // 1.4: own order of categories (Live TV, movies, series)
+        "ipvio_catorder"
     )
 
     /** A real backup never gets bigger; larger files are not even read. */
