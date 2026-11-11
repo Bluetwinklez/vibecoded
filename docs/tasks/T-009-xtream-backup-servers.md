@@ -1,6 +1,6 @@
 # T-009 Xtream backup servers with automatic failover
 
-Status: implemented on branch `feature/xtream-backup-servers`, based on `main` (`581099c`). CI unit tests and debug build run on the pull request. Device test PENDING.
+Status: merged into `main` through #37 (branch `feature/xtream-backup-servers`, based on `581099c`). CI unit tests and debug build passed on #37. Device test PENDING; not in a release yet.
 
 ## Origin
 
