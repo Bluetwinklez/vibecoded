@@ -42,4 +42,10 @@ class RemoteLogicTest {
         assertTrue(RemoteLogic.page(1).contains("Pause / Play"))
         assertTrue(RemoteLogic.page(9).contains("lang=\"nl\""))
     }
+
+    @Test fun page_sends_the_access_code_with_the_list_import() {
+        for (li in listOf(0, 1, 9)) {
+            assertTrue("$li", RemoteLogic.page(li).contains("'/listimport?name='+encodeURIComponent(x.name)+'&code='+encodeURIComponent(code)"))
+        }
+    }
 }

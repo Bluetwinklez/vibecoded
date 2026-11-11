@@ -251,6 +251,28 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
         return true
     }
 
+    /**
+     * Reads up to [len] bytes into memory without reserving [len] bytes up front: memory grows only with the data
+     * that actually arrives. If the sender stops early, the bytes received so far are returned.
+     */
+    private fun readBody(ins: InputStream, len: Long): ByteArray {
+        val chunks = ArrayList<ByteArray>()
+        var total = 0
+        while (total < len) {
+            val chunk = ByteArray(minOf(64L * 1024, len - total).toInt())
+            var n = 0
+            while (n < chunk.size) { val k = ins.read(chunk, n, chunk.size - n); if (k < 0) break; n += k }
+            if (n == 0) break
+            chunks.add(if (n == chunk.size) chunk else chunk.copyOf(n))
+            total += n
+            if (n < chunk.size) break
+        }
+        val out = ByteArray(total)
+        var pos = 0
+        for (c in chunks) { c.copyInto(out, pos); pos += c.size }
+        return out
+    }
+
     private fun codeOk(given: String?): Int = when {
         fails.get() >= 5 && System.currentTimeMillis() - lockedAt < 60_000 -> 429
         given.orEmpty().trim() != code -> {
@@ -303,16 +325,13 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
             // Exported lists from other services (parsed on the TV)
             "POST /listimport" -> {
                 val cb = onList
-                // The phone remote page (api set) was opened by scanning the QR code on the TV, so it needs no extra code
-                val c = if (api != null) 200 else codeOk(h.query["code"])
+                val c = codeOk(h.query["code"])
                 if (cb == null) html(404, PhoneImportLogic.message(li, "bad"))
                 else if (c != 200) html(c, PhoneImportLogic.message(li, if (c == 403) "code" else "lock"))
-                else if (h.len <= 0 || h.len > 16L * 1024 * 1024) html(400, PhoneImportLogic.message(li, "bad"))
+                else if (h.len <= 0) html(400, PhoneImportLogic.message(li, "bad"))
+                else if (h.len > MAX_LIST_UPLOAD) html(413, PhoneImportLogic.message(li, "file"))
                 else {
-                    val bytes = ByteArray(h.len.toInt())
-                    var n = 0
-                    while (n < bytes.size) { val k = ins.read(bytes, n, bytes.size - n); if (k < 0) break; n += k }
-                    cb(h.query["name"].orEmpty(), bytes.copyOf(n))
+                    cb(h.query["name"].orEmpty(), readBody(ins, h.len))
                     html(200, PhoneImportLogic.message(li, "ok"))
                 }
             }
@@ -385,7 +404,7 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
             }
         }
         val out = s.getOutputStream()
-        val reason = when (r.status) { 200 -> "OK"; 400 -> "Bad Request"; 403 -> "Forbidden"; 404 -> "Not Found"; 429 -> "Too Many Requests"; else -> "Error" }
+        val reason = when (r.status) { 200 -> "OK"; 400 -> "Bad Request"; 403 -> "Forbidden"; 404 -> "Not Found"; 413 -> "Payload Too Large"; 429 -> "Too Many Requests"; else -> "Error" }
         out.write(("HTTP/1.1 ${r.status} $reason\r\nContent-Type: ${r.type}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n" +
             "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; img-src data:; frame-ancestors 'none'\r\n" +
             r.extra + "Content-Length: ${r.body.size}\r\nConnection: close\r\n\r\n").toByteArray())
@@ -396,6 +415,9 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
     companion object {
         /** Largest uploadable playlist file. */
         const val MAX_UPLOAD = 400L * 1024 * 1024
+
+        /** Largest uploadable list export (Letterboxd, MyAnimeList, Trakt); same limit as the file picker on the TV (ListImportUi). */
+        const val MAX_LIST_UPLOAD = 16L * 1024 * 1024
 
         /** Local IPv4 address of the device in the Wi-Fi/LAN (or null). */
         fun localIp(): String? = runCatching {
