@@ -27,7 +27,7 @@ object LazySeries {
 
     fun loaded(i: Item): Boolean = !isStub(i) || full(i) !== i
 
-    /** Alles vergessen (neue Playlist geladen). */
+    /** Forget everything (new playlist loaded). */
     fun clear() = done.clear()
 
     /** Load episodes. null = the provider does not respond (network, login). */

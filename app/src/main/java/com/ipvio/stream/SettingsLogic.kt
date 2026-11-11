@@ -10,7 +10,7 @@ data class UpdatePlan(
     val intervalH: Int = 12,
     val hour: Int = 4,
     val minute: Int = 0,
-    /** Wochentag wie Calendar: 1 = Sonntag … 7 = Samstag */
+    /** Weekday as in Calendar: 1 = Sunday … 7 = Saturday */
     val dow: Int = Calendar.MONDAY
 )
 
@@ -64,7 +64,7 @@ object SettingsLogic {
         else -> String.format(java.util.Locale.GERMANY, "%.2f GB", b / 1073741824.0)
     }
 
-    // ---- Zeit ----
+    // ---- Time ----
     class Zone(val id: String, val label: String)
 
     /** Choice: first entry = system time of the device. */
@@ -91,7 +91,7 @@ object SettingsLogic {
         if (id.isBlank()) TimeZone.getDefault()
         else TimeZone.getTimeZone(id).takeIf { it.id == id } ?: TimeZone.getDefault()
 
-    /** Uhrzeit-Muster: mode 0 = System, 1 = 24 Stunden, 2 = 12 Stunden. */
+    /** Time pattern: mode 0 = system, 1 = 24 hours, 2 = 12 hours. */
     fun timePattern(mode: Int, system24: Boolean): String =
         if (mode == 1 || (mode == 0 && system24)) "HH:mm" else "h:mm a"
 

@@ -17,7 +17,7 @@ object ChannelListLogic {
 
     fun cleanName(n: String): String = n.replace(Regex("[\\t\\n\\r]"), " ").trim().take(MAX_NAME)
 
-    /** Neue Liste; leerer Name → „Senderliste N“. */
+    /** New list; empty name → "Senderliste N". */
     fun create(lists: List<ChList>, name: String, first: String? = null): List<ChList> {
         val id = (lists.maxOfOrNull { it.id } ?: 0) + 1
         val n = cleanName(name).ifEmpty { "Senderliste $id" }
@@ -79,7 +79,7 @@ object ReminderLogic {
     fun due(list: List<Reminder>, nowSec: Long, leadSec: Long): List<Reminder> =
         list.filter { nowSec >= it.start - leadSec && nowSec < it.end }
 
-    /** Alte Erinnerungen (Sendung vorbei) fallen weg. */
+    /** Old reminders (show is over) are dropped. */
     fun prune(list: List<Reminder>, nowSec: Long): List<Reminder> = list.filter { it.end > nowSec }
 
     /** Next alarm time (seconds) or null. */

@@ -10,7 +10,7 @@ import java.net.URLEncoder
  * Some providers switch get.php off, limit it or answer with their own error codes (e.g. 884) while the
  * API works (this is how TiviMate works too). The app builds a list from the API's answers
  * in the same format as get.php (type=m3u_plus, output=ts). So parsing, language filter, cache and
- * Titel-IDs gleich.
+ * title IDs stay the same.
  */
 object XtreamLogic {
     /** Login with plain-text user and password; [base] = address before "/get.php" or "/player_api.php". */

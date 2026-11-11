@@ -14,7 +14,7 @@ object TechText {
 object UpdateLogic {
     fun isNewer(current: Long, remote: Long): Boolean = remote > current
 
-    /** Zahlen einer Versionsangabe: „v1.2.3“ → [1, 2, 3], „1.1-beta“ → [1, 1]. */
+    /** Numbers of a version string: "v1.2.3" → [1, 2, 3], "1.1-beta" → [1, 1]. */
     fun parts(v: String): List<Int> =
         v.trim().trimStart('v', 'V').split('.', '-', '_', ' ').map { it.takeWhile(Char::isDigit) }.takeWhile { it.isNotEmpty() }.map { it.toIntOrNull() ?: 0 }
 
@@ -35,7 +35,7 @@ object UpdateLogic {
         return (apks.firstOrNull { it.first.equals("IPVIO-Stream.apk", true) } ?: apks.firstOrNull { it.first.contains("ipvio", true) } ?: apks.firstOrNull())?.second
     }
 
-    /** Einmal am Tag automatisch suchen. */
+    /** Check automatically once a day. */
     fun due(lastCheck: Long, now: Long): Boolean = now - lastCheck >= 20 * 3_600_000L || now < lastCheck
 
     /** The APK address may be given relative to the update address. */

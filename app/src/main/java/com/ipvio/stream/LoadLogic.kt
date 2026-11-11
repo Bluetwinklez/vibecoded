@@ -68,7 +68,7 @@ object LoadLogic {
         }
     }
 
-    // ------------------------------------------------------------------ Fortsetzen (HTTP Range)
+    // ------------------------------------------------------------------ Resuming (HTTP range)
 
     const val APPEND = 0
     const val RESTART = 1
@@ -122,7 +122,7 @@ object LoadLogic {
         }
     }
 
-    // ------------------------------------------------------------------ gemerkter Ladeauftrag
+    // ------------------------------------------------------------------ remembered load job
 
     const val RUNNING = "run"
     const val FAILED = "fail"
@@ -188,7 +188,7 @@ object LoadFun {
     const val QUOTES_AFTER = 5 * 60_000L
     const val SARCASM_AFTER = 10 * 60_000L
     const val HINT_AFTER = 15 * 60_000L
-    /** So lange bleibt ein Spruch stehen. */
+    /** How long a saying stays displayed. */
     const val ROTATE = 15_000L
 
     val QUOTES = listOf(

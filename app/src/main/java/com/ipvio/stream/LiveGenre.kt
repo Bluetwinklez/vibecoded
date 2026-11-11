@@ -25,7 +25,7 @@ object LiveGenre {
     fun matches(g: Genre, i: Item): Boolean =
         if (g.re == null) SportLogic.isSportChannel(i) else g.re.containsMatchIn(i.group) || g.re.containsMatchIn(i.title)
 
-    /** Sender je Genre; leere Genres fehlen. */
+    /** Channels per genre; empty genres are missing. */
     fun split(live: List<Item>): LinkedHashMap<String, List<Item>> {
         // The same list is asked again and again (every recomposition, every tab): remember the last result
         synchronized(this) { last?.let { if (it.first === live) return it.second } }

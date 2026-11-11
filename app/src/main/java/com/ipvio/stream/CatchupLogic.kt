@@ -8,7 +8,7 @@ data class EpgEntry(val title: String, val desc: String, val start: Long, val en
 
 /**
  * Archive (catchup) of a channel: how the address of a past show is built and how many days back it goes.
- * [mode] siehe [CatchupLogic] (XC, DEFAULT, APPEND, SHIFT, FLUSSONIC), [source] = Vorlage des Anbieters (catchup-source).
+ * [mode] see [CatchupLogic] (XC, DEFAULT, APPEND, SHIFT, FLUSSONIC), [source] = template of the provider (catchup-source).
  */
 data class CatchupInfo(val mode: Int, val days: Int, val source: String = "")
 
@@ -18,9 +18,9 @@ data class XtreamLive(val host: String, val user: String, val pass: String, val 
 /**
  * Catchup without Android (testable). Supports:
  * - Xtream servers (tv_archive from the API or catchup="xc"): /timeshift/user/pass/minutes/starttime/id.ts
- * - M3U-Angaben wie in Kodi/TiviMate: catchup="default|append|shift|flussonic|xc", catchup-days, catchup-source,
+ * - M3U attributes as in Kodi/TiviMate: catchup="default|append|shift|flussonic|xc", catchup-days, catchup-source,
  *   plus the older spellings timeshift="3" and tvg-rec="3".
- * Platzhalter in catchup-source: {utc} {start} {utcend} {end} {lutc} {now} {timestamp} {duration} {offset},
+ * Placeholders in catchup-source: {utc} {start} {utcend} {end} {lutc} {now} {timestamp} {duration} {offset},
  * with divisor ({duration:60}) or format ({utc:Y-m-d H:M:S}), {Y} {m} {d} {H} {M} {S} and the ${start} spelling.
  */
 object CatchupLogic {
@@ -203,7 +203,7 @@ object CatchupLogic {
 
     private fun two(n: Int) = if (n < 10) "0$n" else n.toString()
 
-    // ---------------------------------------------------------------- Speichern
+    // ---------------------------------------------------------------- Saving
 
     /** One line per channel: id TAB kind TAB days TAB template. */
     fun encode(m: Map<String, CatchupInfo>): String = buildString {

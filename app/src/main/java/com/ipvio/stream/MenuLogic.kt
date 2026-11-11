@@ -9,7 +9,7 @@ object MenuLogic {
     const val HOME = 0
     const val SEARCH = 4
     const val SETTINGS = 5
-    /** Seit Runde 13 (Entwurf): TV-Guide, Favoriten (Sender), Meine Liste (Filme/Serien). */
+    /** Since round 13 (draft): TV guide, favorites (channels), "Meine Liste" (movies/series). */
     const val EPG = 6
     const val FAVS = 7
     const val MYLIST = 8
@@ -17,7 +17,7 @@ object MenuLogic {
     const val VERLAUF = 9
     /** Round 20: Sports – running and upcoming sports shows, sports channels. */
     const val SPORT = 10
-    /** Wie im Entwurf: Home, Live TV, Filme, Serien, EPG, Favoriten, Meine Liste, (Suche), Einstellungen. */
+    /** As in the draft: Home, Live TV, movies, series, EPG, favorites, "Meine Liste", (search), settings. */
     val DEFAULT_ORDER = listOf(0, 3, 1, 2, SPORT, EPG, FAVS, MYLIST, VERLAUF, SEARCH, 5)
     /**
      * Search sits at the top in the header, not in the sidebar: hidden by default.

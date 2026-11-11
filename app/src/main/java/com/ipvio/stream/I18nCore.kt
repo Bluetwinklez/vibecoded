@@ -2,7 +2,7 @@ package com.ipvio.stream
 
 /**
  * Translation core (without Android, testable). Source texts are the German UI texts.
- * Zeilenformat: de ¦ en ¦ tr ¦ bs ¦ hr ¦ sr ¦ es ¦ fr ¦ it ¦ nl   (hr/sr leer = wie bs; andere leer = wie en)
+ * Line format: de ¦ en ¦ tr ¦ bs ¦ hr ¦ sr ¦ es ¦ fr ¦ it ¦ nl   (hr/sr empty = same as bs; others empty = same as en)
  * Placeholders: {0} any text, {#0} number. A line break is written as \n.
  */
 object I18nCore {
@@ -48,7 +48,7 @@ object I18nCore {
                     last = m.range.last + 1
                 }
                 sb.append(Regex.escape(de.substring(last))).append("$")
-                // Platzhalter-Nummern in Reihenfolge des Auftretens (0,1,2 …)
+                // Placeholder numbers in order of appearance (0,1,2 …)
                 pats.removeAll { it.src == de }
                 pats.add(Pat(de, Regex(sb.toString(), RegexOption.DOT_MATCHES_ALL), row, numeric.toBooleanArray()))
             } else exact[de] = row

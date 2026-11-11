@@ -143,7 +143,7 @@ object ResumeLogic {
     fun finished(posMs: Long, durMs: Long): Boolean =
         durMs > 0 && (posMs >= durMs * 0.92 || (durMs - posMs <= 90_000 && posMs >= durMs / 2))
 
-    /** Erst ab 30 Sekunden lohnt sich ein Fortsetzen-Punkt. */
+    /** Only from 30 seconds on is a resume point worthwhile. */
     const val MIN_POS = 30_000L
 
     /**
@@ -159,7 +159,7 @@ object ResumeLogic {
         else -> false
     }
 
-    /** Fortschritt einer Folge in Sekunden. */
+    /** Progress of an episode in seconds. */
     data class EpPos(val pos: Int, val dur: Int) {
         val done: Boolean get() = finished(pos * 1000L, dur * 1000L)
         val fraction: Float get() = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
@@ -167,7 +167,7 @@ object ResumeLogic {
 
     fun key(season: Int, ep: Int): Long = (season.toLong() shl 32) or (ep.toLong() and 0xFFFFFFFFL)
 
-    /** „s:e:pos:dur;…“ (Sekunden). */
+    /** "s:e:pos:dur;…" (seconds). */
     fun encode(m: Map<Long, EpPos>): String = m.entries.joinToString(";") { (k, v) ->
         "${(k shr 32).toInt()}:${k.toInt()}:${v.pos}:${v.dur}"
     }

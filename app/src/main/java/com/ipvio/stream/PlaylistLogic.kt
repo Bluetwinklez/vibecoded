@@ -22,9 +22,9 @@ object PlaylistLogic {
     fun normalizeUrl(raw: String): String? {
         val u = raw.trim()
         if (u.isEmpty() || u.length > MAX_LEN) return null
-        // Stalker-Portal (Portal-Adresse + MAC), siehe StalkerLogic
+        // Stalker portal (portal address + MAC), see StalkerLogic
         if (StalkerLogic.isSource(u)) return StalkerLogic.parse(u)?.encode()
-        // Hochgeladene Playlist-Datei im App-Ordner
+        // Uploaded playlist file in the app folder
         if (u.startsWith("file:///")) return u.takeIf { it.contains("/files/imports/") && it.endsWith(".m3u", true) && !it.contains("..") }
         val noCred = u.replaceFirst(Regex("""^(https?://)[^/@\s]*@""", RegexOption.IGNORE_CASE), "$1")
         return if (HTTP_URL.matches(noCred)) u else null

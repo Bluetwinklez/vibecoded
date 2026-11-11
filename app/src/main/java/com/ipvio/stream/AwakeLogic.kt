@@ -6,7 +6,7 @@ package com.ipvio.stream
  * On pause, end, error and in the background it is released – no permanent lock when idle.
  */
 object AwakeLogic {
-    // Gleiche Werte wie androidx.media3.common.Player.STATE_*
+    // Same values as androidx.media3.common.Player.STATE_*
     const val STATE_IDLE = 1
     const val STATE_BUFFERING = 2
     const val STATE_READY = 3
