@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3
+[PENDING: Änderung eintragen]
+
+## 1.2
+**Removed**
+- Optional backup to Google Drive (sign-in with a code). Planned again for 1.4 as LiveSync. The old code is in tag V1.1
+
+[PENDING: Änderung eintragen]
+
 ## 1.1
 **Updates and your data**
 - In-app updates from GitHub Releases: the app checks once a day and shows "Update available" in the bell; one click downloads and installs

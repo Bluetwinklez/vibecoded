@@ -131,6 +131,8 @@ If you do not know how something works: read the code first. Do not guess. Ask b
 
 ## 15. Current state
 
-- Current phase: **Phase 0, audit only.** No file changes, moves, deletions, formatting or dependency changes.
-- Phase 0 output: a report with file references for each finding, followed by a prioritised roadmap. Then stop and wait for approval.
-- Roadmap order (low risk first): baseline and docs skeleton → comments to English → small security fixes (approval) → identifier renames in groups (approval) → splitting large files (approval, with tests) → repo documents to English.
+- Current phase: **P1 (baseline and documentation skeleton)**. P0 (audit) is done. S1 from P3 was done early as T-002.
+- Completed tasks: T-001 (test expectation for 10 languages), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected).
+- Open tasks: T-001b (decision on `org.json` in unit tests; `Round25Test` stays red until then), T-004 (quality baseline, values pending), T-005 (documentation skeleton, in progress), T-006 (add five missing stores to the backup `NAMES`).
+- Next step: finish T-004 and T-005, decide T-001b, then T-006.
+- Details: `docs/REFACTORING-PROGRESS.md` and `docs/tasks/WORK_STATE.md`.
