@@ -55,7 +55,7 @@ class PlaylistLogicTest {
     }
 }
 
-/** Titel aus der Playlist: HTML-Zeichen und „|EN|“-Kennung (Runde 12). */
+/** Titles from the playlist: HTML characters and the "|EN|" tag (round 12). */
 class TitleTextTest {
     @Test fun htmlZeichen() {
         assertEquals("Asterix & Obelix: The Big Fight", TitleText.decode("Asterix &amp; Obelix: The Big Fight"))
@@ -96,7 +96,7 @@ http://h/movie/u/p/9.mkv
     }
 }
 
-/** Runde 14: Doppelte Titel und Kurzfassung der Beschreibung. */
+/** Round 14: duplicate titles and short version of the description. */
 class Runde14ListTest {
     @Test fun ersterJeSchluessel() {
         assertEquals(listOf("a1", "b1", "c1"), PlaylistLogic.firstPerKey(listOf("a1", "b1", "a2", "c1", "b2")) { it.take(1) })
@@ -110,7 +110,7 @@ class Runde14ListTest {
         assertTrue(s.length <= 250)
         assertTrue(s.endsWith("…"))
         assertFalse(s.contains("  "))
-        // an einer Wortgrenze gekürzt
+        // shortened at a word boundary
         assertTrue(s.removeSuffix("…").split(" ").all { it.startsWith("Wort") && it.length > 4 })
     }
 }

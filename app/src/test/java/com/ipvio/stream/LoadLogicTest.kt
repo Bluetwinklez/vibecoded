@@ -9,7 +9,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.StringReader
 
-/** Große Playlists: Einlesen mit Sprachfilter, Zählen, Speicher-Schätzung, Fortsetzen, gemerkter Ladeauftrag, Zwischenspeicher v5. */
+/** Large playlists: parsing with language filter, counting, memory estimate, resuming, remembered load job, cache v5. */
 class LoadLogicTest {
     private val m3u = """#EXTM3U url-tvg="http://epg/x.xml"
 #EXTINF:-1 tvg-id="ard" tvg-logo="http://l/ard.png" group-title="DE | News",DE: Das Erste HD
@@ -35,7 +35,7 @@ http://h/x
     @Test fun ohneFilter_genauWieVorher() {
         val p = M3uParser.parseStream(StringReader(m3u))
         assertEquals(M3uParser.parse(m3u), p.items)
-        // Sprache je Serie aus der Kategorie; Folgen sortiert
+        // language per series from the category; episodes sorted
         assertEquals("en", p.items.first { it.title == "Breaking Bad" }.lang)
         val de = p.items.first { it.kind == Kind.SERIES && it.lang == "de" }
         assertEquals(listOf(1, 2), de.episodes.map { it.num })
@@ -48,7 +48,7 @@ http://h/x
         assertEquals(3, p.items.size)                       // Das Erste, Matrix (DE), Breaking Bad
         val bb = p.items.first { it.kind == Kind.SERIES }
         assertTrue(bb.episodes.all { it.variants.isEmpty() })  // die englische Quelle wurde gar nicht erst angelegt
-        // Titel je Sprache: Serien zählen einmal, nicht je Folge
+        // titles per language: series count once, not per episode
         assertEquals(mapOf("de" to 3, "tr" to 1, "en" to 3), p.counts)
         assertTrue(p.bytes.getValue("de") > 0 && p.bytes.getValue("en") > 0)
     }
@@ -83,7 +83,7 @@ http://h/x
         assertEquals(setOf("de", "?"), LoadLogic.preselect(counts, bytes, "de", 100))
         assertEquals(setOf("de"), LoadLogic.preselect(counts, bytes, "de", 42))     // mit "ohne Kennung" zu groß
         assertEquals(setOf("tr"), LoadLogic.preselect(counts, bytes, "fr", 35))     // App-Sprache fehlt: größte, die passt
-        // 40 % des Speichers, umgerechnet in Byte der Liste (kompakte Folgen: ~0,65 Byte Speicher je Byte Liste)
+        // 40 % of memory, converted to bytes of the list (compact episodes: ~0.65 bytes of memory per byte of list)
         assertEquals((400L * 1024 * 1024 * 0.40 / 0.65).toLong(), LoadLogic.budget(400L * 1024 * 1024))
     }
 

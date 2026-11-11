@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Eigene Senderlisten und Erinnerungen an Sendungen. */
+/** Own channel lists and reminders for shows. */
 class LiveLogicTest {
     @Test fun senderlistenAnlegenUndFuellen() {
         var l = ChannelListLogic.create(emptyList(), "  Sport\t", "a")
@@ -47,7 +47,7 @@ class LiveLogicTest {
         l = ReminderLogic.toggle(l, r)
         assertEquals(listOf(r, r2), l)                           // nach Beginn sortiert
         assertEquals(listOf(r2), ReminderLogic.toggle(l, r))      // nochmal = löschen
-        // 5 Minuten Vorlauf
+        // 5 minutes lead time
         assertTrue(ReminderLogic.due(l, 9_600, 300).isEmpty())
         assertEquals(listOf(r), ReminderLogic.due(l, 9_700, 300))
         assertEquals(listOf(r), ReminderLogic.due(l, 10_500, 300))  // läuft schon: noch fällig

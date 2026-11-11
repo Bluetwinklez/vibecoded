@@ -26,7 +26,7 @@ class PlayerLogicTest {
     }
 
     @Test fun quality_breitbild4kWirdAlsVierKErkannt() {
-        // 3840x1600: Höhe allein wäre "2K", aus der Breite (16:9) ergibt sich 2160 -> 4K
+        // 3840x1600: height alone would be "2K", but from the width (16:9) it works out to 2160 -> 4K
         val w = 3840
         val h = 1600
         assertEquals("4K", qualityName(maxOf(h, w * 9 / 16)))

@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** TMDB-Abgleich: richtiger Treffer statt blind des ersten (Fall „Game of Thrones“). */
+/** TMDB matching: the right hit instead of blindly the first (the "Game of Thrones" case). */
 class MatchLogicTest {
     private fun c(id: Int, name: String, orig: String = name, year: String? = null, votes: Int = 0) =
         MatchLogic.Candidate(id, name, orig, year, votes)

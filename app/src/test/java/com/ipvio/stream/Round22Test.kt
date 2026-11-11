@@ -18,9 +18,9 @@ class Round22Test {
         assertEquals("Motorsport", name("Formel 1: Großer Preis von Brasilien"))
         assertEquals("Kampfsport", name("UFC 300"))
         assertEquals("Sonstige", name("Livesport", "Sport 1"))
-        // Sendername entscheidet, wenn der Titel nichts verrät
+        // the channel name decides if the title gives nothing away
         assertEquals("Fußball", name("Live", "Sky Sport Bundesliga"))
-        // Titel hat Vorrang vor dem Sender
+        // the title takes precedence over the channel
         assertEquals("Basketball", name("NBA live", "Sky Sport Bundesliga"))
     }
 

@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Pflichtanforderung: Bildschirm bleibt bei laufendem Stream an, wird sonst freigegeben. */
+/** Hard requirement: the screen stays on while a stream plays and is released otherwise. */
 class AwakeLogicTest {
     private fun need(pwr: Boolean, st: Int, err: Boolean = false, fg: Boolean = true) =
         AwakeLogic.playerNeedsScreen(pwr, st, err, fg)
@@ -24,7 +24,7 @@ class AwakeLogicTest {
     }
 
     @Test fun ablauf_mitAbbruchUndReconnect() {
-        // Start -> läuft -> Netzabbruch (Fehler) -> Reconnect (Buffering) -> läuft -> Pause
+        // Start -> playing -> network drop (error) -> reconnect (buffering) -> playing -> pause
         val steps = listOf(
             Triple(true, AwakeLogic.STATE_BUFFERING, false) to true,
             Triple(true, AwakeLogic.STATE_READY, false) to true,

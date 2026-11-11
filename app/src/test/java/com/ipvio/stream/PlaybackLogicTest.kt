@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Quelle passend zum Gerät, Ausweichen, Ruckeln, Untertitel-Automatik, defekte Links. */
+/** Source matching the device, fallback, stutter, automatic subtitles, broken links. */
 class PlaybackLogicTest {
     @Test fun geraeteGrenze() {
         assertEquals(4, QualityLogic.deviceMax(2160, true, 0))
@@ -60,7 +60,7 @@ class PlaybackLogicTest {
         assertEquals("ja", TrackLogic.norm("jpn"))
         assertNull(TrackLogic.norm("und"))
         assertNull(TrackLogic.norm(null))
-        // Japanischer Ton, Deutsch eingestellt → Untertitel an; deutscher Ton → aus; unbekannt → aus
+        // Japanese audio, German set → subtitles on; German audio → off; unknown → off
         assertTrue(TrackLogic.subsWanted(TrackLogic.SUB_FOREIGN, "jpn", "de", "de"))
         assertFalse(TrackLogic.subsWanted(TrackLogic.SUB_FOREIGN, "ger", "de", ""))
         assertFalse(TrackLogic.subsWanted(TrackLogic.SUB_FOREIGN, null, "de", "de"))
@@ -90,22 +90,22 @@ class PlaybackLogicTest {
     }
 }
 
-/** Überspring-Zeiten von TheIntroDB: nur plausible Abschnitte (Runde 13e). */
+/** Skip times from TheIntroDB: only plausible sections (round 13e). */
 class SegLogicTest {
     private val dur = 3_300_000L   // 55-Minuten-Folge
 
     @org.junit.Test fun introUndRueckblick() {
         org.junit.Assert.assertEquals(60_000L to 150_000L, SegLogic.clean(SegLogic.INTRO, 60_000, 150_000, dur))
         org.junit.Assert.assertEquals(0L to 90_000L, SegLogic.clean(SegLogic.RECAP, null, 90_000, dur))
-        // ohne Ende: kein Knopf (sonst bis zum Ende der Folge)
+        // no end: no button (otherwise until the end of the episode)
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.RECAP, 0, null, dur))
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.INTRO, 10_000, null, dur))
-        // zu lang, zu kurz, mitten in der Folge
+        // too long, too short, in the middle of the episode
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.INTRO, 0, 600_000, dur))
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.INTRO, 0, 2_000, dur))
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.INTRO, 2_000_000, 2_060_000, dur))
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.RECAP, 1_500_000, 1_560_000, dur))
-        // hinter dem Ende der Folge (Daten zu einer anderen Fassung)
+        // beyond the end of the episode (data for a different cut)
         org.junit.Assert.assertNull(SegLogic.clean(SegLogic.INTRO, 3_350_000, 3_400_000, dur))
     }
 

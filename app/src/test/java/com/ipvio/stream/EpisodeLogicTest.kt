@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.StringReader
 
-/** Lange Staffeln (One Piece), Weiterschauen-Regeln, Folgen über 999. */
+/** Long seasons (One Piece), continue-watching rules, episodes above 999. */
 class EpisodeLogicTest {
     private fun eps(season: Int, nums: IntRange) = nums.map { Episode(season, it, "Episode $it", "http://h/series/$season/$it.mkv") }
 
-    // One Piece laut TMDB (gekürzt): 61, 16, 14, 39 Folgen …
+    // One Piece according to TMDB (shortened): 61, 16, 14, 39 episodes …
     private val op = listOf(
         EpisodeLogic.TmdbSeason(0, 20, "Specials"),
         EpisodeLogic.TmdbSeason(1, 61, "East Blue"),
@@ -32,7 +32,7 @@ class EpisodeLogicTest {
         assertEquals(listOf("1–26", "27–52", "53–78", "79–104", "105–130"), g.map { EpisodeLogic.label(it) })
         assertEquals(3, EpisodeLogic.groupOf(g, 100))
         assertEquals(0, EpisodeLogic.groupOf(g, 0))
-        // Monster: 62 Folgen = drei Abschnitte statt 50 + 12
+        // Monster: 62 episodes = three sections instead of 50 + 12
         val m = EpisodeLogic.groups(eps(1, 1..62), 1, 1, emptyList())
         assertEquals(listOf("1–21", "22–42", "43–62"), m.map { EpisodeLogic.label(it) })
     }
@@ -42,12 +42,12 @@ class EpisodeLogicTest {
         assertTrue(EpisodeLogic.absolute(e, 1, op))
         val g = EpisodeLogic.groups(e, 1, 1, op)
         assertEquals(listOf("1–61 · East Blue", "62–77", "78–91 · Chopper Kingdom", "92–130 · Alabasta", "131–140"), g.map { EpisodeLogic.label(it) })
-        // Folge 62 = TMDB Staffel 2, Folge 1
+        // Episode 62 = TMDB season 2, episode 1
         val s2 = g[1]
         assertEquals(2, s2.tmdbSeason)
         assertEquals(1, EpisodeLogic.tmdbNum(s2, 62))
         assertEquals(39, EpisodeLogic.tmdbNum(g[3], 130))
-        // neuer als TMDB: keine Infos-Staffel
+        // newer than TMDB: no info season
         assertEquals(-1, g[4].tmdbSeason)
     }
 
@@ -62,14 +62,14 @@ class EpisodeLogicTest {
     }
 
     @Test fun eigeneStaffelnMitFortlaufenderNummer() {
-        // Anbieter: Staffel 2 beginnt mit Folge 62
+        // Provider: season 2 starts with episode 62
         val g = EpisodeLogic.groups(eps(2, 62..77), 2, 3, op)
         assertEquals(1, g.size)
         assertEquals(61, g[0].offset)
         assertEquals(1, EpisodeLogic.tmdbNum(g[0], 62))
-        // normale Zählung bleibt unverändert
+        // normal numbering stays unchanged
         assertEquals(0, EpisodeLogic.groups(eps(2, 1..16), 2, 3, op)[0].offset)
-        // mehrere Staffeln beim Anbieter: nie quer verteilen
+        // several seasons at the provider: never spread across
         assertFalse(EpisodeLogic.absolute(eps(1, 1..140), 2, op))
     }
 
@@ -82,11 +82,11 @@ class EpisodeLogicTest {
     }
 
     @Test fun gehezuFolgeGesamtnummer() {
-        // Grey's Anatomy: Staffeln mit eigener Zählung (9, 27, 25, 24 Folgen)
+        // Grey's Anatomy: seasons with their own numbering (9, 27, 25, 24 episodes)
         val all = eps(1, 1..9) + eps(2, 1..27) + eps(3, 1..25) + eps(4, 1..24)
         assertEquals(3 to 5, EpisodeLogic.locate(all, 3, 5))        // gibt es in der Staffel: dort
         assertEquals(2 to 26, EpisodeLogic.locate(all, 1, 26))      // nur in Staffel 2 (und 3): erste Staffel mit der Nummer
-        // 100 gibt es nirgends: Gesamtnummer 100 = 9 + 27 + 25 = 61, dann Staffel 4 Folge 24 -> 85, also über 85 Folgen
+        // 100 exists nowhere: total number 100 = 9 + 27 + 25 = 61, then season 4 episode 24 -> 85, so beyond 85 episodes
         assertNull(EpisodeLogic.locate(all, 1, 100))
         val big = all + eps(5, 1..24)                               // 109 Folgen
         assertEquals(5 to 15, EpisodeLogic.locate(big, 1, 100))     // 85 + 15
@@ -132,7 +132,7 @@ http://h/series/u/p/1051.mkv
     }
 }
 
-/** Kompakte Folgenliste: verhält sich genau wie die normale Liste, braucht aber viel weniger Speicher. */
+/** Compact episode list: behaves exactly like the normal list, but needs much less memory. */
 class EpisodeTableTest {
     private fun ep(s: Int, n: Int, url: String, q: String? = null, v: List<Variant> = emptyList()) = Episode(s, n, EpTitles.of(n), url, v, q)
 
@@ -172,7 +172,7 @@ class EpisodeTableTest {
     }
 
     @Test fun merktAndereFolgeAuchBeiKurzemReinschauen() {
-        // war bei Folge 40 gespeichert, jetzt 10 Sekunden in Folge 42: muss gemerkt werden
+        // was saved at episode 40, now 10 seconds into episode 42: must be remembered
         assertTrue(ResumeLogic.shouldSave(true, 1, 40, 1, 42, 10_000, false))
     }
 
@@ -181,7 +181,7 @@ class EpisodeTableTest {
         assertFalse(ResumeLogic.shouldSave(false, 0, 0, 1, 3, 10_000, false))
         assertTrue(ResumeLogic.shouldSave(false, 0, 0, 1, 3, 45_000, false))
         assertTrue(ResumeLogic.shouldSave(true, 1, 3, 1, 3, 10_000, true))
-        // Filme (ohne Folge): kurz = nichts ändern
+        // Movies (no episode): short = change nothing
         assertFalse(ResumeLogic.shouldSave(true, 0, 0, 0, 0, 10_000, false))
     }
 }

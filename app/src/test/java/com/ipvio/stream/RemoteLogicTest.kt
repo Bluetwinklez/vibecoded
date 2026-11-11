@@ -35,7 +35,7 @@ class RemoteLogicTest {
             assertTrue(p.startsWith("<!doctype html>"))
             for (a in listOf("'search'", "'cats'", "'channels'", "'eps'", "'play'", "'ctl'", "'state'")) assertTrue("$li $a", p.contains(a))
             assertFalse("Platzhalter offen", p.contains("\${"))
-            // Titel vom Anbieter nie als HTML einsetzen
+            // Never insert the provider's title as HTML
             assertFalse(p.contains("innerHTML=it") || p.contains("innerHTML=a"))
         }
         assertTrue(RemoteLogic.page(0).contains("Pause / Weiter"))
