@@ -616,7 +616,14 @@ object PlaylistStore {
         val api = XtreamApi(client, UA)
         api.onPhase = { phase = it }
         api.check = { if (cancelled()) throw CancellationException("abgebrochen") }
-        val counter = CountingOut(FileOutputStream(part)) { bytesRead = it }
+        // Shown bytes = written list + movies/series still in temporary files (fetched in parallel). Never goes backwards:
+        // when a temporary file is appended to the list, its part moves from one counter to the other.
+        val lock = Any()
+        var listN = 0L
+        var tempN = 0L
+        fun show() { val v = listN + tempN; if (v > bytesRead) bytesRead = v }
+        api.onTempBytes = { k -> synchronized(lock) { tempN += k; show() } }
+        val counter = CountingOut(FileOutputStream(part)) { k -> synchronized(lock) { listN = k; show() } }
         try {
             val n = OutputStreamWriter(BufferedOutputStream(counter, 1 shl 16), Charsets.UTF_8).use { w -> api.write(acct, w) }
             if (n == 0) throw PlaylistError("Keine Sender in der Playlist gefunden.")

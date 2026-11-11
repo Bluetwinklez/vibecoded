@@ -19,6 +19,12 @@ class XtreamApi(private val client: OkHttpClient, private val ua: String) {
     var onPhase: (String) -> Unit = {}
     /** Called regularly and throws on abort. */
     var check: () -> Unit = {}
+    /**
+     * Growth (or, negative, removal) of the characters in the temporary files of movies and series. The loading screen adds them
+     * to the bytes of the list; without them the display stood still at the size of the channel list until everything was there.
+     * Called from the download threads.
+     */
+    var onTempBytes: (Long) -> Unit = {}
 
     private fun req(url: String) = Request.Builder().url(url).header("User-Agent", ua).build()
 
@@ -214,12 +220,22 @@ class XtreamApi(private val client: OkHttpClient, private val ua: String) {
         val vodFile = java.io.File.createTempFile("ipvio_vod", ".part")
         val serFile = java.io.File.createTempFile("ipvio_ser", ".part")
         val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        val vodCount = java.util.concurrent.atomic.AtomicLong()
+        val serCount = java.util.concurrent.atomic.AtomicLong()
         try {
-            fun job(file: java.io.File, work: (Writer) -> Int) = pool.submit<Int> {
-                file.bufferedWriter(Charsets.UTF_8).use { w -> work(w).also { w.flush() } }
+            // Writes one temporary file and reports its growth for the progress display. A repeated attempt starts the file
+            // again, so what the earlier attempt reported is taken back first.
+            fun fill(file: java.io.File, count: java.util.concurrent.atomic.AtomicLong, work: (Writer) -> Int): Int {
+                onTempBytes(-count.getAndSet(0))
+                return file.bufferedWriter(Charsets.UTF_8).use { w ->
+                    val cw = TempCounter(w) { k -> count.addAndGet(k); onTempBytes(k) }
+                    work(cw).also { cw.flush() }
+                }
             }
-            val vodJob = job(vodFile) { writeMovies(a, it) }
-            val serJob = job(serFile) { writeSeries(a, it) }
+            fun job(file: java.io.File, count: java.util.concurrent.atomic.AtomicLong, work: (Writer) -> Int) =
+                pool.submit<Int> { fill(file, count, work) }
+            val vodJob = job(vodFile, vodCount) { writeMovies(a, it) }
+            val serJob = job(serFile, serCount) { writeSeries(a, it) }
 
             onPhase("Sender werden geladen …")
             val liveCats = categories(a, "get_live_categories")
@@ -228,22 +244,22 @@ class XtreamApi(private val client: OkHttpClient, private val ua: String) {
             }
             check()
 
-            fun take(f: java.util.concurrent.Future<Int>, file: java.io.File, again: (Writer) -> Int): Int {
+            fun take(f: java.util.concurrent.Future<Int>, file: java.io.File, tmp: java.util.concurrent.atomic.AtomicLong, again: (Writer) -> Int): Int {
                 val count = try { f.get() } catch (e: java.util.concurrent.ExecutionException) {
                     val c = e.cause
                     // Only a network problem of the parallel request is tried again one by one; abort and login errors pass on
-                    if (c is IOException) {
-                        file.bufferedWriter(Charsets.UTF_8).use { w -> again(w).also { w.flush() } }
-                    } else throw (c ?: e)
+                    if (c is IOException) fill(file, tmp, again) else throw (c ?: e)
                 }
+                // From here the same characters are counted as part of the list: no longer count them as temporary
+                onTempBytes(-tmp.getAndSet(0))
                 file.reader(Charsets.UTF_8).use { it.copyTo(out) }
                 return count
             }
             onPhase("Filme werden geladen …")
-            n += take(vodJob, vodFile) { writeMovies(a, it) }
+            n += take(vodJob, vodFile, vodCount) { writeMovies(a, it) }
             check()
             onPhase("Serien werden geladen …")
-            n += take(serJob, serFile) { writeSeries(a, it) }
+            n += take(serJob, serFile, serCount) { writeSeries(a, it) }
             out.flush()
             return n
         } finally {
@@ -253,4 +269,16 @@ class XtreamApi(private val client: OkHttpClient, private val ua: String) {
         }
     }
 
+}
+
+/** Counts the characters written (about the bytes of the mostly ASCII list) and reports the growth every 64 K and on flush. */
+private class TempCounter(w: Writer, private val onGrow: (Long) -> Unit) : java.io.FilterWriter(w) {
+    private var n = 0L
+    private var last = 0L
+    override fun write(c: Int) { out.write(c); add(1) }
+    override fun write(cbuf: CharArray, off: Int, len: Int) { out.write(cbuf, off, len); add(len.toLong()) }
+    override fun write(str: String, off: Int, len: Int) { out.write(str, off, len); add(len.toLong()) }
+    private fun add(k: Long) { n += k; if (n - last >= 65_536) report() }
+    private fun report() { if (n > last) { onGrow(n - last); last = n } }
+    override fun flush() { report(); super.flush() }
 }
