@@ -97,6 +97,10 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
                 itemsIndexed(hits) { _, h ->
                     var f by remember { mutableStateOf(false) }
                     val e = h.entry
+                    // Channel hit: what runs right now. XMLTV first (h.now), otherwise the cached/Xtream lookup (only for rows that are on screen)
+                    val nowShow by produceState(h.now, h.channel.id) {
+                        if (e == null && value == null) value = runCatching { Epg.current(Epg.now(h.channel)) }.getOrNull()
+                    }
                     Column(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(DS.RadiusM))
                             .background(if (f) Color(0x33FFFFFF) else Color(0x0FFFFFFF))
@@ -108,7 +112,7 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             raw = true,
-                            text = if (e == null) h.channel.group + (h.now?.let { "  ·  " + Lang.tr("Jetzt") + ": " + it.title + "  " + hhmm(it.start) + " - " + hhmm(it.end) } ?: "") else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
+                            text = if (e == null) h.channel.group + (nowShow?.let { "  ·  " + Lang.tr("Jetzt") + ": " + it.title + "  " + hhmm(it.start) + " - " + hhmm(it.end) } ?: "") else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
                             color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }

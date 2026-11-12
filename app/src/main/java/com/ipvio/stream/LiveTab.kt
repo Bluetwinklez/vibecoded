@@ -392,6 +392,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                         sel == "SEARCH" -> "Tippe rechts mit der Tastatur. Gesucht wird im Sendernamen und in der Kategorie."
                         sel == FAV_CAT -> "Auf einem Sender OK gedrückt halten und „Zu Favoriten“ wählen."
                         curList != null -> "In „Alle Sender“ oder einer Kategorie auf einem Sender OK gedrückt halten und „Zu …“ wählen."
+                        // The whole playlist has no live channels: most likely the content mode is "movies & series only"
+                        live.isEmpty() -> "There are no live channels. If there should be some, check Settings > Playlists: the content mode of this playlist may be set to movies & series only."
                         else -> "In dieser Kategorie gibt es keine Sender. Links eine andere Kategorie wählen."
                     }
                 ) else LazyColumn(
