@@ -101,9 +101,7 @@ object StalkerLogic {
     fun api(endpoint: String, type: String, action: String, extra: String = ""): String =
         "$endpoint?type=$type&action=$action$extra&JsHttpRequest=1-xml"
 
-    /** Request a play address. [series] = episode number if the command belongs to a whole season. */
-    fun createLink(endpoint: String, type: String, cmd: String, series: String? = null): String =
-        api(endpoint, type, "create_link", "&cmd=" + enc(cmd) + "&series=" + (series?.let { enc(it) } ?: "") + "&forced_storage=undefined&disable_ad=0&download=0")
+    // Requesting a play address ("create_link"): see StalkerLink
 
     /** "ffmpeg http://…" / "ffrt http://…" / "auto http://…" → bare address. */
     fun stripCmd(cmd: String?): String? {
@@ -121,6 +119,8 @@ object StalkerLogic {
 
     const val UA = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3"
     const val X_UA = "Model: MAG250; Link: WiFi"
+    private const val VER = "ImageDescription: 0.2.18-r23-250; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.6.1; " +
+        "API Version: JS API version: 343; STB API version: 146; Player Engine version: 0x58c"
 
     private fun hash(alg: String, s: String) = MessageDigest.getInstance(alg).digest(s.toByteArray()).joinToString("") { "%02X".format(it) }
 
@@ -132,7 +132,10 @@ object StalkerLogic {
         val sn = src.sn.ifEmpty { hash("MD5", src.mac).take(13) }
         val dev = src.id1.ifEmpty { hash("SHA-256", src.mac) }
         val dev2 = src.id2.ifEmpty { dev }
-        return "&hd=1&stb_type=MAG250&client_type=STB&image_version=218&sn=${enc(sn)}&device_id=${enc(dev)}&device_id2=${enc(dev2)}&auth_second_step=1&not_valid_token=0"
+        // As a MAG250 sends it (TiviMate / STB Emu do the same); some portals only accept the token for playback after this
+        return "&hd=1&ver=${enc(VER)}&num_banks=2&sn=${enc(sn)}&stb_type=MAG250&client_type=STB&image_version=218&video_out=hdmi" +
+            "&device_id=${enc(dev)}&device_id2=${enc(dev2)}&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0" +
+            "&api_signature=262"
     }
 
     // ------------------------------------------------------------------ Play addresses in the list
@@ -153,8 +156,12 @@ object StalkerLogic {
      * [series] = episode number (episodes of a season share the season's command).
      */
     fun itemUrl(key: Int, kind: String, cmd: String, series: String? = null): String =
-        "stalker://$key/$kind/" + hex(if (series != null) cmd + SEP + series else cmd) + (if (kind == "movie") ".mp4" else ".ts")
+        "stalker://$key/$kind/" + hex(if (series != null) cmd + SEP + series else cmd) + (if (kind == "movie" || kind == "mfile" || kind == "efile") ".mp4" else ".ts")
 
+    /**
+     * [type] = "itv", "vod", "mfile" (movie whose file is looked up at play time; [cmd] is then the movie ID) or
+     * "efile" (episode of a season; [cmd] also says where it sits, see [StalkerLink.Play.episode]).
+     */
     class ItemRef(val key: Int, val type: String, val cmd: String, val series: String? = null)
 
     fun itemRef(url: String): ItemRef? {
@@ -162,7 +169,7 @@ object StalkerLogic {
         val rest = url.removePrefix("stalker://").split('/')
         if (rest.size != 3) return null
         val key = rest[0].toIntOrNull() ?: return null
-        val type = when (rest[1]) { "live" -> "itv"; "movie" -> "vod"; else -> return null }
+        val type = when (rest[1]) { "live" -> "itv"; "movie" -> "vod"; "mfile" -> "mfile"; "efile" -> "efile"; else -> return null }
         val raw = unhex(rest[2].substringBefore('.')) ?: return null
         val p = raw.split(SEP, limit = 2)
         return ItemRef(key, type, p[0], p.getOrNull(1))
@@ -222,6 +229,8 @@ object StalkerLogic {
     // ------------------------------------------------------------------ Entries of the list
 
     private fun attr(s: String?) = (s ?: "").replace('"', '\'').replace('\n', ' ').trim()
+    /** Group name of a category in the list (as written into "group-title"). */
+    fun groupName(category: String): String = attr(category)
     private fun name(s: String?) = (s ?: "").replace(',', '‚').replace('\n', ' ').trim()
 
     /** A channel as two M3U lines. */
@@ -242,19 +251,74 @@ object StalkerLogic {
         val y = f["year"]?.trim()?.takeIf { it.length == 4 && it.all(Char::isDigit) }
         if (y != null && !n.contains("($y)")) n = "$n ($y)"
         val sb = StringBuilder("#EXTINF:-1")
-        attr(f["screenshot_uri"]).takeIf { it.startsWith("http") }?.let { sb.append(" tvg-logo=\"").append(it).append('"') }
+        // Portals often send the cover as a path without a server ("/stalker_portal/screenshots/…")
+        cover(src, f)?.let { sb.append(" tvg-logo=\"").append(attr(it)).append('"') }
         sb.append(" group-title=\"").append(attr(category.ifBlank { "Filme" })).append('"')
-        return sb.append(',').append(n).append('\n').append(itemUrl(src.key, "movie", cmd)).toString()
+        // Movies with their own files ("has_files", cmd "/media/<id>.mpg"): the file is looked up at play time
+        val url = if (needsFileLookup(f, cmd)) itemUrl(src.key, "mfile", f["id"]!!.trim()) else itemUrl(src.key, "movie", cmd)
+        return sb.append(',').append(n).append('\n').append(url).toString()
     }
+
+    /** Cover of a movie/series; relative paths ("/stalker_portal/screenshots/…") are resolved against the portal. */
+    private fun cover(src: Source, f: Map<String, String>): String? =
+        listOf("screenshot_uri", "cover_big", "cover", "logo").firstNotNullOfOrNull { k ->
+            f[k]?.trim()?.takeIf { it.isNotEmpty() && it != "null" }?.let { if (it.startsWith("http")) it else logoUrl(src.portal, it) }
+        }
+
+    /**
+     * Movie whose play command only comes from its file ID: Ministra video club with "has_files" and cmd "/media/<id>.mpg".
+     * create_link with the movie's own cmd returns no address there; it needs "/media/file_<file ID>.mpg".
+     */
+    fun needsFileLookup(f: Map<String, String>, cmd: String): Boolean =
+        f.containsKey("has_files") && !f["id"].isNullOrBlank() && !cmd.contains("://") && cmd.contains("/media/") && !cmd.contains("/media/file_")
 
     /** A series as a placeholder (two M3U lines); the name ends in "S01E01" so parsing recognizes it as a series. */
     fun seriesEntry(src: Source, f: Map<String, String>, catId: String, catName: String, mode: String): String? {
         val id = (f["id"] ?: f["series_id"])?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val n = name(f["name"] ?: f["title"]).ifEmpty { return null }
         val sb = StringBuilder("#EXTINF:-1")
-        listOf("screenshot_uri", "cover_big", "cover").firstNotNullOfOrNull { k -> attr(f[k]).takeIf { it.startsWith("http") } }
-            ?.let { sb.append(" tvg-logo=\"").append(it).append('"') }
+        cover(src, f)?.let { sb.append(" tvg-logo=\"").append(attr(it)).append('"') }
         sb.append(" group-title=\"").append(attr(catName.ifBlank { "Serien" })).append('"')
         return sb.append(',').append(n).append(" S01E01").append('\n').append(seriesUrl(src.key, id, catId, mode)).toString()
     }
+
+    // ------------------------------------------------------------------ Categories on demand
+
+    /**
+     * A movie/series category of which only the newest pages were fetched while loading. The rest comes when the
+     * user opens the category (see [StalkerMore]). [pages] = pages loaded so far, [total] = entries according to the
+     * portal (-1 = unknown).
+     */
+    data class CatRef(val type: String, val id: String, val name: String, val total: Int, val pages: Int) {
+        fun encode(): String = listOf(type, id, total.toString(), pages.toString(), name.replace('\t', ' ').replace('\n', ' ')).joinToString("\t")
+
+        companion object {
+            fun decode(line: String): CatRef? {
+                val p = line.split('\t')
+                if (p.size != 5 || (p[0] != "vod" && p[0] != "series") || p[1].isEmpty() || p[4].isBlank()) return null
+                val total = p[2].toIntOrNull() ?: return null
+                val pages = p[3].toIntOrNull()?.takeIf { it >= 0 } ?: return null
+                return CatRef(p[0], p[1], p[4], total, pages)
+            }
+        }
+    }
+
+    fun encodeCats(l: List<CatRef>): String = l.joinToString("") { it.encode() + "\n" }
+    fun decodeCats(text: String?): List<CatRef> = text.orEmpty().lineSequence().mapNotNull { CatRef.decode(it) }.toList()
+
+    /**
+     * Categories named [group] that belong to a view showing [movies] and/or [series]. Movie and series areas can use the
+     * same name ("ENGLISH"); a movie view uses the movie area ("vod"), a series view the series area and, if the portal
+     * has none of that name, the movie area (portals also file series there).
+     */
+    fun catsFor(refs: Collection<CatRef>, group: String, movies: Boolean, series: Boolean): List<CatRef> {
+        val named = refs.filter { it.name == group }
+        if (movies) return named.filter { it.type == "vod" }
+        if (!series) return emptyList()
+        return named.filter { it.type == "series" }.ifEmpty { named.filter { it.type == "vod" } }
+    }
+
+    /** Page count from total and page size; [fallback] if the portal sends no numbers. */
+    fun pageCount(total: Int, perPage: Int, fallback: Int): Int =
+        if (total <= 0 || perPage <= 0) fallback else (total + perPage - 1) / perPage
 }
