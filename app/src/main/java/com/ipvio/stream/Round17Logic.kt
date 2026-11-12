@@ -1,5 +1,7 @@
 package com.ipvio.stream
 
+import org.json.JSONObject
+
 // Pure rules from addendum 17 (without Android so it can be tested)
 
 /** Pure formatting of the technical info (tested). */
@@ -42,6 +44,68 @@ object UpdateLogic {
     fun resolve(base: String, apk: String): String =
         if (apk.startsWith("http://") || apk.startsWith("https://")) apk
         else base.substringBeforeLast('/', base) + "/" + apk.trimStart('/')
+
+    // ---- T-015: update.json, hash, version and signer checks (pure, tested in UpdateLogicTest) ----
+
+    /** Parsed `update.json`. [sha256] is lower-case hex or null when the file has none. */
+    data class Manifest(
+        val code: Long, val name: String, val apk: String, val sha256: String?,
+        val minSupportedCode: Long, val mandatory: Boolean, val notes: String
+    )
+
+    private fun str(j: JSONObject, key: String): String = if (j.isNull(key)) "" else j.optString(key).trim()
+
+    /**
+     * Reads an `update.json`. [strict] (the built-in source) requires a valid `sha256`; for a custom address it is optional,
+     * but if present it must be well-formed. Throws [IllegalStateException] with a short German message (shown to the user).
+     */
+    fun parseManifest(j: JSONObject, strict: Boolean): Manifest {
+        val code = j.optLong("versionCode", 0L)
+        val apk = str(j, "apk")
+        if (code <= 0L || apk.isEmpty()) error("Update-Datei unvollständig")
+        val raw = str(j, "sha256")
+        val sha = normalizeSha(raw)
+        if (raw.isNotEmpty() && sha == null) error("Update-Datei: ungültige Prüfsumme")
+        if (strict && sha == null) error("Update-Datei unvollständig")
+        val name = str(j, "versionName").ifEmpty { code.toString() }
+        return Manifest(code, name, apk, sha, j.optLong("minSupportedCode", 0L).coerceAtLeast(0L), j.optBoolean("mandatory", false), str(j, "notes").take(300))
+    }
+
+    /** SHA-256 as 64 lower-case hex characters; spaces are ignored (older certutil prints them). Null if malformed. */
+    fun normalizeSha(s: String?): String? {
+        val t = s.orEmpty().filterNot { it.isWhitespace() }.lowercase()
+        return if (t.length == 64 && t.all { it in '0'..'9' || it in 'a'..'f' }) t else null
+    }
+
+    fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+
+    /** [expected] comes from update.json (any case, may be null), [actualHex] from the download. */
+    fun sameHash(expected: String?, actualHex: String): Boolean {
+        val e = normalizeSha(expected) ?: return false
+        return e == normalizeSha(actualHex)
+    }
+
+    /** An update the user cannot postpone: flagged `mandatory`, or the installed version is below `minSupportedCode`. */
+    fun isRequired(installedCode: Long, minSupportedCode: Long, mandatory: Boolean): Boolean =
+        mandatory || (minSupportedCode > 0L && installedCode < minSupportedCode)
+
+    enum class VersionProblem { NOT_NEWER, CODE_MISMATCH }
+
+    /** Version check of the downloaded APK itself. [expected] = versionCode announced by update.json (0 = unknown). */
+    fun versionProblem(installed: Long, apk: Long, expected: Long): VersionProblem? = when {
+        expected > 0L && apk != expected -> VersionProblem.CODE_MISMATCH
+        apk <= installed -> VersionProblem.NOT_NEWER
+        else -> null
+    }
+
+    /**
+     * Do the signer certificates (SHA-256 hex) of the new APK match the installed app? Equal sets, or (key rotation, API 28+)
+     * the installed signers appear in the new APK's signing history. Empty sets never match.
+     */
+    fun sameSigners(installed: Set<String>, apkCurrent: Set<String>, apkHistory: Set<String>): Boolean {
+        if (installed.isEmpty() || apkCurrent.isEmpty()) return false
+        return installed == apkCurrent || installed.all { it in apkHistory }
+    }
 }
 
 

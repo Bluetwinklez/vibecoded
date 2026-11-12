@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- App update: the app reads `update.json` from the latest release first (GitHub API as fallback; a custom address still works). Before the installer opens it checks the SHA-256, the package name, the version number and that the new APK is signed with the same key as the installed app, and shows a clear message instead of Android's "App not installed". `update.json` can mark an update as required (T-015)
 - First start: a small card at the bottom checks for an app update once and shows the result (checking / up to date / update available / error with "Retry"), with the switch for the automatic check. It appears only once and only on a start without a playlist, never takes the focus from the add-playlist screen, and works with the TV remote (T-014)
 - Internal: player helper code split from Media3 (no user-visible change).
 - Search: the query box above the app keyboard can now be selected; OK or a tap opens the device keyboard for typing
