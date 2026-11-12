@@ -4,7 +4,9 @@ Last update: 2026-11-11. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-**U-1** (move the Media3-dependent code out of `PlayerLogic.kt`) is done on branch `refactor/U-1`, based on `pre-U-1`. The pull request is open; the CI check "Build APK" decides whether it is merged. The maintainer confirms the merge.
+**T-009 Xtream backup servers** (see `docs/tasks/T-009-xtream-backup-servers.md`): merged into `main` through #37 (#3 rebased with the review fixes from #35, without the commit of #2; #3 and #35 closed). CI passed. Device test PENDING before the next release.
+
+**U-1** (move the Media3-dependent code out of `PlayerLogic.kt`) is done on branch `refactor/U-1`, based on `pre-U-1`. The pull request is open; the maintainer confirmed the merge after the device test. Merging it into `main` (PR #30) is the step that follows.
 
 ## Completed steps
 

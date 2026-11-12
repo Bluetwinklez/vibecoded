@@ -68,7 +68,7 @@ internal fun SecondStream(item: Item, split: Boolean, audioOn: Boolean, modifier
                 .build()
             ExoPlayer.Builder(ctx, SoftAudio.factory(ctx))
                 .setLoadControl(lc)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)))
+                .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(HostFailover.DataSourceWrapper.Factory(DefaultDataSource.Factory(ctx, http))))
                 .build()
                 .also {
                     it.addListener(object : Player.Listener {
