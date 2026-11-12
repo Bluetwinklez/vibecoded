@@ -2,40 +2,18 @@ Last update: 2026-11-12. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-**Wishbox round 1 and T-007 performance** on branch `feat/wishbox-perf-runde1`, draft pull request #41 against `main`. The branch holds commit `0f3b073`, a cherry-pick of the local WIP commit `12da745` onto `origin/main`. The CI build on that commit succeeded.
+**T-013: Back from a selected search result does not return to the sidebar.** Fix is in PR #43 (branch `fix/T-013-search-back`). Cause (from reading the code, not reproduced): Search is hidden in the menu by default, so the sidebar had no entry carrying the `sideFocus` requester and the Back handler failed silently. Fix in `Sidebar.kt` (`anchorId`). CI result and device test: PENDING. Test steps are in `docs/tasks/T-013-search-back-navigation.md`.
 
-Device test by the maintainer (debug build, app ID `.test`):
+## Completed steps (12 Nov 2026)
 
-- Live TV: recently watched channels row. OK
-- Live TV: scroll the channel list and change category. OK
-- Playlist content mode (live or VOD). OK
-- Hide a category. OK
-- Playlist loads after an app restart. Not explicitly confirmed.
-- Search with the system keyboard. Not tested (setting `systemKeyboard` is off by default).
-
-## Small follow-ups on the same branch (12 Nov 2026, after the device test)
-
-Commits on top of `0f3b073`: `820ff95`, `73a3dbc`, `f1025e1`, `e0f4303`, `c64910f`, `de98f37`. CI is green on each. The maintainer confirmed on the device that they work ("all done"); no per-item test log beyond that.
-
-- `SearchScreen.kt`: with the app keyboard on, the query box is a `Field` (OK or tap opens the device keyboard). `BackHandler` untouched (T-013).
-- `PlayerScreen.kt` (protected area, one condition): playback error box is hidden while the TV guide is open.
-- `GuideSearch.kt`: channel hits show the running show (XMLTV, otherwise `Epg.now` for rows on screen).
-- `LiveTab.kt`: tab always opens on "HOME"; hint about the playlist content mode when there are no live channels. `LiveMemory.sel` is still written but no longer read.
-- `HomeScreen.kt`: same hint on movies, series and home when the playlist has none.
-- The hint texts are English on purpose (maintainer request) and not in the dictionaries; the system keyboard setting (`systemKeyboard`) is off by default.
-
-## Completed steps
-
-- U-1 (move Media3 code out of `PlayerLogic.kt`) is merged into `main` through PR #30 (merge commit `02bebe8`, 12 Nov 2026).
-- Wishbox round 1 and T-007 performance were committed locally as `12da745` (marked untested).
-- The commit is pushed as the backup branch `backup/wishbox-runde1-12da745`.
-- The commit is cherry-picked onto `feat/wishbox-perf-runde1` (`0f3b073`) and opened as draft PR #41.
+- U-1 (Media3 code out of `PlayerLogic.kt`): merged through PR #30 (`02bebe8`).
+- Wishbox round 1, T-007 performance and the follow-up commits (tappable search box, error box vs TV guide, running show in guide search, Live TV opens on "Start", empty-playlist hints): merged through PR #41 (merge commit `f535c3e`). Device test by the maintainer: all confirmed. Not explicitly tested: playlist after an app restart, search with the system keyboard (setting off by default).
+- PR #42: task file T-013, merged.
+- Hint texts are English on purpose (maintainer request) and not in the dictionaries. `LiveMemory.sel` is still written but no longer read.
 
 ## Open problems
 
-- Search: going back from a selected title in the result list does not return to the sidebar. The back logic in `SearchScreen.kt` is identical on `main`, so the bug predates this work. To be tracked as T-013, created on a branch from `main`.
-- Search: with the app keyboard on, the query box was display-only. Fixed in this branch: the box is now a `Field` (OK or tap opens the device keyboard). Not yet tested on a device. The system keyboard is a setting (Settings, keyboard of the device in search) and is **off by default**.
-- PR #40 (`integration/2026-11-11`) is open and not merged. It overlaps PR #41 in `LiveTab.kt` and `SearchScreen.kt`. Merge order is undecided.
+- PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`) has conflicts with `main` (also with PR #41). A comment on the PR asks the author to update the branch. Alternative if that does not happen: pull the branch into this repo and resolve the conflicts there (about 65 files).
 - Branch `fix/round28-major` (T-010 to T-012) is not in `main` and not in PR #40.
 - Branch `perf/T-007` on GitHub: T-008 Xtream loading indicator, device test status unknown.
 - T-009 backup servers: device test still pending.
@@ -43,4 +21,4 @@ Commits on top of `0f3b073`: `820ff95`, `73a3dbc`, `f1025e1`, `e0f4303`, `c64910
 
 ## Next step
 
-Decide the merge order of PR #40 and PR #41. Confirm the open device checks (playlist after restart, search with the system keyboard), then mark PR #41 ready for review. Create T-013 from `main`.
+Check CI on PR #43, device-test T-013, then merge. After that: PR #40 (conflicts), then T-006.
