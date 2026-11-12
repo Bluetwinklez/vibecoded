@@ -663,9 +663,10 @@ fun RowPosterCard(item: Item, baseW: Dp, modifier: Modifier, overlay: Int = 0, a
     var f by remember { mutableStateOf(false) }
     var open by remember { mutableStateOf(false) }
     // overlay 3 = automatic: the middle of the row grows to both sides, left edge to the right, right edge to the left.
-    // Position is remembered without state (otherwise all cards would be recomputed on every scroll frame).
+    // Only the layout coordinates are remembered (no state, no position math per scroll frame); the position in the
+    // window is computed once, at the moment the card expands.
     var mode by remember { mutableIntStateOf(3) }
-    val pos = remember { floatArrayOf(0.5f) }
+    val place = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
     val viewW = androidx.compose.ui.platform.LocalView.current
     // Even with animation "Off" the preview expands (then without motion, see snap below)
     // Preview style (View > Preview on highlight): info on the poster (default) or wide scene image
@@ -686,7 +687,11 @@ fun RowPosterCard(item: Item, baseW: Dp, modifier: Modifier, overlay: Int = 0, a
         if (fx && canOpen) {
             // Expand only after a longer dwell (look at the cover in peace); nothing happens while paging through
             kotlinx.coroutines.delay(if (wide) 1500 else 1300)
-            if (overlay == 3) mode = if (pos[0] < 0.36f) 1 else if (pos[0] > 0.64f) 2 else 3
+            if (overlay == 3) {
+                val c = place[0]?.takeIf { it.isAttached }
+                val x = if (c != null) (c.positionInRoot().x + c.size.width / 2f) / viewW.width.coerceAtLeast(1) else 0.5f
+                mode = if (x < 0.36f) 1 else if (x > 0.64f) 2 else 3
+            }
             open = true
         } else open = false
     }
@@ -757,7 +762,7 @@ fun RowPosterCard(item: Item, baseW: Dp, modifier: Modifier, overlay: Int = 0, a
         val eff = if (overlay == 3) mode else overlay
         Box(
             modifier.width(baseW).height(h).zIndex(if (fx || p > 0.01f) 1f else 0f)
-                .onGloballyPositioned { c -> pos[0] = (c.positionInRoot().x + c.size.width / 2f) / viewW.width.coerceAtLeast(1) }
+                .onGloballyPositioned { c -> place[0] = c }
                 .then(focusMod)
         ) {
             Box(Modifier.wrapContentSize(align = if (eff == 2) Alignment.CenterEnd else if (eff == 1) Alignment.CenterStart else Alignment.Center, unbounded = true)) {
