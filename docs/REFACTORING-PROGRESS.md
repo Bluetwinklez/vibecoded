@@ -30,7 +30,7 @@ Task IDs follow audit section 14. They replace the IDs in the table of section 1
 | T-002 | S1: `/listimport` needs the access code; upload limit 16 MiB | `PhoneImport.kt`, `RemoteLogic.kt`, tests | done (commit `a804180`, pushed); device test PENDING |
 | T-003 | Repo hygiene: `*.apk` in `.gitignore`; correct CLAUDE.md | `.gitignore`, `CLAUDE.md` | done (commit hash PENDING) |
 | T-004 | Quality baseline | `docs/quality/baseline-2026-11-11.md` | in progress (values PENDING) |
-| T-005 | Documentation skeleton and CHANGELOG 1.2/1.3 | docs, `CHANGELOG.md`, `CLAUDE.md` section 15 | done (CHANGELOG content PENDING) |
+| T-005 | Documentation skeleton and CHANGELOG 1.2/1.3 | docs, `CHANGELOG.md`, `CLAUDE.md` section 15 | done |
 | T-006 | Add five missing stores to the backup `NAMES` | `Backup.kt` | done (PR pending device check: export and restore) |
 | T-007 ff. | P2, P3 S2/S3/S4, P4, P5 | | open, one approval each |
 | 1.4 | Google Drive as LiveSync, rebuilt from the `V1.1` code | | after the refactoring |
