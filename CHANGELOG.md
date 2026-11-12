@@ -6,6 +6,7 @@
 - TV guide in the player: a playback error box (for example "check username, password or subscription") no longer sits on top of the guide
 - TV guide search: channel hits show the show running right now with its times (also for providers without XMLTV, via the guide query)
 - Live TV: when a playlist has no live channels, the empty list points to Settings > Playlists (content mode)
+- Movies, series and home: when a playlist has none (content mode "live TV only"), the empty page points to Settings > Playlists
 - Live TV: the tab always opens on "Start" (home) instead of the last category or "Alle Sender"; the hint above also shows there
 **Playlists (T-009)**
 - Xtream: any number of backup server addresses per login (same username and password). If the main server stops answering, the app switches to the next one by itself, for the playlist, TV guide, catch-up and streams
