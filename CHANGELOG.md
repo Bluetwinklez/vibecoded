@@ -15,13 +15,59 @@
 - Backup servers are included in the backup export and import
 
 ## 1.3
-[PENDING: Änderung eintragen]
+**Playlists and loading**
+- Large playlists load faster: reading, unpacking and parsing now overlap, and the category and quality checks are cheaper
+- Providers whose certificate does not match their address ("certificate is for ...") no longer fail: for this one error the app tries the same address over http once and remembers the host. Every other certificate error is still refused
+- Stalker portals: optional serial number and device IDs (as in TiviMate or STB Emu) for providers that ask for them; empty means the old behaviour
+- The setup screen is more compact (everything visible at once, no animated scrolling) and offers "Continue without playlist" on the first start
+
+**Playback**
+- Short network drops are retried up to 6 times with a growing pause before an error is shown (no retries where they cannot help: wrong login, subscription or address)
+- After a stall, playback resumes only with a few seconds in the buffer, so it does not stall again right away
+
+**Watched marks and search**
+- Mark a movie, season or whole series as watched or unwatched (also per episode: hold OK or the menu key); single titles can be removed from "Recently watched"
+- Option "Device keyboard in search" in the settings (other languages, voice input, paste)
+
+**Updates**
+- "Update available" dialog at app start with one button to download and install, also on the "add playlist" screen. "Later" hides it until the next start
 
 ## 1.2
 **Removed**
 - Optional backup to Google Drive (sign-in with a code). Planned again for 1.4 as LiveSync. The old code is in tag V1.1
 
-[PENDING: Änderung eintragen]
+**Stalker portals**
+- More robust login (several portal address variants, tolerant JSON), fallback paging for channel lists, clearer error messages
+- Series support (own series area and series inside VOD); the second stream can play Stalker channels
+
+**Sports hub (rebuilt)**
+- Sports sidebar, day tabs, game cards with scores (unofficial ESPN data, can be switched off), matching of games to your channels, leagues on and off
+- Favourite teams, alerts when a favourite team plays or scores (with optional delay), mini scoreboard in a corner (position, size, logos or names, game time)
+- Long press a channel to correct which channel belongs to a game
+
+**Live TV**
+- New info bar when zapping (logo, LIVE, number, channel, quality, show, time left, progress, next)
+- Genre filters (Sport, Movies, Documentaries, Kids, News, Music) and a "Start" page
+- Quality and frame rate shown in the channel list (learned while watching)
+- Hide live categories (favourite key in Live TV, "Hidden" at the bottom of the list)
+- Ignore groups by country or language tag (Settings > Genres & categories), effective at once
+
+**Interface**
+- Seven ready-made designs, one click each
+- Clock next to the profile icon (can be switched off)
+- "Fit to your screen": margin for sides and top/bottom (0-10 %)
+- Own on-screen keyboard in search with live results while typing
+- Switch the playlist from the header when there are two or more
+- On phones the app stays in landscape; the "add playlist" screen and the player button row can be swiped
+
+**Boomer mode**
+- Mode for older relatives, set up by someone else (Settings > Boomer Mode, PIN of the parental control): big channel tiles, only left/right zaps in the player, hidden exit (hold Back for 10 seconds, then PIN), start after boot
+- Look is adjustable with a live preview (card size, text size, highlight colour, border, animations, logos) and the tiles can be chosen by hand
+
+**Backup and search**
+- Backup can be saved to and loaded from a file (Settings > Backup); more settings are included
+- Phone search shows "Continue watching" when the search is empty
+- Playlist download identifies itself as a common player (some providers slowed unknown clients)
 
 ## 1.1
 **Updates and your data**
