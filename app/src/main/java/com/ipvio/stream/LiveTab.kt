@@ -114,12 +114,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     ChannelLists.init(ctx)
     remember { LiveQuality.init(ctx) }
     // Last chosen category / list (round 14): the same one again after Back from the player and after a restart
-    var sel by remember {
-        val saved = LiveMemory.sel(ctx)?.takeIf { k ->
-            (k == FAV_CAT && favs.isNotEmpty()) || k == "ALL" || k == "HOME" || k in groups || (LiveGenre.isGenreKey(k) && genres.containsKey(k)) || ChannelLists.byKey(k) != null || k == "REC"
-        }
-        mutableStateOf(saved ?: if (favs.isNotEmpty()) FAV_CAT else "ALL")
-    }
+    // The tab always opens on "Start" (home), so the cursor lands there instead of on the last category or "Alle Sender"
+    var sel by remember { mutableStateOf("HOME") }
     HiddenCats.init(ctx)
     // Channel name search ("SEARCH" entry): text is kept while the tab is open
     var query by remember { mutableStateOf("") }
@@ -353,7 +349,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                     }
                 }
             }
-            if (sel == "HOME") Box(Modifier.weight(2f).fillMaxHeight().padding(end = 24.dp)) {
+            // With no live channels at all the plain list shows the hint instead of an empty home
+            if (sel == "HOME" && live.isNotEmpty()) Box(Modifier.weight(2f).fillMaxHeight().padding(end = 24.dp)) {
                 LiveHome(live, genres, favs, firstChan, onOpen = { ch, l -> ZapContext.list = l; ZapContext.key = "ALL"; onOpen(ch) })
             } else {
             Column(Modifier.weight(0.9f).fillMaxHeight().padding(end = 24.dp)) {
