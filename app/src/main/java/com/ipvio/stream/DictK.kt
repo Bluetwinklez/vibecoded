@@ -15,6 +15,13 @@ Neue Version {0} (installiert: {1})¦New version {0} (installed: {1})¦Yeni sür
 Deine Playlists und Einstellungen bleiben erhalten. Android fragt vor der Installation einmal nach.¦Your playlists and settings are kept. Android asks once before installing.¦Oynatma listelerin ve ayarların korunur. Android kurulumdan önce bir kez sorar.¦Tvoje liste i postavke ostaju sačuvane. Android te jednom pita prije instalacije.¦¦¦Tus listas y ajustes se conservan. Android pregunta una vez antes de instalar.¦Tes playlists et réglages sont conservés. Android demande une fois avant l'installation.¦Le tue playlist e impostazioni restano. Android chiede una volta prima dell'installazione.¦Je afspeellijsten en instellingen blijven behouden. Android vraagt één keer voor de installatie.
 Jetzt aktualisieren¦Update now¦Şimdi güncelle¦Ažuriraj sada¦¦¦Actualizar ahora¦Mettre à jour maintenant¦Aggiorna ora¦Nu updaten
 Später¦Later¦Sonra¦Kasnije¦¦¦Más tarde¦Plus tard¦Più tardi¦Later
+# First-start update check card
+Auf Updates prüfen¦Check for updates¦Güncellemeleri denetle¦Provjeri ažuriranja¦¦¦Buscar actualizaciones¦Rechercher des mises à jour¦Controlla gli aggiornamenti¦Op updates controleren
+Suche nach Updates …¦Checking for updates …¦Güncellemeler denetleniyor …¦Provjera ažuriranja …¦¦¦Buscando actualizaciones …¦Recherche de mises à jour …¦Controllo aggiornamenti …¦Controleren op updates …
+Du hast die neueste Version ({0}).¦You have the latest version ({0}).¦En son sürüme sahipsin ({0}).¦Imaš najnoviju verziju ({0}).¦¦¦Tienes la última versión ({0}).¦Tu as la dernière version ({0}).¦Hai l'ultima versione ({0}).¦Je hebt de nieuwste versie ({0}).
+Update anzeigen¦Show update¦Güncellemeyi göster¦Prikaži ažuriranje¦¦¦Ver actualización¦Afficher la mise à jour¦Mostra aggiornamento¦Update tonen
+Keine Verbindung. Prüfe das Netzwerk und versuche es erneut.¦No connection. Check the network and try again.¦Bağlantı yok. Ağı kontrol et ve tekrar dene.¦Nema veze. Provjeri mrežu i pokušaj ponovo.¦¦¦Sin conexión. Revisa la red e inténtalo de nuevo.¦Pas de connexion. Vérifie le réseau et réessaie.¦Nessuna connessione. Controlla la rete e riprova.¦Geen verbinding. Controleer het netwerk en probeer het opnieuw.
+Dieser Hinweis erscheint nur einmal.¦This notice appears only once.¦Bu bildirim yalnızca bir kez gösterilir.¦Ova se obavijest prikazuje samo jednom.¦¦¦Este aviso solo aparece una vez.¦Cet avis n'apparaît qu'une seule fois.¦Questo avviso compare una sola volta.¦Deze melding verschijnt maar één keer.
 # Watched mark, history, keyboard (English only; other languages fall back to English)
 Staffel gesehen¦Season watched
 Staffel zurücksetzen¦Reset season

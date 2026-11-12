@@ -160,6 +160,8 @@ fun App(pick: Boolean = false) {
         }
         // New version available: dialog with one button (above every screen)
         UpdatePromptHost()
+        // First start without a playlist: one non-blocking card that checks for updates (T-014)
+        if (picked) UpdateCardHost()
     }
 }
 

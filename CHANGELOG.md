@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- First start: a small card at the bottom checks for an app update once and shows the result (checking / up to date / update available / error with "Retry"), with the switch for the automatic check. It appears only once and only on a start without a playlist, never takes the focus from the add-playlist screen, and works with the TV remote (T-014)
 - Internal: player helper code split from Media3 (no user-visible change).
 - Search: the query box above the app keyboard can now be selected; OK or a tap opens the device keyboard for typing
 - TV guide in the player: a playback error box (for example "check username, password or subscription") no longer sits on top of the guide
