@@ -151,16 +151,11 @@ fun SearchScreen(
     val rmAll: List<Item> = rm0   // already one per movie (see the search above)
     val rm = if (fl == 0 || fl == 1) rmAll else emptyList()
     val firstKey = when { rm.isNotEmpty() -> "rm"; rs.isNotEmpty() -> "rs"; rl.isNotEmpty() -> "rl"; else -> "" }
-    // Back: in the search field (keyboard already closed) first to the recent searches or hits, otherwise into the sidebar
+    // Back: from a hit (or any other element) first to the input (field or app keyboard); from the input to the sidebar
     BackHandler(enabled = !inSidebar) {
-        val target = when {
-            !fieldFocused -> null
-            firstKey.isNotEmpty() -> firstRes
-            else -> null
-        }
         // requestFocus returns false (no exception) when the target is not on screen: then go on to the sidebar instead of doing nothing
-        val moved = target != null && runCatching { target.requestFocus() }.getOrDefault(false)
-        if (!moved) runCatching { sideFocus.requestFocus() }
+        val toInput = !fieldFocused && runCatching { ContentFocus.req.requestFocus() }.getOrDefault(false)
+        if (!toInput) runCatching { sideFocus.requestFocus() }
     }
 
     Box(Modifier.fillMaxSize()) {

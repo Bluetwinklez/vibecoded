@@ -191,6 +191,9 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
     val scope = rememberCoroutineScope()
     val visible = AppSettings.menuOrder.filter { it !in AppSettings.menuHidden }
     val activeVisible = tab in visible
+    // Entry that receives the "active" focus requester: the active tab, or the first entry when the active tab is hidden
+    // (Search is hidden by default); without it Back from the search results had no sidebar item to go to (T-013)
+    val anchorId = if (activeVisible) tab else visible.firstOrNull()
     // Back into the content: the direction away from the bar
     val outKey = when (pos) { SidebarPrefs.RIGHT -> Key.DirectionLeft; SidebarPrefs.TOP -> Key.DirectionDown; else -> Key.DirectionRight }
     val onPick: (Int) -> Unit = { id ->
@@ -239,7 +242,7 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
             Box(Modifier.size(dpx(40)), contentAlignment = Alignment.Center) { BrandMark(Modifier.fillMaxSize()) }
             Spacer(Modifier.width(dpx(18)))
             visible.forEach { id ->
-                SideItem(id, MENU_LABELS[id], id == tab, true, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier, horizontal = true) { onPick(id) }
+                SideItem(id, MENU_LABELS[id], id == tab, true, if (id == anchorId) Modifier.focusRequester(activeFocus) else Modifier, horizontal = true) { onPick(id) }
             }
             PhoneSearchItem(true, Modifier, horizontal = true)
         }
@@ -271,7 +274,7 @@ fun Sidebar(tab: Int, onTab: (Int) -> Unit, modifier: Modifier, activeFocus: Foc
             Spacer(Modifier.height(dpx(34)))
             Column(verticalArrangement = Arrangement.spacedBy(dpx(10))) {
                 visible.forEach { id ->
-                    SideItem(id, MENU_LABELS[id], id == tab, expanded, if (id == tab) Modifier.focusRequester(activeFocus) else Modifier) { onPick(id) }
+                    SideItem(id, MENU_LABELS[id], id == tab, expanded, if (id == anchorId) Modifier.focusRequester(activeFocus) else Modifier) { onPick(id) }
                 }
             }
             // At the very bottom: phone search (QR code), so you can type on the phone instead of with the remote
