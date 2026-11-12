@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Live TV: moving the focus through the channel list no longer rebuilds the content of the rows (guide times, status icons); only the highlight frame changes. Not measured yet, device test open (T-019)
 - Settings > Playlists: switching the content mode no longer jumps back to the first settings page. When the switch re-read the stored playlist copy, the loading screen briefly replaced the settings; it now stays on the settings tab unless a language choice is waiting
 - Remote: a long OK (menu on channels, categories and favorites, marking an episode as seen) now triggers after 0.35 s instead of the system long press (about 0.5 s or more)
 - Playlist refresh: existing installs that still use "at every start" switch once to "daily"; choosing "at every start" again later is kept

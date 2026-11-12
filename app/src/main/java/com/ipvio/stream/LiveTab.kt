@@ -544,8 +544,6 @@ private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewLi
         while (LiveHold.active()) kotlinx.coroutines.delay(120)
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { Epg.now(item) }   // off the main thread: the guide lookup must not block scrolling
     }
-    val nowE = Epg.current(epg)
-    val nextE = epg.firstOrNull { nowE != null && it.start >= nowE.end }
     // Round 17b: the selected channel floats forward as light glass with a shadow (instead of a frame)
     val sc by androidx.compose.animation.core.animateFloatAsState(if (f) focusScale(1.03f) else 1f, label = "chl")
     Row(
@@ -561,33 +559,46 @@ private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewLi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        ChannelLogo(item.logo, item.title)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(raw = true, text = item.title, color = Tok.TextHi, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                val lq = remember(item.id) { LiveQuality.get(item.id) ?: item.quality }
-                if (lq != null) Box(Modifier.clip(RoundedCornerShape(DS.RadiusXs)).background(Color(0x26FFFFFF)).padding(horizontal = 6.dp, vertical = 1.dp)) {
-                    Text(raw = true, text = lq, color = Accent2, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                }
-                // Bundled channel: show how many quality variants are behind this row
-                if (variants.size > 1) Box(Modifier.clip(RoundedCornerShape(DS.RadiusXs)).background(Color(0x26FFFFFF)).padding(horizontal = 6.dp, vertical = 1.dp)) {
-                    Text(raw = true, text = "+" + (variants.size - 1), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                }
+        ChannelLineContent(item, epg, variants.size)
+    }
+    }
+}
+
+/**
+ * Content of a channel row (logo, title, badges, guide lines, status icons). Own composable that does not read the
+ * focus state: a focus change recomposes only the row frame in [ChannelLine] and skips this part, so the time
+ * formatting and the favorite, catch-up and dead-link checks do not run again on every focus move.
+ */
+@Composable
+private fun RowScope.ChannelLineContent(item: Item, epg: List<EpgEntry>, variantCount: Int) {
+    val nowE = Epg.current(epg)
+    val nextE = epg.firstOrNull { nowE != null && it.start >= nowE.end }
+    ChannelLogo(item.logo, item.title)
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(raw = true, text = item.title, color = Tok.TextHi, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            val lq = remember(item.id) { LiveQuality.get(item.id) ?: item.quality }
+            if (lq != null) Box(Modifier.clip(RoundedCornerShape(DS.RadiusXs)).background(Color(0x26FFFFFF)).padding(horizontal = 6.dp, vertical = 1.dp)) {
+                Text(raw = true, text = lq, color = Accent2, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
-            if (nowE != null) {
-                val frac = ((System.currentTimeMillis() / 1000 - nowE.start).toFloat() / (nowE.end - nowE.start)).coerceIn(0f, 1f)
-                Text(raw = true, text = "${hhmm(nowE.start)}–${hhmm(nowE.end)}  ${nowE.title}", color = Accent2, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(50)).background(DS.Overlay3)) {
-                    Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Accent2))
-                }
-                if (nextE != null) Text(raw = true, text = "${hhmm(nextE.start)}  ${nextE.title}", color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            } else Text(raw = true, text = item.group, color = Muted, fontSize = 13.sp, maxLines = 1)
+            // Bundled channel: show how many quality variants are behind this row
+            if (variantCount > 1) Box(Modifier.clip(RoundedCornerShape(DS.RadiusXs)).background(Color(0x26FFFFFF)).padding(horizontal = 6.dp, vertical = 1.dp)) {
+                Text(raw = true, text = "+" + (variantCount - 1), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
         }
-        if (Catchup.version >= 0 && Catchup.has(item)) AppIcon(AIcon.Catchup, Accent2, size = 20.dp)
-        if (DeadLinks.isDead(item.url)) AppIcon(AIcon.Warning, DS.Gold, size = 20.dp)
-        if (Library.isFav(item.id)) AppIcon(AIcon.Star, DS.Gold, size = 20.dp)
+        if (nowE != null) {
+            val frac = ((System.currentTimeMillis() / 1000 - nowE.start).toFloat() / (nowE.end - nowE.start)).coerceIn(0f, 1f)
+            Text(raw = true, text = "${hhmm(nowE.start)}–${hhmm(nowE.end)}  ${nowE.title}", color = Accent2, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(50)).background(DS.Overlay3)) {
+                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Accent2))
+            }
+            if (nextE != null) Text(raw = true, text = "${hhmm(nextE.start)}  ${nextE.title}", color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else Text(raw = true, text = item.group, color = Muted, fontSize = 13.sp, maxLines = 1)
     }
-    }
+    if (Catchup.version >= 0 && Catchup.has(item)) AppIcon(AIcon.Catchup, Accent2, size = 20.dp)
+    // DeadLinks.count is read as a change signal (same pattern as Catchup.version): isDead itself is a plain map lookup
+    if (DeadLinks.count >= 0 && DeadLinks.isDead(item.url)) AppIcon(AIcon.Warning, DS.Gold, size = 20.dp)
+    if (Library.isFav(item.id)) AppIcon(AIcon.Star, DS.Gold, size = 20.dp)
 }
 
 /** Logo of a channel row. Own composable with plain String parameters, so a focus change of the row skips it (no new image request). */

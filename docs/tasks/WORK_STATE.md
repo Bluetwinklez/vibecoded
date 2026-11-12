@@ -27,6 +27,8 @@ Also done in this round (12 Nov 2026, afternoon, pushed together, device test by
   (4) Donate text (`Donate.kt`) and a "Support the project" section in `README.md`.
   Note: the working tree is behind `main` (missing T-014 update card and T-015 from PR #57/#59 in `MainActivity.kt` and others); pull/merge before committing.
 
+- T-019 (performance series, item 1: Live TV channel row): row content split from the focus frame in `LiveTab.kt`, see `docs/tasks/T-019-channel-row-focus.md`. **Status: branch `perf/T-019-channel-row-focus`, not built, not tested on a device, nothing measured.** Findings of the read-through of 12 Nov 2026 (all hypotheses): `PlayerGuide.kt` builds every show of a row without laziness and passes `nowSec` (30 s tick) into every row; `RowPosterCard` runs two `LaunchedEffect` and three animations per card; `MainActivity.onCreate` runs about twelve `init` calls before the first frame; the held-key limit in `LiveTab.kt` (about 9 steps per second) drops key repeats on purpose, the maintainer has to decide whether it stays. R8 stays off until the full crash log of a release build with `enable = true` is available.
+
 ## Open problems
 
 - PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`, 32 commits, 66 files) still has 10 conflicting files with `main` (CategoriesScreen, HomeScreen, LiveGenre, LiveTab, Models, PlaylistStore, SearchLogic, SearchScreen, CHANGELOG, WORK_STATE). Much of it is already in `main` in another form (Stalker #7, subtitle search #9). A comment asks the author to update the branch. Unique parts that are not in `main`: Live TV focus fixes, MKV seeking (#10), tap-to-seek (#25), Recently added (#22), translations. If the author does not react, port those parts one by one.
