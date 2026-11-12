@@ -14,12 +14,14 @@ No task in progress. Next candidates: T-006 (backup `NAMES`), CHANGELOG entries 
 
 ## Open problems
 
-- PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`) has conflicts with `main` (also with PR #41). A comment on the PR asks the author to update the branch. Alternative if that does not happen: pull the branch into this repo and resolve the conflicts there (about 65 files).
-- Branch `fix/round28-major` (T-010 to T-012) is not in `main` and not in PR #40.
-- Branch `perf/T-007` on GitHub: T-008 Xtream loading indicator, device test status unknown.
-- T-009 backup servers: device test still pending.
-- T-004 (quality baseline values), T-006 (backup `NAMES`, `Backup.kt:17`) and CHANGELOG entries for 1.2 and 1.3 remain open.
+- PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`) has conflicts with `main`. A comment asks the author to update the branch. Maybe it also contains PR #9 (subtitle search, still open).
+- PR #47 (Stalker: on-demand loading, playback port, review fixes) is merged. CI green, **no device test** (no real Stalker portal). Closed in favour of it: #7, #19 (Stalker part only; its other topics were not taken over), #36, #38, #39.
+- Closed without merging (conflicts with `main` after #41, areas were reworked in T-007): #8 (Fire TV Live TV stalls), #13 (content mode; `main` has its own `PlaylistMode`), #14 (search ANR), their follow-ups #32, #33, #34, and #31 (obsolete). Reopen if the problems still show on `main`.
+- Branch `fix/round28-major` (T-010 to T-012) and branch `perf/T-007` (T-007 UI rendering, T-008 Xtream loading indicator) are 28 commits behind `main` and in no pull request.
+- T-009 backup servers: device test still pending. T-006 (backup `NAMES`): device check of export and restore pending.
+- `ipvio_plmode` (content mode per playlist address) is not in the backup; undecided.
+- T-004 (quality baseline values) needs ktlint, detekt and Lint runs on the maintainer's machine.
 
 ## Next step
 
-Pick the next task: T-006, CHANGELOG 1.2/1.3, or PR #40 (conflicts, waiting for the author).
+Update `fix/round28-major` and `perf/T-007` onto `main` (conflicts expected in the files PR #41 changed) and open one PR each. Then PR #40 / PR #9.
