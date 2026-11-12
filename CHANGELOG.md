@@ -9,6 +9,7 @@
 - Movies, series and home: when a playlist has none (content mode "live TV only"), the empty page points to Settings > Playlists
 - Live TV: the tab always opens on "Start" (home) instead of the last category or "Alle Sender"; the hint above also shows there
 - Search: Back from a selected result goes to the input (keyboard); Back again opens the sidebar, also when the Search entry is hidden in the menu (the default) (T-013)
+- Backup: dual view, new-episode marks, imported lists and the resume log are now part of the backup export and restore (T-006)
 **Playlists (T-009)**
 - Xtream: any number of backup server addresses per login (same username and password). If the main server stops answering, the app switches to the next one by itself, for the playlist, TV guide, catch-up and streams
 - Each server shows whether it is reachable or since when it is not; the playlist row in Settings > Playlists lists servers that are down

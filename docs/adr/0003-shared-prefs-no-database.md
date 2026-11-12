@@ -11,7 +11,7 @@ Audit source: section 3 (storage), section 6 (technical debt) and section 9.
 - Data is stored in SharedPreferences and files. There is no Room, SQLite or DataStore (audit search: no hits).
 - 32 own `prefs(c)` helpers are spread over many files. There is no central list of store names.
 - Profile-specific stores use the suffix `_p<ID>`; profile 0 keeps the original names (CLAUDE.md section 5).
-- `Backup.kt` has a list `NAMES` of stores that go into the backup. Five profile-related stores are missing: `ipvio_dual`, `ipvio_live`, `ipvio_newep`, `ipvio_importedlists`, `ipvio_resumelog`. Task T-006 adds them. Restore skips unknown names (`Backup.kt:87`), so old backups stay readable.
+- `Backup.kt` has a list `NAMES` of stores that go into the backup. Five profile-related stores were missing: `ipvio_dual`, `ipvio_live`, `ipvio_newep`, `ipvio_importedlists`, `ipvio_resumelog`. Task T-006 added them. Restore skips unknown names, so old backups stay readable.
 - The app is in active use. Renaming a store or key loses user data.
 
 ## Decision
