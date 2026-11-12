@@ -4,8 +4,14 @@
 # the decoder classes by name. Keep the whole (small) package unchanged.
 -keep class androidx.media3.decoder.ffmpeg.** { *; }
 
-# No renaming/repackaging (12.11.2026): with only some packages in the R8 scope, R8 moved renamed
+# The app's own code stays exactly as written (T-024): R8 does not remove, rename or optimize anything in
+# com.ipvio.**. R8 runs over the whole app; this rule limits its work to the libraries.
+-keep class com.ipvio.** { *; }
+
+# No renaming and no repackaging (T-024). With AGP 9.x and the library-only package scope, R8 moved renamed
 # subclasses of kotlin.text into another package, which made a package-private superclass inaccessible
-# (app crashed at start: IllegalAccessError in androidx.startup.InitializationProvider).
-# Optimization (inlining, removing unused code) stays on; only the names stay as they are.
+# (app crashed at start: IllegalAccessError in androidx.startup.InitializationProvider). -dontobfuscate alone
+# was not enough then: since AGP 9.1 R8 moves classes into one package by default, and -dontrepackage is the
+# documented switch against that. Optimization of the libraries (inlining, removing unused code) stays on.
 -dontobfuscate
+-dontrepackage
