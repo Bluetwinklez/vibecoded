@@ -1,6 +1,6 @@
 # T-015 Harden the in-app update
 
-Status: IMPLEMENTED and merged (PR #59, `2fbd874`), CI green; waiting for the device test. Plan approved by the maintainer on 12 Nov 2026; the three open decisions were left to the assistant (recommended options taken).
+Status: IMPLEMENTED and merged (PR #59, `2fbd874`), CI green; **NOT device tested.** The maintainer tests at the end (test steps below). Plan approved by the maintainer on 12 Nov 2026; the three open decisions were left to the assistant (recommended options taken).
 
 ## Goal
 
@@ -53,6 +53,8 @@ Status: IMPLEMENTED and merged (PR #59, `2fbd874`), CI green; waiting for the de
 `docs/RELEASE.md` (done), `docs/SECURITY.md` item 11 (done), `CHANGELOG.md` (done).
 
 ## Test results
+
+**Device test: NOT done.** Nothing in this task has run on a phone or Fire TV yet. The maintainer will test at the end.
 
 Run by the assistant (JVM, Kotlin 2.0.21 compiler and JUnit 4.13.2 from the Gradle distribution):
 - `UpdateLogicTest`: 15 of 15 passed. **Caveat:** the real `org.json` jar was not available offline, so the run used a small stand-in `JSONObject` (flat objects only). The real library runs in CI.
