@@ -191,6 +191,8 @@ private fun AppContent() {
     fun pushTop(x: Any) { top?.let { trail.add(it) }; top = x }
     fun popTop() { top = trail.removeLastOrNull() }
     var browse by remember { mutableStateOf<BrowseState?>(null) }
+    // Stalker portal: load the opened category on demand, stop when leaving
+    LaunchedEffect(browse) { browse?.let { StalkerMore.attach(ctx, it) } ?: StalkerMore.detach() }
     var cats by remember { mutableStateOf<CatReq?>(null) }
     var playing by remember { mutableStateOf<PlayReq?>(null) }
     var tab by remember { mutableStateOf(SettingsLogic.resolveStartTab(General.startTab, AppSettings.menuOrder.toList(), AppSettings.menuHidden.toList())) }

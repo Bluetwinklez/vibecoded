@@ -179,11 +179,21 @@ private fun ListMode(
     }
     val catState = rememberLazyListState(maxOf(sel - 3, 0))
     val previewState = remember(cur?.first) { androidx.compose.foundation.lazy.grid.LazyGridState() }
-    val prev = remember(cur?.first, cur?.second) {
+    // Stalker portal: titles of the category loaded on demand belong to it (see [StalkerMore])
+    val more = cur?.let { StalkerMore.added[it.first] }
+    val prev = remember(cur?.first, cur?.second, more) {
         val c = cur
         if (c == null) emptyList<Item>()
         else if (isTopEntry(c.first)) c.second.take(40)
-        else c.second.takeLast(40).reversed()
+        else StalkerMore.withAdded(c.first, c.second).takeLast(40).reversed()
+    }
+    val ctx = LocalContext.current
+    // Stayed on the category briefly: fetch the next portion from the portal (not while scrolling quickly)
+    LaunchedEffect(cur?.first) {
+        val c = cur ?: return@LaunchedEffect
+        if (isTopEntry(c.first)) return@LaunchedEffect
+        kotlinx.coroutines.delay(600)
+        StalkerMore.prefetch(ctx, c.first, c.second.mapTo(HashSet()) { it.kind })
     }
     SideEffect { CatMemory.sel[title] = sel }
     BackHandler(enabled = inPreview) { runCatching { firstFocus.requestFocus() } }
@@ -218,11 +228,12 @@ private fun ListMode(
     Row(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.width(250.dp).fillMaxHeight(), state = catState, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             itemsIndexed(entries) { i, e ->
+                val all = if (isTopEntry(e.first)) e.second else StalkerMore.withAdded(e.first, e.second)
                 CatListRow(
-                    e.first, e.second.size, i == sel,
+                    e.first, StalkerMore.total(ctx, e.first) ?: all.size, i == sel,
                     if (i == sel) Modifier.focusRequester(firstFocus) else Modifier,
                     onFocus = { sel = i }, onRight = { focusPreview() }
-                ) { onPick(e.first, e.second, sortFor(e.first, sort)) }
+                ) { onPick(e.first, all, sortFor(e.first, sort)) }
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp).onFocusChanged { inPreview = it.hasFocus }) {
