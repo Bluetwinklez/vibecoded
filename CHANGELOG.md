@@ -12,6 +12,7 @@
 - Backup: dual view, new-episode marks, imported lists and the resume log are now part of the backup export and restore (T-006)
 - Playlist refresh defaults to "daily" instead of "at every start" for users who never chose a mode; the first start still loads once (T-009, refresh default)
 - Live TV, movies and series: sort categories by provider order, A-Z or an own order; move categories with the menu key or a long OK (T-011)
+- Player: search subtitles online (OpenSubtitles and SubDL) under Audio & subtitles; the chosen subtitle is attached while playing and remembered per title. Needs your own API keys (Settings > API keys) (PR #9)
 **Playlists (T-009)**
 - Xtream: any number of backup server addresses per login (same username and password). If the main server stops answering, the app switches to the next one by itself, for the playlist, TV guide, catch-up and streams
 - Each server shows whether it is reachable or since when it is not; the playlist row in Settings > Playlists lists servers that are down

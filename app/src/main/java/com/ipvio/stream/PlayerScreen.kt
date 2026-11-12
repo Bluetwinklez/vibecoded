@@ -117,7 +117,7 @@ private const val STALKER_NO_ADDRESS = "Das Portal hat keine Abspiel-Adresse gel
 
 private val SLEEP_MIN = listOf(0, 15, 30, 45, 60, 90, 120)
 
-private enum class Panel { NONE, TRACKS, SUBSTYLE, QUALITY, SPEED, ASPECT, MENU, STEP, EPISODES, SLEEP, ARCHIVE, CLOCK }
+private enum class Panel { NONE, TRACKS, SUBSEARCH, SUBSTYLE, QUALITY, SPEED, ASPECT, MENU, STEP, EPISODES, SLEEP, ARCHIVE, CLOCK }
 
 private class Flash(val icon: PIcon?, val text: String?)
 
@@ -522,6 +522,9 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         if (want == off) player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !want).build()
     }
 
+    /** Key under which an online subtitle is remembered: the title, or the episode of a series. */
+    fun subKey() = if (cur.season > 0 && cur.episode > 0) cur.itemId + "#S" + cur.season + "E" + cur.episode else cur.itemId
+
     /** Chosen by hand in the menu: remember for this title and set as default for the next episode. */
     fun rememberTracks() {
         manualTracks = true
@@ -572,7 +575,7 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         History.add(ctx, si.id)
         scrubTarget = -1L
         cur = PlayReq(si.title + " S" + ep.season + "E" + ep.num, v.url, si.id, false, 0L, cur.tmdbId, ep.season, ep.num)
-        if (!openStream(player, v.url, 0L)) { msg = PlayerLogic.MSG_FORMAT; buffering = false; return }
+        if (!openStream(player, v.url, 0L, SubSearch.item(ctx, v.url, subKey()))) { msg = PlayerLogic.MSG_FORMAT; buffering = false; return }
         ping()
     }
 
@@ -869,7 +872,8 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         } else if (loaded != playUrl) {
             LiveTimeshift.stop()
             // Unknown format (e.g. without a matching module): notice instead of a crash
-            if (!openStream(player, playUrl, if (cur.startMs > 0) cur.startMs else 0L)) { msg = PlayerLogic.MSG_FORMAT; buffering = false }
+            val item = if (cur.live) null else SubSearch.item(ctx, playUrl, subKey())
+            if (!openStream(player, playUrl, if (cur.startMs > 0) cur.startMs else 0L, item)) { msg = PlayerLogic.MSG_FORMAT; buffering = false }
         }
     }
     LaunchedEffect(Unit) {
@@ -1601,8 +1605,19 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
             when (panel) {
                 Panel.TRACKS -> TracksPanel(
                     player, tracksVer, { tracksVer++; h.postDelayed({ rememberTracks() }, 400) }, panelFocus, subsFocus,
-                    { closePanel() }, { openPanel(Panel.SUBSTYLE, Panel.TRACKS) }
+                    { closePanel() }, { openPanel(Panel.SUBSTYLE, Panel.TRACKS) },
+                    if (cur.live) null else ({ openPanel(Panel.SUBSEARCH, Panel.TRACKS) })
                 )
+
+                Panel.SUBSEARCH -> SubSearchPanel(
+                    SubSearchLogic.query(cur.title, cur.tmdbId, cur.season, cur.episode, AppSettings.subLangEffective(), Lang.code()),
+                    subKey(), player, panelFocus, back, { closePanel() }
+                ) { s ->
+                    notice = Lang.tr("Untertitel geladen") + ": " + s.label
+                    // Remember the choice like a subtitle picked by hand (on again next time)
+                    h.postDelayed({ tracksVer++; rememberTracks() }, 1500)
+                    panelParent = Panel.NONE; panel = Panel.NONE
+                }
 
                 Panel.SUBSTYLE -> PSimplePanel(440.dp, "Untertitel-Stil", back, { closePanel() }) {
                     Column(verticalArrangement = Arrangement.spacedBy(PT.RowGap)) {
@@ -1872,8 +1887,8 @@ private fun NextPill(remain: () -> Long, auto: Boolean, showOk: Boolean, onClick
  * Open a stream. Media3 throws an IllegalStateException on setting if no source is built in for the format
  * (formerly with .mpd without the DASH module: crash on this line). false = not playable.
  */
-internal fun openStream(player: androidx.media3.exoplayer.ExoPlayer, url: String, startMs: Long): Boolean = try {
-    player.setMediaItem(MediaItem.fromUri(url), startMs)
+internal fun openStream(player: androidx.media3.exoplayer.ExoPlayer, url: String, startMs: Long, item: MediaItem? = null): Boolean = try {
+    player.setMediaItem(item ?: MediaItem.fromUri(url), startMs)
     player.prepare()
     player.playWhenReady = true
     true
