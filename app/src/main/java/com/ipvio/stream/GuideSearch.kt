@@ -36,14 +36,17 @@ import kotlinx.coroutines.withContext
 
 /** Search inside the TV guide: channel names plus show titles from the loaded XMLTV data (no network). */
 object GuideSearchLogic {
-    class Hit(val channel: Item, val entry: EpgEntry?)
+    /** [now]: for a channel hit, the show running on that channel right now (null if the guide has none). */
+    class Hit(val channel: Item, val entry: EpgEntry?, val now: EpgEntry? = null)
 
     fun search(channels: List<Item>, query: String, nowSec: Long, limit: Int = 60, maxChannels: Int = 150): List<Hit> {
         val q = ChannelSearch.norm(query)
         if (q.isEmpty()) return emptyList()
         val words = q.split(' ').filter { it.isNotEmpty() }
         val out = ArrayList<Hit>()
-        for (c in ChannelSearch.filter(channels, query).take(maxChannels)) out.add(Hit(c, null))
+        for (c in ChannelSearch.filter(channels, query).take(maxChannels)) {
+            out.add(Hit(c, null, Xmltv.forChannel(c.tvgId).firstOrNull { it.start <= nowSec && nowSec < it.end }))
+        }
         val shows = ArrayList<Hit>()
         for (c in channels) {
             for (e in Xmltv.forChannel(c.tvgId)) {
@@ -64,7 +67,8 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
     var q by remember { mutableStateOf("") }
     val fr = remember { FocusRequester() }
     val kbFirst = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(150); runCatching { kbFirst.requestFocus() } }
+    // With the device keyboard setting the text field gets the focus (OK opens Gboard & co.), otherwise the app keyboard
+    LaunchedEffect(Unit) { delay(150); runCatching { (if (AppSettings.systemKeyboard) fr else kbFirst).requestFocus() } }
     val hits by produceState(emptyList<GuideSearchLogic.Hit>(), q) {
         if (q.isBlank()) { value = emptyList(); return@produceState }
         delay(250)
@@ -77,7 +81,7 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
         ) {
             Text("Im TV-Guide suchen", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SearchKeyboard(
+            if (!AppSettings.systemKeyboard) SearchKeyboard(
                 Modifier.width(430.dp),
                 onKey = { q = (q + it).take(40) },
                 onSpace = { if (q.isNotEmpty() && !q.endsWith(" ")) q += " " },
@@ -93,6 +97,10 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
                 itemsIndexed(hits) { _, h ->
                     var f by remember { mutableStateOf(false) }
                     val e = h.entry
+                    // Channel hit: what runs right now. XMLTV first (h.now), otherwise the cached/Xtream lookup (only for rows that are on screen)
+                    val nowShow by produceState(h.now, h.channel.id) {
+                        if (e == null && value == null) value = runCatching { Epg.current(Epg.now(h.channel)) }.getOrNull()
+                    }
                     Column(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(DS.RadiusM))
                             .background(if (f) Color(0x33FFFFFF) else Color(0x0FFFFFFF))
@@ -104,7 +112,7 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             raw = true,
-                            text = if (e == null) h.channel.group else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
+                            text = if (e == null) h.channel.group + (nowShow?.let { "  ·  " + Lang.tr("Jetzt") + ": " + it.title + "  " + hhmm(it.start) + " - " + hhmm(it.end) } ?: "") else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
                             color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }

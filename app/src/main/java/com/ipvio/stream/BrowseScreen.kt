@@ -249,8 +249,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                 // Position and hint now sit discreetly in the header instead of above the titles
                 if (list.isNotEmpty()) {
                     Text("Zurück = Filter", color = Muted, fontSize = 13.sp)
-                    Text("${minOf(state.focused + 1, list.size)} / ${list.size}", color = Color.White, fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(50)).background(Surf2).padding(horizontal = 14.dp, vertical = 5.dp))
+                    FocusCounter(state, list.size)
                 }
                 // Space for the genre display at the top right so it covers nothing
                 if (Classifier.running) Spacer(Modifier.width(MetaBadgeWidth - 10.dp))
@@ -365,7 +364,7 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
                         contentPadding = PaddingValues(top = dpx(14), bottom = dpx(60)),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        itemsIndexed(list) { idx, item ->
+                        itemsIndexed(list, contentType = { _, x -> if (x.kind == Kind.LIVE) 0 else if (land) 1 else 2 }) { idx, item ->
                             val mod = Modifier
                                 .onFocusChanged { st -> if (st.hasFocus) state.focused = idx }
                                 .then(if (idx == restoreIdx) Modifier.focusRequester(restoreFocus) else Modifier)
@@ -382,6 +381,16 @@ var restoreIdx by remember { mutableIntStateOf(state.focused) }
         }
         Sidebar(tab, onGoTab, Modifier.align(SidebarPrefs.align()), sideFocus) { inSidebar = it }
     }
+}
+
+/**
+ * Position "12 / 3400" in the header. Own composable: the focused index changes on every step, and read in the header it
+ * recomposed the whole screen including the grid on every step.
+ */
+@Composable
+private fun FocusCounter(state: BrowseState, size: Int) {
+    Text("${minOf(state.focused + 1, size)} / $size", color = Color.White, fontSize = 15.sp,
+        fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(50)).background(Surf2).padding(horizontal = 14.dp, vertical = 5.dp))
 }
 
 /**
@@ -454,7 +463,9 @@ private fun CinemaView(
                 contentPadding = PaddingValues(horizontal = RowPadX, vertical = dpx(20)),
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(list) { idx, item ->
+                itemsIndexed(list, contentType = { _, _ -> "poster" }) { idx, item ->
+                    // Only the card that gains or loses "current" recomposes (before every visible card did on every step)
+                    val isCur by remember(idx) { androidx.compose.runtime.derivedStateOf { idx == cur } }
                     val mod = Modifier
                         .onPreviewKeyEvent { ev ->
                             if (ev.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && ev.key == androidx.compose.ui.input.key.Key.DirectionDown) {
@@ -462,7 +473,7 @@ private fun CinemaView(
                             } else false
                         }
                         .onFocusChanged { st -> if (st.hasFocus) { cur = idx; state.focused = idx; if (open) open = false } }
-                        .then(if (idx == cur) Modifier.focusRequester(posterReq) else Modifier)
+                        .then(if (isCur) Modifier.focusRequester(posterReq) else Modifier)
                     RowPosterCard(item, baseW, mod, overlay = 0, aspect = aspect, expand = false) {
                         // OK: push the detail up, focus on "Play" (another OK starts)
                         shown = item; open = true

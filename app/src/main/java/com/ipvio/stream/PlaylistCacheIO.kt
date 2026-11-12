@@ -153,7 +153,7 @@ object PlaylistCacheIO {
         var lang: String? = if (version >= 4) pool.of(str() ?: LangTagLogic.UNKNOWN) else null
         if (lang != null) {
             counts[lang] = (counts[lang] ?: 0) + 1
-            if (lang in hidden) { skipItemRest(); return null }
+            if (LangTagLogic.hides(hidden, lang, kind)) { skipItemRest(); return null }
         }
         // Older caches: titles still with "&amp;" or "|EN|" – clean up while reading (fast, mostly unchanged)
         val rawTitle = str() ?: ""
@@ -182,7 +182,7 @@ object PlaylistCacheIO {
         if (lang == null) {
             lang = pool.of(LangTagLogic.of(group, rawTitle, kind == Kind.LIVE))
             counts[lang] = (counts[lang] ?: 0) + 1
-            if (lang in hidden) return null
+            if (LangTagLogic.hides(hidden, lang, kind)) return null
         }
         return Item(
             id = id, kind = kind, title = title, year = if (y < 0) null else y, url = url, logo = logo,

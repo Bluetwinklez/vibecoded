@@ -127,6 +127,26 @@ private fun buildHome(all: List<Item>, ipvioWanted: Boolean, trend: Set<String>)
     )
 }
 
+/**
+ * The home data is rebuilt when only the genre progress changed (every 45 s while genres are detected); the live channels are the
+ * same then. Reusing the previous list objects lets Live TV keep its cached genres and bundles instead of recomputing them on the
+ * main thread while it is open.
+ */
+private fun keepLiveLists(d: HomeData, prev: HomeData?): HomeData {
+    if (prev == null) return d
+    val live = if (sameItems(d.live, prev.live)) prev.live else d.live
+    val liveP = if (d.liveP.size == prev.liveP.size && d.liveP.keys.zip(prev.liveP.keys).all { (a, b) -> a == b } &&
+        d.liveP.all { (k, l) -> sameItems(l, prev.liveP[k]) }) prev.liveP else d.liveP
+    if (live === d.live && liveP === d.liveP) return d
+    return HomeData(live, d.movies, d.series, liveP, d.movieP, d.seriesP, d.movieG, d.seriesG, d.topM, d.topS, d.byId, d.trendItems, d.genresOk)
+}
+
+private fun sameItems(a: List<Item>, b: List<Item>?): Boolean {
+    if (b == null || a.size != b.size) return false
+    for (i in a.indices) if (a[i] !== b[i]) return false
+    return true
+}
+
 /** Filtered lists per area, so the same list object comes back and [HomeCache] can recognize it (no full recompute on every tab switch). */
 private object AreaCache {
     private val m = HashMap<String, Pair<List<Item>, List<Item>>>()
@@ -194,7 +214,7 @@ fun HomeScreen(
     // When inputs change, the previous state stays visible until the new result (produceState keeps the value)
     val dataState = produceState(cached, all, order, wantIpvio, ver, trend) {
         value = HomeCache.get(all, order, wantIpvio, ver, trend)
-            ?: withContext(Dispatchers.Default) { buildHome(all, wantIpvio, trend) }.also { HomeCache.put(all, order, wantIpvio, ver, trend, it) }
+            ?: withContext(Dispatchers.Default) { keepLiveLists(buildHome(all, wantIpvio, trend), HomeCache.last()) }.also { HomeCache.put(all, order, wantIpvio, ver, trend, it) }
     }
     // While recomputing: show the previous state, the loading skeleton only the very first time
     val prev = HomeCache.last()
@@ -623,7 +643,10 @@ fun HomeScreen(
                                     SmallPill("Startseite anpassen", icon = AIcon.Sliders) { HomeEdit.active = true; scope.launch { states[0].animateScrollToItem(0) } }
                                 }
                             }
-                            if (movies.isEmpty() && series.isEmpty()) item { EmptyHint("Diese Playlist enthält keine Filme oder Serien. Live TV findest du links.") }
+                            if (movies.isEmpty() && series.isEmpty()) {
+                                item { EmptyHint("Diese Playlist enthält keine Filme oder Serien. Live TV findest du links.") }
+                                item { EmptyHint(CONTENT_MODE_HINT.format("movies or series", "live TV only")) }
+                            }
                         }
                         1, 2 -> {
                             val isM = tab == 1
@@ -644,14 +667,17 @@ fun HomeScreen(
                                     onBrowse(BrowseReq((if (isM) "Beliebte Filme" else "Beliebte Serien"), pop, SORT_PLAYLIST))
                                 }
                             }
-                            if (ready.isEmpty() && pop.size < 3) item(key = "hint$tab") { EmptyHint("Oben findest du alle $noun, Neuheiten, Top bewertet und Kategorien.") }
+                            if (base.isNotEmpty() && ready.isEmpty() && pop.size < 3) item(key = "hint$tab") { EmptyHint("Oben findest du alle $noun, Neuheiten, Top bewertet und Kategorien.") }
                             val rl = resumeK
                             if (rl.isNotEmpty()) item(key = "res$tab") { ResumeRow(rl, cardW, onResume) }
                             val wl = watchK
                             if (wl.isNotEmpty()) item(key = "wl$tab") { ItemsRow("Meine Liste", wl, cardW, onOpen) { onBrowse(BrowseReq("Meine Liste · $noun", wl, SORT_PLAYLIST)) } }
                             val recent = histK
                             if (recent.isNotEmpty()) item(key = "hr$tab") { ItemsRow("Zuletzt geschaut", recent, cardW, onOpen) { onBrowse(BrowseReq("Zuletzt geschaut · $noun", recent, SORT_PLAYLIST)) } }
-                            if (base.isEmpty()) item { EmptyHint("Keine $noun in dieser Playlist") }
+                            if (base.isEmpty()) {
+                                item { EmptyHint("Keine $noun in dieser Playlist") }
+                                item { EmptyHint(CONTENT_MODE_HINT.format(if (isM) "movies" else "series", "live TV only")) }
+                            }
                             if (base.isNotEmpty()) item(key = "new$tab") { ItemsRow("Neu hinzugefügt", if (isM) newMovies else newSeries, cardW, onOpen) { onBrowse(BrowseReq("Neu hinzugefügt · $noun", base, SORT_NEW)) } }
                             if (top.size >= 8) item(key = "best$tab") { ItemsRow("Top bewertet", top, cardW, onOpen) { onBrowse(BrowseReq("Top bewertet · $noun", top, SORT_RATING)) } }
                             groups.entries.take(12).forEach { (g, l) -> item(key = "G$tab$g") { ItemsRow(g, l, cardW, onOpen) { onBrowse(BrowseReq(g, l, SORT_NEW)) } } }
@@ -678,11 +704,11 @@ fun HomeScreen(
                             }
                             if (favM.isNotEmpty()) {
                                 item(key = "favmh") { RowTitle("Favoriten · Filme", null, null, onAll = null) }
-                                item(key = "favm") { CardGridRows(favM, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty()) ContentFocus.req else null, onOpen) }
+                                cardGridItems("favm", favM, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty()) ContentFocus.req else null, onOpen)
                             }
                             if (favS.isNotEmpty()) {
                                 item(key = "favsh") { RowTitle("Favoriten · Serien", null, null, onAll = null) }
-                                item(key = "favs") { CardGridRows(favS, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty() && favM.isEmpty()) ContentFocus.req else null, onOpen) }
+                                cardGridItems("favs", favS, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty() && favM.isEmpty()) ContentFocus.req else null, onOpen)
                             }
                             val favCats = CatFavs.list.filter { it in liveP }
                             if (favCats.isNotEmpty()) favCats.forEach { g ->
@@ -704,11 +730,11 @@ fun HomeScreen(
                             }
                             if (wm.isNotEmpty()) {
                                 item(key = "mlmh") { RowTitle("Meine Liste · Filme", null, null, onAll = null) }
-                                item(key = "mlm") { CardGridRows(wm, CARD_POSTER, ContentFocus.req, onOpen) }
+                                cardGridItems("mlm", wm, CARD_POSTER, ContentFocus.req, onOpen)
                             }
                             if (ws.isNotEmpty()) {
                                 item(key = "mlsh") { RowTitle("Meine Liste · Serien", null, null, onAll = null) }
-                                item(key = "mls") { CardGridRows(ws, CARD_POSTER, if (wm.isEmpty()) ContentFocus.req else null, onOpen) }
+                                cardGridItems("mls", ws, CARD_POSTER, if (wm.isEmpty()) ContentFocus.req else null, onOpen)
                             }
                         }
                         MenuLogic.VERLAUF -> {
@@ -727,11 +753,11 @@ fun HomeScreen(
                             }
                             if (vm.isNotEmpty()) {
                                 item(key = "vlmh") { RowTitle("Verlauf · Filme", null, null, onAll = null) }
-                                item(key = "vlm") { CardGridRows(vm, CARD_POSTER, ContentFocus.req, onOpen) }
+                                cardGridItems("vlm", vm, CARD_POSTER, ContentFocus.req, onOpen)
                             }
                             if (vs.isNotEmpty()) {
                                 item(key = "vlsh") { RowTitle("Verlauf · Serien", null, null, onAll = null) }
-                                item(key = "vls") { CardGridRows(vs, CARD_POSTER, if (vm.isEmpty()) ContentFocus.req else null, onOpen) }
+                                cardGridItems("vls", vs, CARD_POSTER, if (vm.isEmpty()) ContentFocus.req else null, onOpen)
                             }
                         }
                         else -> {
@@ -755,6 +781,9 @@ fun HomeScreen(
         ) { inSidebar = it }
     }
 }
+
+/** Shown when the playlist has no movies/series; most likely its content mode hides them. Args: kind of content, mode name. */
+private const val CONTENT_MODE_HINT = "There are no %s. If there should be some, check Settings > Playlists: the content mode of this playlist may be set to %s."
 
 @Composable
 private fun EmptyHint(text: String) {

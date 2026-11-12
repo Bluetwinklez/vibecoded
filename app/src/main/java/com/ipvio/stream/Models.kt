@@ -433,7 +433,7 @@ object M3uParser {
 
         entries(lines, check, onHeader = { header = it; headCu = CatchupLogic.fromInfo(it, "") }) { e ->
             val kd = classify(e, st, langOf) ?: return@entries
-            if (kd.lang in hidden) return@entries
+            if (LangTagLogic.hides(hidden, kd.lang, kd.kind)) return@entries
             val group = pool.of(e.group)
             val q = quality(e.name, e.group)
             when (kd.kind) {

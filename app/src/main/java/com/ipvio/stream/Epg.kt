@@ -227,8 +227,13 @@ object Epg {
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000
         cache[item.id]?.let { if (nowMs - it.first < 120_000) return it.second }
+        // Everything below (XMLTV filter, JSON parsing, Base64) runs off the main thread, whoever calls this
+        return withContext(Dispatchers.Default) { nowFresh(item, nowMs, nowSec) }
+    }
+
+    private suspend fun nowFresh(item: Item, nowMs: Long, nowSec: Long): List<EpgEntry> {
         val local = Xmltv.forChannel(item.tvgId).filter { it.end > nowSec }
-        if (local.isNotEmpty() && current(local) != null) return local.take(8)
+        if (local.isNotEmpty() && current(local) != null) return local.take(8).also { cache[item.id] = nowMs to it }
         val url = xtreamApi(item, "get_short_epg")
         if (url != null) {
             val body = EpgNet.fetch("$url&limit=8")
@@ -238,6 +243,12 @@ object Epg {
             }
         }
         return local.take(8)
+    }
+
+    /** Cached result of [now] if it is still fresh, without any lookup or network (cheap enough for composition). */
+    fun peek(item: Item): List<EpgEntry>? {
+        val c = cache[item.id] ?: return null
+        return if (System.currentTimeMillis() - c.first < 120_000) c.second else null
     }
 
     fun current(list: List<EpgEntry>): EpgEntry? {
