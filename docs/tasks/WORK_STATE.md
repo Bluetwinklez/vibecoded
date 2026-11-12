@@ -14,7 +14,7 @@ No task in progress. Next candidates: T-006 (backup `NAMES`), CHANGELOG entries 
 
 ## Open problems
 
-- PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`) has conflicts with `main`. A comment asks the author to update the branch. Maybe it also contains PR #9 (subtitle search, still open).
+- PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`, 32 commits, 66 files) still has 10 conflicting files with `main` (CategoriesScreen, HomeScreen, LiveGenre, LiveTab, Models, PlaylistStore, SearchLogic, SearchScreen, CHANGELOG, WORK_STATE). Much of it is already in `main` in another form (Stalker #7, subtitle search #9). A comment asks the author to update the branch. Unique parts that are not in `main`: Live TV focus fixes, MKV seeking (#10), tap-to-seek (#25), Recently added (#22), translations. If the author does not react, port those parts one by one.
 - PR #47 (Stalker: on-demand loading, playback port, review fixes) is merged. CI green, **no device test** (no real Stalker portal). Closed in favour of it: #7, #19 (Stalker part only; its other topics were not taken over), #36, #38, #39.
 - Closed without merging (conflicts with `main` after #41, areas were reworked in T-007): #8 (Fire TV Live TV stalls), #13 (content mode; `main` has its own `PlaylistMode`), #14 (search ANR), their follow-ups #32, #33, #34, and #31 (obsolete). Reopen if the problems still show on `main`.
 - Old branches `fix/round28-major` and `perf/T-007` were sorted out: ported and merged were T-011 (category order), T-009 (refresh default, task file `T-009-refresh-default.md`; the ID T-009 is used twice) through PR #49 and T-008 (Xtream loading progress) through PR #50. CI is green on the merged `main`, no device test yet. **Not ported:** T-010 (load all Stalker movies) and T-012 (EPG name matching, Stalker guide) because they conflict with the on-demand loading of PR #47; the T-007 UI rendering commit and ADR 0004 because PR #41 already covers the same files. The two branches stay on GitHub for reference.
@@ -24,4 +24,4 @@ No task in progress. Next candidates: T-006 (backup `NAMES`), CHANGELOG entries 
 
 ## Next step
 
-Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
+Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress, #52 online subtitle search from #9). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
