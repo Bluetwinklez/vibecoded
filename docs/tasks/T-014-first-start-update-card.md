@@ -38,7 +38,7 @@ The card also has the toggle for the automatic check (`AppUpdate.setAuto`). It i
 
 ## Risks
 
-- **The UI file `UpdateCard.kt` was not compiled or run by the assistant** (no Android SDK here). The CI build on the pull request is the first compile.
+- The assistant has no Android SDK, so `UpdateCard.kt` was first compiled by the CI build of PR #57 (unit tests and debug APK: success). It has never run on a screen.
 - Visual placement is unverified: the card sits at the bottom centre and may cover lower fields of the Xtream/Stalker form on small screens. Position or size may need a change after the device test.
 - D-pad "down" from the lowest form element may now land on the card instead of leaving the screen. **Unverified** on a real remote.
 - Two checks can run at the same time on the first start (the card, and `AppUpdate.startCheck` after 3 s when the automatic check is on). Both read the same GitHub answer; harmless, one extra request.
@@ -53,6 +53,6 @@ Run by the assistant (JVM, Kotlin 2.0.21 compiler from the Gradle distribution, 
 - `UpdateCardLogicTest`: 12 of 12 passed.
 - `DictConsistencyTest`: 3 of 3 passed (placeholders in the new rows).
 
-Not run: Gradle build, the other unit tests, any device test.
+CI on PR #57 (GitHub Actions `Build APK`: `testDebugUnitTest` and `assembleDebug`): success. Not run: any device test.
 
 Test steps for the maintainer: see the report of this task (fresh install / cleared data, offline, older APK installed).
