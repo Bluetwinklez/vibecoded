@@ -26,6 +26,8 @@ The card also has the toggle for the automatic check (`AppUpdate.setAuto`). It i
 - **Errors:** an `IOException` (no network, DNS, timeout, TLS) shows "Keine Verbindung. Prüfe das Netzwerk und versuche es erneut." with "Erneut versuchen". Other errors (for example "Fehler 403" or "Noch keine Veröffentlichung gefunden" from `AppUpdate`) show their short message, also with "Erneut versuchen". The check itself ends after at most about 25 s through the OkHttp timeouts (connect 10 s, read 15 s); the card adds no timer of its own.
 - **Backup:** `ipvio_upd` is part of the backup (`Backup.NAMES`), so the new key travels with it. Restoring a backup on a fresh device therefore does not show the card. Intended.
 
+- **Closes by itself (T-025):** the card goes away as soon as a playlist is being loaded or is saved, or the demo mode is entered. See `T-025-update-card-auto-hide.md`.
+
 ## Acceptance criteria
 
 1. Fresh install or cleared data: the card appears on the add-playlist screen and shows "Suche nach Updates …", then one of the result states.
