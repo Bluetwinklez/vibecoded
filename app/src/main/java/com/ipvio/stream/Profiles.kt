@@ -89,6 +89,22 @@ object Profiles {
 
     fun scopedName(name: String, id: Int) = if (id == 0) name else name + "_p" + id
 
+    /** Settings files that are read before or with the first frame (see MainActivity.onCreate and AppContent). */
+    private val START_SCOPED = listOf("ipvio_settings", "ipvio_general", "ipvio_lib", "ipvio_quality", "ipvio_hist", "ipvio_watch", "ipvio_chlists")
+    private val START_PLAIN = listOf("ipvio_general", "ipvio_keys", "ipvio_playback", "ipvio_dead")
+
+    /**
+     * Opens the settings files of the start-up path. Android begins to read each file on its own background thread as soon
+     * as it is opened, so the files load in parallel while onCreate goes on, instead of one after the other when the first
+     * value is read. Reads nothing and changes nothing; a name without a file costs nothing.
+     */
+    fun prewarm(c: Context) {
+        init(c)
+        val app = c.applicationContext
+        START_SCOPED.forEach { app.getSharedPreferences(scopedName(it, active), Context.MODE_PRIVATE) }
+        START_PLAIN.forEach { app.getSharedPreferences(it, Context.MODE_PRIVATE) }
+    }
+
     fun activeName(): String = list.firstOrNull { it.id == active }?.name ?: defaultName(0)
 
     private fun save(c: Context) {
