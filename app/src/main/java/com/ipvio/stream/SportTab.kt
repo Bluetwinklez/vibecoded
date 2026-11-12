@@ -137,14 +137,20 @@ fun SportTab(live: List<Item>, onPlay: (Item, List<Item>) -> Unit) {
     var fixGame by remember { mutableStateOf<SportData.Game?>(null) }
     var tableLeague by remember { mutableStateOf<SportData.League?>(null) }
     tableLeague?.let { SportTableDialog(it) { tableLeague = null } }
-    val matched = remember(games, allNow, allSoon, channels, live, SportFix.map.toMap()) {
-        val all = allNow + allSoon
-        games.associate { g ->
-            val auto = all.filter { s ->
-                (kotlin.math.abs(s.prog.start - g.start) <= 3 * 3600 || (s.live && g.state == 1)) && SportData.matches(g, s.prog.title + " " + s.prog.desc)
-            }.map { it.ch }.distinctBy { it.id }
-            val fixed = SportFix.map[SportFix.key(g)]?.let { id -> (live + channels).firstOrNull { it.id == id } }
-            g.id + "|" + g.league to (if (fixed != null) listOf(fixed) + auto.filter { it.id != fixed.id } else auto)
+    // Computed off the main thread (every game is compared with every sports show). The page shows at once; the channels
+    // of a game appear when the result is there, and the previous result stays visible while a new one is computed.
+    val fixes = SportFix.map.toMap()
+    val matched by produceState(emptyMap<String, List<Item>>(), games, allNow, allSoon, channels, live, fixes) {
+        value = withContext(Dispatchers.Default) {
+            val all = allNow + allSoon
+            val pool = live + channels
+            games.associate { g ->
+                val auto = all.filter { s ->
+                    (kotlin.math.abs(s.prog.start - g.start) <= 3 * 3600 || (s.live && g.state == 1)) && SportData.matches(g, s.prog.title + " " + s.prog.desc)
+                }.map { it.ch }.distinctBy { it.id }
+                val fixed = fixes[SportFix.key(g)]?.let { id -> pool.firstOrNull { it.id == id } }
+                g.id + "|" + g.league to (if (fixed != null) listOf(fixed) + auto.filter { it.id != fixed.id } else auto)
+            }
         }
     }
     fixGame?.let { g ->
