@@ -2,7 +2,7 @@ Last update: 2026-11-12. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-T-014 (first-start update check card, option a2): implemented, PR #57, CI green (unit tests and debug APK), waiting for the device test. Task file: `docs/tasks/T-014-first-start-update-card.md`. Changed files: `UpdateCardLogic.kt`, `UpdateCard.kt` (new), `AppUpdate.kt` (key `first_card_seen`), `MainActivity.kt` (one line), `DictK.kt` (6 rows), `UpdateCardLogicTest.kt` (new), `CHANGELOG.md`. Checks that ran: `UpdateCardLogicTest` 12/12 and `DictConsistencyTest` 3/3 on the JVM; CI build of the UI file: success. **Not run:** device test. The analysis file `claude/update_mechanismus_analyse.md` is not in the repository (read the update code directly instead).
+No task in progress. T-014 (first-start update check card, option a2): DONE, **not device tested** (merged through PR #57, `9eb22ee`, CI green; marked done by the maintainer on 12 Nov 2026). Task file: `docs/tasks/T-014-first-start-update-card.md`. Changed files: `UpdateCardLogic.kt`, `UpdateCard.kt` (new), `AppUpdate.kt` (key `first_card_seen`), `MainActivity.kt` (one line), `DictK.kt` (6 rows), `UpdateCardLogicTest.kt` (new), `CHANGELOG.md`. Checks that ran: `UpdateCardLogicTest` 12/12 and `DictConsistencyTest` 3/3 on the JVM; CI build of the UI file: success. **Not run:** device test. The analysis file `claude/update_mechanismus_analyse.md` is not in the repository (read the update code directly instead).
 
 ## Completed steps (12 Nov 2026)
 
