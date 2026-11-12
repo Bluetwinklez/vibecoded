@@ -62,16 +62,6 @@ object EpgNet {
     }
 }
 
-/** Checks whether a show has plausible times (protection against broken EPG data). */
-fun epgSane(start: Long, end: Long): Boolean {
-    if (end <= start) return false
-    if (end - start > 12 * 3600L) return false
-    val now = System.currentTimeMillis() / 1000
-    if (start > now + 7 * 86400L) return false
-    if (end > now + 8 * 86400L) return false
-    return true
-}
-
 object Xmltv {
     var status by mutableStateOf("Noch nicht geladen")
     var channelCount by mutableStateOf(0)

@@ -1,11 +1,5 @@
 package com.ipvio.stream
 
-import androidx.media3.common.C
-import androidx.media3.common.Format
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.Tracks
-import androidx.media3.datasource.HttpDataSource
 import java.util.Locale
 
 /**
@@ -96,34 +90,6 @@ object PlayerLocale {
     @Volatile var locale: Locale = Locale.GERMAN
 }
 
-fun trackLabel(f: Format, n: Int): String {
-    val base = f.label ?: langLabel(f.language) ?: "Spur $n"
-    val ch = if (f.channelCount > 0) channelLabel(f.channelCount) else ""
-    return if (ch.isNotEmpty()) "$base · $ch" else base
-}
-
-class TrackOpt(val label: String, val group: Tracks.Group, val idx: Int, val selected: Boolean)
-
-fun collectTracks(player: Player, type: Int): List<TrackOpt> {
-    val out = ArrayList<TrackOpt>()
-    var n = 0
-    for (g in player.currentTracks.groups) {
-        if (g.type != type) continue
-        for (i in 0 until g.length) {
-            // Always show audio and subtitles completely (even if headphones/box cannot do the format) – the user decides.
-            // Only video levels the device cannot decode at all stay hidden.
-            val ok = g.isTrackSupported(i)
-            if (!ok && type == C.TRACK_TYPE_VIDEO) continue
-            n++
-            val f = g.getTrackFormat(i)
-            val base = if (type == C.TRACK_TYPE_VIDEO) (if (f.height > 0) "${f.height}p" else "Spur $n") else trackLabel(f, n)
-            val label = if (ok || type == C.TRACK_TYPE_VIDEO) base else "$base (evtl. nicht abspielbar)"
-            out.add(TrackOpt(label, g, i, g.isTrackSelected(i)))
-        }
-    }
-    return out
-}
-
 /**
  * Cleans show data from the provider: sorts, discards broken times and makes sure
  * that two shows never overlap (the earlier one is shortened).
@@ -176,6 +142,16 @@ fun cleanEpg(src: List<EpgEntry>): List<EpgEntry> {
     return out
 }
 
+/** Checks whether a show has plausible times (protection against broken EPG data). */
+fun epgSane(start: Long, end: Long): Boolean {
+    if (end <= start) return false
+    if (end - start > 12 * 3600L) return false
+    val now = System.currentTimeMillis() / 1000
+    if (start > now + 7 * 86400L) return false
+    if (end > now + 8 * 86400L) return false
+    return true
+}
+
 fun speedLabel(s: Float): String = when (s) {
     0.5f -> "0,5×"
     0.75f -> "0,75×"
@@ -185,18 +161,6 @@ fun speedLabel(s: Float): String = when (s) {
     else -> "2×"
 }
 
-
-/** HTTP status behind a playback error (0 if there is none). */
-fun httpStatusOf(e: PlaybackException): Int {
-    var t: Throwable? = e.cause
-    var depth = 0
-    while (t != null && depth < 6) {
-        if (t is HttpDataSource.InvalidResponseCodeException) return t.responseCode
-        t = t.cause
-        depth++
-    }
-    return 0
-}
 
 /** Responses where a retry brings nothing (login, subscription or address are wrong). */
 fun isPermanentHttp(status: Int): Boolean = status == 401 || status == 403 || status == 404 || status == 410 || status == 451
@@ -210,15 +174,38 @@ fun playbackErrorText(code: Int, status: Int, live: Boolean, tls: Boolean = fals
     status == 512 -> "Der Server des Anbieters lehnt die Verbindung ab (512). Meist ist die Server-Adresse nicht mehr aktuell oder gesperrt."
     status in 500..599 -> "Der Anbieter hat gerade ein Problem ($status). Später erneut versuchen."
     status >= 400 -> "Der Anbieter lehnt die Wiedergabe ab ($status)."
-    code == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-        code == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Keine Verbindung zum Anbieter. Internet und Netzwerk prüfen."
-    code == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-        code == PlaybackException.ERROR_CODE_DECODING_FAILED ||
-        code == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> "Dieses Videoformat kann das Gerät nicht abspielen."
-    code == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
-        code == PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ||
-        code == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "Der Stream ist fehlerhaft oder wird nicht unterstützt."
+    code == PlaybackErrorCodes.IO_NETWORK_CONNECTION_FAILED ||
+        code == PlaybackErrorCodes.IO_NETWORK_CONNECTION_TIMEOUT -> "Keine Verbindung zum Anbieter. Internet und Netzwerk prüfen."
+    code == PlaybackErrorCodes.DECODER_INIT_FAILED ||
+        code == PlaybackErrorCodes.DECODING_FAILED ||
+        code == PlaybackErrorCodes.DECODING_FORMAT_UNSUPPORTED -> "Dieses Videoformat kann das Gerät nicht abspielen."
+    code == PlaybackErrorCodes.PARSING_CONTAINER_MALFORMED ||
+        code == PlaybackErrorCodes.PARSING_MANIFEST_MALFORMED ||
+        code == PlaybackErrorCodes.PARSING_CONTAINER_UNSUPPORTED -> "Der Stream ist fehlerhaft oder wird nicht unterstützt."
     else -> "Wiedergabe nicht möglich."
+}
+
+/**
+ * Mirror of the Media3 PlaybackException error codes used by playbackErrorText, so this file needs no Media3.
+ * Media3ContractTest compares every value with PlaybackException.ERROR_CODE_*.
+ */
+internal object PlaybackErrorCodes {
+    const val IO_NETWORK_CONNECTION_FAILED = 2001
+    const val IO_NETWORK_CONNECTION_TIMEOUT = 2002
+    const val PARSING_CONTAINER_MALFORMED = 3001
+    const val PARSING_MANIFEST_MALFORMED = 3002
+    const val PARSING_CONTAINER_UNSUPPORTED = 3003
+    const val DECODER_INIT_FAILED = 4001
+    const val DECODING_FAILED = 4003
+    const val DECODING_FORMAT_UNSUPPORTED = 4005
+}
+
+/** Retry rules for loading streams (pure logic; IptvLoadErrorPolicy in PlayerNet.kt delegates here). */
+object IptvRetryRules {
+    const val RETRIES = 6
+
+    /** HTTP answers where another attempt is pointless: client errors except "timeout" (408) and "too many requests" (429). */
+    fun isFinalStatus(code: Int): Boolean = code in 400..499 && code != 408 && code != 429
 }
 
 object PlayerLogic {

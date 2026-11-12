@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Internal: player helper code split from Media3 (no user-visible change).
 **Playlists (T-009)**
 - Xtream: any number of backup server addresses per login (same username and password). If the main server stops answering, the app switches to the next one by itself, for the playlist, TV guide, catch-up and streams
 - Each server shows whether it is reachable or since when it is not; the playlist row in Settings > Playlists lists servers that are down

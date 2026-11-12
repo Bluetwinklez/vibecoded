@@ -13,7 +13,7 @@ Rules: one task at a time, approval before implementation (CLAUDE.md sections 6 
 | P2 | Comments to English (about 44 files plus manifest, Gradle, XML); check that code without comments is identical | comments only | done (batches 1-8; only `Backup.kt:17` is left, it goes with T-006) |
 | P3 | Security fixes, one task each: S1 `/listimport` code and size limit; S2 6-digit code, atomic lock, constant-time compare; S3 HTTP warning (new texts); S4 TLS downgrade visible; S6 `SECURITY.md`; S7 backup completeness | small, with approval | in progress (S1 done as T-002; S6 done as part of T-005; S2, S3, S4 open; S7 is T-006) |
 | P4 | Names (stage 2): test names, then `Round*` files, then remaining identifiers after an inventory | broad | not started (steps U-2, U-3) |
-| P5 | Split large files: `SettingsHub`, `LiveTab`, `HomeScreen`/`HomeParts`, `PlaylistStore`, `PlayerScreen` last. Detach `PlayerLogic` from Media3 first | large, with tests | not started (steps U-1, U-4) |
+| P5 | Split large files: `SettingsHub`, `LiveTab`, `HomeScreen`/`HomeParts`, `PlaylistStore`, `PlayerScreen` last. Detach `PlayerLogic` from Media3 first | large, with tests | in progress: U-1 done (branch `refactor/U-1`), U-4 open |
 | P6 | Repository documents to English and up to date | docs only | done (checked, already English; Google Drive mentions stay until 1.4) |
 | later | R8 again, Media3/FFmpeg versions, CI hardening, backup gaps | open | not started |
 
@@ -42,7 +42,7 @@ Each step is one branch `refactor/U-n` with a tag `pre-U-n` before it. Code is m
 | Step | Content | Status |
 |---|---|---|
 | U-0b | P2 batch 8: final comment sweep, fix of `RemoteUi.kt:39` | done (commit pending) |
-| U-1 | Move the Media3-dependent code out of `PlayerLogic.kt` (new `PlayerTracks.kt`; mirrored error codes with a Media3 contract test; `epgSane` and the retry rule into pure code) so `PlayerLogicTest`, `CoreLogicTest` and `PlayerBufferTest` run without Android | open |
+| U-1 | Move the Media3-dependent code out of `PlayerLogic.kt` (new `PlayerTracks.kt`; mirrored error codes with a Media3 contract test; `epgSane` and the retry rule into pure code) so `PlayerLogicTest`, `CoreLogicTest` and `PlayerBufferTest` run without Android | done 2026-11-11 (PR open, CI pending) |
 | U-2 | Inventory of German identifiers (list only) | open |
 | U-3 | Renames: a) test names, b) `Round*` files, c) remaining identifiers in groups | open |
 | U-4 | Split: a) `SettingsHub`, b) `LiveTab`, c) `HomeScreen`/`HomeParts`, d) `PlaylistStore`, e) `PlayerScreen` | open |
