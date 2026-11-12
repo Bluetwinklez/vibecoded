@@ -159,7 +159,7 @@ object MetaRepo {
     /** State of the match search. "Not found" from older states is retried with the better search. */
     private const val MATCH_V = 2
 
-    fun enabled() = Config.TMDB_KEY.isNotBlank()
+    fun enabled() = !DemoMode.active && Config.TMDB_KEY.isNotBlank()
 
     /** Info exists for this title: via TMDB (key entered) or directly from the Xtream provider. */
     fun usable(i: Item): Boolean = enabled() || ProviderLogic.supports(i)

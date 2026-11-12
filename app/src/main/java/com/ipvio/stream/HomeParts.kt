@@ -495,8 +495,11 @@ fun ChannelNowRow(title: String, list: List<Item>, onOpen: (Item) -> Unit, onAll
 
 /** Poster without text (design "Top 10 · Trending"). Without an image: title on a colored surface. */
 @Composable
-fun PosterTile(item: Item, modifier: Modifier, onClick: () -> Unit) {
+fun PosterTile(item: Item, modifier: Modifier, reorder: List<Item>? = null, onClick: () -> Unit) {
     val st = rememberMetaState(item)
+    // Favorites: menu key / long OK opens the move menu ([reorder] = the favorites of this section)
+    var favMenu by remember { mutableStateOf(false) }
+    val reorderMod = if (reorder != null) Modifier.followFav(item.id).menuKeys({ favMenu = true }, { favMenu = true }) else Modifier
     val m = st.meta
     var f by remember { mutableStateOf(false) }
     val s by animateFloatAsState(if (f) focusScale(1.07f) else 1f, label = "ptile")
@@ -510,7 +513,7 @@ fun PosterTile(item: Item, modifier: Modifier, onClick: () -> Unit) {
         else -> null
     }
     Box(
-        modifier.aspectRatio(2f / 3f).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
+        modifier.then(reorderMod).aspectRatio(2f / 3f).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
             .background(Brush.linearGradient(listOf(colorFor(item).copy(alpha = .75f), Surf2)))
             .border(1.dp, if (f) Color(0x40FFFFFF) else CardLine, shape)
             .billboardFocus(item) { f = it }
@@ -518,6 +521,7 @@ fun PosterTile(item: Item, modifier: Modifier, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
+        if (favMenu && reorder != null) FavReorderMenu(item, reorder) { favMenu = false }
         if (img == null && st.done) ArtPlaceholder(item, Modifier.fillMaxSize())
         if (img != null) AsyncImage(img, item.title, Modifier.fillMaxSize(), contentScale = if (item.kind == Kind.LIVE) ContentScale.Fit else ContentScale.Crop)
         if (item.kind != Kind.SERIES && DeadLinks.isDead(item.url)) AppIcon(AIcon.Warning, DS.Gold, Modifier.align(Alignment.TopStart).padding(dpx(8)), dpx(18))
@@ -528,8 +532,11 @@ fun PosterTile(item: Item, modifier: Modifier, onClick: () -> Unit) {
 
 /** Landscape card (design picture 2): image, title below, genre, seasons or year and ★ rating. */
 @Composable
-fun LandscapeCard(item: Item, modifier: Modifier, onClick: () -> Unit) {
+fun LandscapeCard(item: Item, modifier: Modifier, reorder: List<Item>? = null, onClick: () -> Unit) {
     val st = rememberMetaState(item)
+    // Favorites: menu key / long OK opens the move menu ([reorder] = the favorites of this section)
+    var favMenu by remember { mutableStateOf(false) }
+    val reorderMod = if (reorder != null) Modifier.followFav(item.id).menuKeys({ favMenu = true }, { favMenu = true }) else Modifier
     val m = st.meta
     var f by remember { mutableStateOf(false) }
     val s by animateFloatAsState(if (f) focusScale(1.07f) else 1f, label = "land")
@@ -538,13 +545,14 @@ fun LandscapeCard(item: Item, modifier: Modifier, onClick: () -> Unit) {
     val dimA by animateFloatAsState(if (rowF && !f) 0.5f else 1f, tween(if (Look.motion == 0) 0 else 320), label = "dim")
     val img = m?.backdrop?.let { cardBackdrop(it) } ?: m?.poster?.let { cardPoster(it) } ?: item.logo
     Box(
-        modifier.aspectRatio(1.3f).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
+        modifier.then(reorderMod).aspectRatio(1.3f).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
             .background(Brush.linearGradient(listOf(colorFor(item).copy(alpha = .75f), Surf2)))
             .border(1.dp, if (f) Color(0x40FFFFFF) else CardLine, shape)
             .billboardFocus(item) { f = it }
             .trackFocus()
             .clickable(onClick = onClick)
     ) {
+        if (favMenu && reorder != null) FavReorderMenu(item, reorder) { favMenu = false }
         if (img == null) ArtPlaceholder(item, Modifier.fillMaxSize(), showTitle = false)
         else AsyncImage(img, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color(0xF5070709))))
@@ -832,18 +840,18 @@ fun CardGridRows(list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen
  * Grid of cards as lazy rows of a LazyColumn: only the rows on screen are composed. [CardGridRows] composed every card of
  * the list at once inside one list item (hundreds of cards for a long history or list: slow and memory hungry).
  */
-fun LazyListScope.cardGridItems(key: String, list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+fun LazyListScope.cardGridItems(key: String, list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen: (Item) -> Unit, reorder: List<Item>? = null) {
     val live = list.firstOrNull()?.kind == Kind.LIVE
     val sz = General.cardSize.coerceIn(0, 2)
     val perRow = if (style == CARD_LAND || live) intArrayOf(8, 6, 5)[sz] else intArrayOf(10, 8, 6)[sz]
     val rows = (list.size + perRow - 1) / perRow
     items(rows, key = { "$key#$it" }, contentType = { "cardrow$style" }) { r ->
-        CardGridRow(list.subList(r * perRow, minOf(list.size, (r + 1) * perRow)), r == 0, style, live, if (r == 0) firstReq else null, onOpen)
+        CardGridRow(list.subList(r * perRow, minOf(list.size, (r + 1) * perRow)), r == 0, style, live, if (r == 0) firstReq else null, onOpen, reorder)
     }
 }
 
 @Composable
-private fun CardGridRow(row: List<Item>, first: Boolean, style: Int, live: Boolean, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+private fun CardGridRow(row: List<Item>, first: Boolean, style: Int, live: Boolean, firstReq: FocusRequester?, onOpen: (Item) -> Unit, reorder: List<Item>? = null) {
     val g = LocalCardGrid.current
     val gap = if (style == CARD_LAND || live) g.gap else g.posterGap
     Row(Modifier.padding(start = RowPadX, end = RowPadX, top = if (first) dpx(12) else gap), horizontalArrangement = Arrangement.spacedBy(gap)) {
@@ -851,8 +859,8 @@ private fun CardGridRow(row: List<Item>, first: Boolean, style: Int, live: Boole
             val fr = if (c == 0 && firstReq != null) Modifier.focusRequester(firstReq) else Modifier
             when {
                 it.kind == Kind.LIVE -> ChannelNowCard(it, Modifier.width(g.chan).then(fr)) { onOpen(it) }
-                style == CARD_LAND -> LandscapeCard(it, Modifier.width(g.land).restoreFocus(it.id).then(fr)) { onOpen(it) }
-                else -> PosterTile(it, Modifier.width(g.poster).restoreFocus(it.id).then(fr)) { onOpen(it) }
+                style == CARD_LAND -> LandscapeCard(it, Modifier.width(g.land).restoreFocus(it.id).then(fr), reorder) { onOpen(it) }
+                else -> PosterTile(it, Modifier.width(g.poster).restoreFocus(it.id).then(fr), reorder) { onOpen(it) }
             }
         }
     }
@@ -863,23 +871,26 @@ private fun CardGridRow(row: List<Item>, first: Boolean, style: Int, live: Boole
  * time and progress. Before, only the channel name was shown.
  */
 @Composable
-fun ChannelDetailCard(item: Item, modifier: Modifier, onClick: () -> Unit) {
+fun ChannelDetailCard(item: Item, modifier: Modifier, reorder: List<Item>? = null, onClick: () -> Unit) {
     val ctx = LocalContext.current
     var f by remember { mutableStateOf(false) }
+    // Favorites tab: menu key / long OK opens the move menu instead of toggling the favorite at once
+    var favMenu by remember { mutableStateOf(false) }
     val s by animateFloatAsState(if (f) focusScale(1.04f) else 1f, label = "chd")
     val shape = RoundedCornerShape(dpx(12))
     val epg by produceState<List<EpgEntry>?>(null, item.id) { value = Epg.now(item) }
     val nowE = epg?.let { Epg.current(it) }
     Column(
-        modifier.height(dpx(172)).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
+        modifier.then(if (reorder != null) Modifier.followFav(item.id) else Modifier).height(dpx(172)).graphicsLayer { scaleX = s; scaleY = s }.focusGlow(f, shape).clip(shape)
             .background(if (f) Tok.CardFocus else CardBg)
             .border(if (f) 3.dp else 1.dp, if (f) Color.White else CardLine, shape)
             .onFocusChanged { f = it.isFocused }
             .trackFocus()
-            .favKeys { Library.toggleFav(ctx, item.id) }
+            .then(if (reorder != null) Modifier.menuKeys({ favMenu = true }, { favMenu = true }) else Modifier.favKeys { Library.toggleFav(ctx, item.id) })
             .clickable(onClick = onClick)
             .padding(dpx(16))
     ) {
+        if (favMenu && reorder != null) FavReorderMenu(item, reorder) { favMenu = false }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(dpx(16))) {
             Box(Modifier.size(dpx(78)).clip(RoundedCornerShape(dpx(10))).background(Color(0x1FFFFFFF)).padding(dpx(8)), contentAlignment = Alignment.Center) {
                 if (item.logo != null) AsyncImage(item.logo, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -908,13 +919,13 @@ fun ChannelDetailCard(item: Item, modifier: Modifier, onClick: () -> Unit) {
 
 /** Favorites > Channels: three wide cards per row (two for "Large"). */
 @Composable
-fun ChannelDetailRows(list: List<Item>, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+fun ChannelDetailRows(list: List<Item>, firstReq: FocusRequester?, onOpen: (Item) -> Unit, reorder: List<Item>? = null) {
     val perRow = intArrayOf(4, 3, 2)[General.cardSize.coerceIn(0, 2)]
     Column(Modifier.padding(start = RowPadX, end = RowPadX, top = dpx(12)), verticalArrangement = Arrangement.spacedBy(dpx(16))) {
         list.chunked(perRow).forEachIndexed { r, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(dpx(16))) {
                 row.forEachIndexed { c, it ->
-                    ChannelDetailCard(it, Modifier.weight(1f).then(if (r == 0 && c == 0 && firstReq != null) Modifier.focusRequester(firstReq) else Modifier)) { onOpen(it) }
+                    ChannelDetailCard(it, Modifier.weight(1f).then(if (r == 0 && c == 0 && firstReq != null) Modifier.focusRequester(firstReq) else Modifier), reorder) { onOpen(it) }
                 }
                 // fill missing slots so all cards stay equally wide
                 repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }

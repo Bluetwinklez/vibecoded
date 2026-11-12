@@ -121,6 +121,13 @@ object General {
         bundleLive = p.getBoolean("bundle_live", true)
         // Users who never chose a mode get "daily": the first start still loads the list once (lastRefresh = 0),
         // later starts use the cache. Before 1.4 the default was "at every start", which re-downloaded the whole line each time.
+        // One-time switch for existing installs: "at every start" (0, the old default) becomes "daily" (maintainer decision,
+        // 12 Nov 2026). Runs once per profile; a later choice of "at every start" is kept.
+        if (!p.getBoolean("refresh_daily_v2", false)) {
+            val e = p.edit().putBoolean("refresh_daily_v2", true)
+            if (p.getInt("refresh_mode", DEFAULT_REFRESH_MODE) == 0) e.putInt("refresh_mode", DEFAULT_REFRESH_MODE)
+            e.apply()
+        }
         refreshMode = p.getInt("refresh_mode", DEFAULT_REFRESH_MODE).coerceIn(0, 4)
         refreshInterval = p.getInt("refresh_interval", 12).coerceIn(1, 168)
         refreshHour = p.getInt("refresh_hour", 4).coerceIn(0, 23)
@@ -192,6 +199,18 @@ object General {
         val e = prefs(c).edit().clear()
         for ((k, v) in keep) when (v) { is Boolean -> e.putBoolean(k, v); is String -> e.putString(k, v) }
         e.apply(); init(c); Updater.apply(c)
+    }
+
+    /**
+     * Resets only the given preference keys to their defaults: removes them and reloads every value from storage
+     * (the defaults are the ones in [init]). All other settings, including the parental control, keep their saved value.
+     */
+    fun resetKeys(c: Context, keys: Set<String>) {
+        if (keys.isEmpty()) return
+        val e = prefs(c).edit()
+        keys.forEach { e.remove(it) }
+        e.apply()
+        init(c)
     }
 
     /** Asked by the BootReceiver after system start. */

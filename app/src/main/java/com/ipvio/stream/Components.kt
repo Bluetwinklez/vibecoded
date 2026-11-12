@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 
 private val palette = listOf(
     0xFF7C5CFF, 0xFF00B8AE, 0xFFE0566B, 0xFFE59A2F, 0xFF3F8EE8, 0xFFA855F7
@@ -185,7 +184,7 @@ fun PosterCard(
         ) {
             // Round 17: placeholder (gradient, initials, icon, title) below the image, stays visible if it is missing or does not load
             if ((!live && (st.done || img != null)) || (live && img == null && st.done)) ArtPlaceholder(item, Modifier.fillMaxSize())
-            if (img != null) AsyncImage(
+            if (img != null) ArtImage(
                 img, item.title,
                 if (live) Modifier.fillMaxSize().padding(20.dp) else Modifier.fillMaxSize(),
                 contentScale = if (live) ContentScale.Fit else ContentScale.Crop
@@ -239,7 +238,7 @@ fun LiveCard(item: Item, onClick: () -> Unit, modifier: Modifier = Modifier) {
                 .background(Brush.linearGradient(listOf(colorFor(item).copy(alpha = .8f), Surf2))),
             contentAlignment = Alignment.Center
         ) {
-            if (item.logo != null) AsyncImage(item.logo, item.title, Modifier.fillMaxSize().padding(20.dp), contentScale = ContentScale.Fit)
+            if (item.logo != null) ArtImage(item.logo, item.title, Modifier.fillMaxSize().padding(20.dp), contentScale = ContentScale.Fit)
             else Text(raw = true, text = item.title.take(2).uppercase(), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
             Text("LIVE", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(DS.RadiusXs))

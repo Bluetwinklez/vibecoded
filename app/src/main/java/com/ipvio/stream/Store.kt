@@ -210,6 +210,18 @@ object AppSettings {
         if (hist.isNotEmpty()) prefs(c).edit().putString("search_hist", hist.joinToString("\n")).apply()
     }
 
+    /**
+     * Resets only the given preference keys to their defaults: removes them and reloads every value from storage
+     * (the defaults are the ones in [init]). All other settings keep their saved value.
+     */
+    fun resetKeys(c: Context, keys: Set<String>) {
+        if (keys.isEmpty()) return
+        val e = prefs(c).edit()
+        keys.forEach { e.remove(it) }
+        e.apply()
+        init(c)
+    }
+
     fun set(c: Context, v: Boolean) {
         ipvioFilter = v
         prefs(c).edit().putBoolean("ipvio_filter", v).apply()
@@ -353,6 +365,18 @@ object Library {
 
     fun toggleFav(c: Context, id: String) {
         if (!favs.remove(id)) favs.add(0, id)
+        prefs(c).edit().putString("favs", favs.joinToString("\n")).apply()
+    }
+
+    /** Moves favorite [id] by [delta] places inside [shown] (the favorites on screen); all other entries keep their place. */
+    fun moveFav(c: Context, shown: List<String>, id: String, delta: Int) = setFavs(c, FavOrderLogic.move(favs.toList(), shown, id, delta))
+
+    /** Moves favorite [id] to the first place inside [shown]. */
+    fun favToTop(c: Context, shown: List<String>, id: String) = setFavs(c, FavOrderLogic.toTop(favs.toList(), shown, id))
+
+    private fun setFavs(c: Context, list: List<String>) {
+        if (list == favs.toList()) return
+        favs.clear(); favs.addAll(list)
         prefs(c).edit().putString("favs", favs.joinToString("\n")).apply()
     }
 

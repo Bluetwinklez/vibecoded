@@ -232,10 +232,11 @@ private fun AppContent() {
         }
     }
 
-    // Left the add screen without anything loaded (e.g. resuming cancelled): load the saved playlist
+    // Left the add screen without anything loaded (e.g. resuming cancelled): load the saved playlist.
+    // Not when a list was already shown and is only empty because of the playlist mode (see AddFlowLogic).
     var wasAdding by remember { mutableStateOf(adding) }
     LaunchedEffect(adding) {
-        if (wasAdding && !adding && PlaylistStore.channels.isEmpty() && !PlaylistStore.loading) {
+        if (AddFlowLogic.shouldReloadAfterAddClosed(wasAdding, adding, PlaylistStore.channels.isEmpty(), PlaylistStore.loading, PlaylistStore.shownUrl != null)) {
             PlaylistStore.savedUrl(ctx)?.let { PlaylistStore.load(ctx, it, false, true) }
         }
         wasAdding = adding
@@ -246,9 +247,10 @@ private fun AppContent() {
     // Do not fall into the screensaver while downloading and parsing the playlist
     KeepScreenOn("playlist", PlaylistStore.loading)
     // Genre detection in the background; restarts cleanly with every new list (reload, language filter, parental control)
-    LaunchedEffect(all) { kotlinx.coroutines.delay(8_000); Classifier.restart(ctx, all) }   // after the first screen is up, and debounced while the list is still changing
+    LaunchedEffect(all) { kotlinx.coroutines.delay(8_000); if (!DemoMode.active) Classifier.restart(ctx, all) }   // after the first screen is up, and debounced while the list is still changing
 
     fun start(item: Item, title: String, url: String, startMs: Long = 0L) {
+        if (DemoMode.active) return   // sample entries have no stream address
         History.add(ctx, item.id)
         val sm = SE_RE.find(title)
         val season = sm?.groupValues?.get(1)?.toIntOrNull() ?: 0
@@ -485,7 +487,7 @@ private fun AppContent() {
                 },
                 onBrowse = { browse = BrowseState(it) },
                 onCategories = { cats = it },
-                onAdd = { adding = true }
+                onAdd = { DemoMode.exit(); adding = true }
             ) }
         }
         if (RemoteUi.show) RemoteOverlay(Modifier.align(Alignment.Center))

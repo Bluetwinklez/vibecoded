@@ -62,7 +62,9 @@ private val CATS = listOf(
     Cat(AIcon.Download, "Listen importieren", "Letterboxd, MyAnimeList, Trakt"),
     Cat(AIcon.Live, "Boomer Mode", "Ganz einfach: große Kacheln zum Auswählen"),
     Cat(AIcon.Sliders, "Startseite anpassen", "Reihen und Widgets wählen und ordnen"),
-    Cat(AIcon.Info, "Über IPVIO Stream", "Version, Quellen, Zurücksetzen"),
+    Cat(AIcon.Info, "Über IPVIO Stream", "Version, Quellen, Updates"),
+    // Resets every settings tab at once (each tab 0..8 has its own reset for just that tab)
+    Cat(AIcon.Warning, "Alles zurücksetzen", "Alle Einstellungen auf Standard"),
     // Donate is always the very last entry
     Cat(AIcon.HeartFilled, "Spende", "Unterstütze IPVIO Stream")
 )
@@ -71,6 +73,8 @@ private val CATS = listOf(
 object SettingsNav {
     const val PROFILES = 10
     const val HOME = 17
+    /** "Reset all settings" page; the donate page is always the last one (one after this). */
+    const val RESET_ALL = 19
     var openPage by androidx.compose.runtime.mutableIntStateOf(-1)
 }
 
@@ -146,17 +150,18 @@ fun SettingsHub(onAdd: () -> Unit, reload: () -> Unit) {
                 16 -> BoomerPage(ctx) { page = -1 }
                 17 -> HomeLayoutPage(ctx)
                 15 -> ListImportPage(ctx)
-                19 -> DonateSection(ctx)
+                SettingsNav.RESET_ALL -> ResetAllPage(ctx)
+                SettingsNav.RESET_ALL + 1 -> DonateSection(ctx)
                 else -> AboutPage(ctx)   // 18
             }
-            // Every setting page ends with a way back to the defaults
-            if (page in 0..8) {
+            // Every settings tab ends with a way back to the defaults. It resets only the settings of the tab that is open.
+            if (SettingsResetLogic.hasReset(page)) {
                 SectionTitle("Zurücksetzen")
-                ConfirmPill("Alle Einstellungen zurücksetzen") {
-                    AppSettings.resetAll(ctx); General.resetAll(ctx)
-                    SidebarPrefs.set(ctx, SidebarPrefs.LEFT, false); BrowsePrefs.set(ctx, true); CatPrefs.set(ctx, true)
+                ConfirmPill("Diese Seite zurücksetzen") {
+                    SettingsReset.page(ctx, page)
+                    settingsToast(ctx, "Diese Seite wurde zurückgesetzt.")
                 }
-                Hint("Setzt Ansicht, Menü, Player, Ton und Start auf die Standardwerte. Playlists, Favoriten und Verlauf bleiben erhalten. Das Design hat einen eigenen Knopf.")
+                Hint("Resets only the settings of this page to their defaults. All other pages stay unchanged. To reset everything at once, use Settings > Reset all.")
             }
             Spacer(Modifier.height(8.dp).bringIntoViewRequester(endReq))
             }
@@ -848,7 +853,6 @@ private fun DesignPage(ctx: Context) {
         }
     }
     Hint("Fünf klare Systemschriften, die auf jedem Gerät vorhanden sind. Die Schriftgröße wirkt zusätzlich zur Anzeigegröße.")
-    PillButton("Design zurücksetzen") { Look.reset(); save() }
     }
 }
 
@@ -1411,9 +1415,51 @@ private fun AboutPage(ctx: Context) {
         }
     }
     UpdateSection(ctx)
-    SectionTitle("Zurücksetzen")
-    ConfirmPill("Alle Einstellungen zurücksetzen") { AppSettings.resetAll(ctx); General.resetAll(ctx) }
-    Hint("Setzt Ansicht, Design, Menü, Player, Ton und Start auf die Standardwerte. Playlists, Favoriten, Verlauf und Fortsetzen-Positionen bleiben erhalten. Zwischenspeicher leerst du unter „Speicher“.")
+}
+
+private fun settingsToast(ctx: Context, message: String) {
+    android.widget.Toast.makeText(ctx, Lang.tr(message), android.widget.Toast.LENGTH_SHORT).show()
+}
+
+/** "Reset all settings": its own settings tab. The reset only runs after the confirmation dialog. */
+@Composable
+private fun ResetAllPage(ctx: Context) {
+    var ask by remember { mutableStateOf(false) }
+    Hint("Resets all settings to their defaults: view, design, menu, player, sound, genres, Live TV and more. Playlists, favorites, history, resume positions and the parental-control PIN are kept. Clear the cache under Storage.")
+    PillButton("Alle Einstellungen zurücksetzen", light = true, icon = AIcon.Warning) { ask = true }
+    Hint("Reset just one page? Every settings page has its own reset button at the bottom.")
+    if (ask) ResetAllDialog(onCancel = { ask = false }) {
+        ask = false
+        SettingsReset.all(ctx)
+        settingsToast(ctx, "Alle Einstellungen wurden zurückgesetzt.")
+    }
+}
+
+/** Confirmation before everything is reset. Focus starts on "Abbrechen", so a stray OK press cannot reset anything. */
+@Composable
+private fun ResetAllDialog(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(100); runCatching { cancelFocus.requestFocus() } }
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onCancel,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        val shape = RoundedCornerShape(DS.RadiusL)
+        Column(
+            Modifier.width(560.dp).clip(shape).background(Surf).border(1.dp, DS.Overlay3, shape).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Alle Einstellungen zurücksetzen?", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Alle Einstellungen gehen auf die Standardwerte zurück. Playlists, Favoriten, Verlauf und Fortsetzen-Positionen bleiben erhalten. Das lässt sich nicht rückgängig machen.",
+                color = Muted, fontSize = DS.TextSmall, lineHeight = 20.sp
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PillButton("Abbrechen", Modifier.focusRequester(cancelFocus), light = true) { onCancel() }
+                PillButton("Zurücksetzen") { onConfirm() }
+            }
+        }
+    }
 }
 
 /** App update from within the app: the default is the latest release on GitHub. */

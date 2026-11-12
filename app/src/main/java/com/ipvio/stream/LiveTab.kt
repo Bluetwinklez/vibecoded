@@ -429,10 +429,13 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                     itemsIndexed(list, key = if (curList != null) { ix, ch -> ch.id + "#" + ix } else null, contentType = { _, _ -> "ch" }) { i, ch ->
                         ChannelLine(
                             ch, (if (i == 0) Modifier.focusRequester(firstChan) else Modifier)
-                                .then(if (ch.id == restoreId) Modifier.focusRequester(restoreReq) else Modifier), curList,
+                                .then(if (ch.id == restoreId) Modifier.focusRequester(restoreReq) else Modifier)
+                                // Favorites: the focus follows a channel that was just moved
+                                .then(if (sel == FAV_CAT) Modifier.followFav(ch.id) else Modifier), curList,
                             onNewList = { newList(ch.id) },
                             onFocus = { focusTarget = ch; plScope.launch { holdJump(chanState, i) } },
                             variants = variantsOf[ch.id].orEmpty(),
+                            favShown = if (sel == FAV_CAT) list else null,
                             onVariant = { v -> ZapContext.list = list; ZapContext.key = sel; LiveMemory.setSel(ctx, sel); onOpen(v) }
                         ) {
                             if (addList != null) {
@@ -523,11 +526,11 @@ private fun CatRow(
 }
 
 @Composable
-private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewList: () -> Unit, onFocus: () -> Unit = {}, variants: List<Item> = emptyList(), onVariant: (Item) -> Unit = {}, onClick: () -> Unit) {
+private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewList: () -> Unit, onFocus: () -> Unit = {}, variants: List<Item> = emptyList(), onVariant: (Item) -> Unit = {}, favShown: List<Item>? = null, onClick: () -> Unit) {
     var f by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     Box {
-    if (menu) ChannelMenu(item, inList, onNewList, variants, onVariant) { menu = false }
+    if (menu) ChannelMenu(item, inList, onNewList, variants, onVariant, favShown) { menu = false }
     val shape = RoundedCornerShape(DS.RadiusM)
     // Wait briefly before loading the guide data: rows that only fly past while scrolling are cancelled and cost nothing
     // While Up/Down is held no guide data is loaded: the row would grow by two lines and the list would re-measure while it scrolls
@@ -601,12 +604,14 @@ private fun ChannelLogo(logo: String?, title: String) {
  * move within the list, new list. [onNewList] = null hides "New channel list" (player).
  */
 @Composable
-fun ChannelMenu(item: Item, inList: ChList?, onNewList: (() -> Unit)?, variants: List<Item> = emptyList(), onVariant: (Item) -> Unit = {}, onClose: () -> Unit) {
+fun ChannelMenu(item: Item, inList: ChList?, onNewList: (() -> Unit)?, variants: List<Item> = emptyList(), onVariant: (Item) -> Unit = {}, favShown: List<Item>? = null, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val acts = ArrayList<Triple<String, AIcon?, () -> Unit>>()
     // Bundled quality variants: pick one to play (best first)
     if (variants.size > 1) for (v in variants) acts.add(Triple(Lang.tr("Qualität") + ": " + (v.quality ?: v.title), AIcon.Play) { onVariant(v) })
     acts.add(Triple(if (Library.isFav(item.id)) "Aus Favoriten entfernen" else "Zu Favoriten", AIcon.Star) { Library.toggleFav(ctx, item.id) })
+    // In the favorites category of the Live tab: move the channel (favShown = the favorites on screen)
+    if (favShown != null) acts.addAll(favMoveActions(ctx, item, favShown))
     if (inList != null) {
         acts.add(Triple("Nach oben", AIcon.Up) { ChannelLists.move(ctx, inList.id, item.id, -1) })
         acts.add(Triple("Nach unten", AIcon.Down) { ChannelLists.move(ctx, inList.id, item.id, 1) })

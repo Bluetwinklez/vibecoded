@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+- Settings > Playlists: switching the content mode no longer jumps back to the first settings page. When the switch re-read the stored playlist copy, the loading screen briefly replaced the settings; it now stays on the settings tab unless a language choice is waiting
+- Remote: a long OK (menu on channels, categories and favorites, marking an episode as seen) now triggers after 0.35 s instead of the system long press (about 0.5 s or more)
+- Playlist refresh: existing installs that still use "at every start" switch once to "daily"; choosing "at every start" again later is kept
+- Donate page and README: new support text, Ko-fi and PayPal links in the README
+- Settings: the reset button at the bottom of each settings page (General, Language & region, View, Design, Menu, Player, Sound & subtitles, Genres, Live TV) now resets only that page. Before, every page ran the same global reset, so resetting for example Genres also reset the design. The design page's own "Design zurücksetzen" button is replaced by the page reset, which also covers font, text size, clock and screen margin
+- Settings: new page "Alles zurücksetzen" (Reset all) with a confirmation dialog; it resets all settings at once and replaces the reset button in "Über IPVIO Stream". Playlists, favorites, history, resume positions, API keys, the parental-control PIN, the custom XMLTV address and the reminder list are not touched
+- Favorites: sort your favorite channels, movies and series by hand. In Favorites (and in Live TV > Favorites) press the menu key or hold OK on an entry and choose Move up / Move down / Move to top; the focus follows the entry. In the Favorites tab this menu also holds "Remove from favorites" (before, the menu key removed it at once). The order is saved with the favorites, part of the backup, and used for zapping (T-018)
+- Onboarding: "Weiter ohne Playlist" now opens a demo mode with sample channels, movies and series so the UI can be explored without connecting anything; artwork is replaced by neutral placeholder blocks, no images or metadata are requested, playback is disabled, and nothing is saved (leaves when a playlist is added)
 - App update: the app reads `update.json` from the latest release first (GitHub API as fallback; a custom address still works). Before the installer opens it checks the SHA-256, the package name, the version number and that the new APK is signed with the same key as the installed app, and shows a clear message instead of Android's "App not installed". `update.json` can mark an update as required (T-015, not device tested yet)
 - First start: a small card at the bottom checks for an app update once and shows the result (checking / up to date / update available / error with "Retry"), with the switch for the automatic check. It appears only once and only on a start without a playlist, never takes the focus from the add-playlist screen, and works with the TV remote (T-014)
 - Internal: player helper code split from Media3 (no user-visible change).
@@ -15,6 +23,7 @@
 - Playlist refresh defaults to "daily" instead of "at every start" for users who never chose a mode; the first start still loads once (T-009, refresh default)
 - Live TV, movies and series: sort categories by provider order, A-Z or an own order; move categories with the menu key or a long OK (T-011)
 - Player: search subtitles online (OpenSubtitles and SubDL) under Audio & subtitles; the chosen subtitle is attached while playing and remembered per title. Needs your own API keys (Settings > API keys) (PR #9)
+- Settings > Playlists: switching the content mode (live TV only / movies & series only) keeps the settings page open instead of showing the empty-list screen, and cancelling the add-playlist screen no longer reloads a playlist that is only empty because of the mode
 **Playlists (T-009)**
 - Xtream: any number of backup server addresses per login (same username and password). If the main server stops answering, the app switches to the next one by itself, for the playlist, TV guide, catch-up and streams
 - Each server shows whether it is reachable or since when it is not; the playlist row in Settings > Playlists lists servers that are down
