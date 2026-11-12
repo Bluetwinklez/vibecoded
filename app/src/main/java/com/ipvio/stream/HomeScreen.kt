@@ -298,7 +298,7 @@ fun HomeScreen(
             // Own imported lists (Letterboxd, Trakt, MyAnimeList) come first, next to the genres
             val imported = ImportedLists.groups(ctx, if (tab == 1) Kind.MOVIE else Kind.SERIES, byId)
             val prov = if (tab == 1) movieP else seriesP
-            onCategories(CatReq("$vodNoun · Kategorien", imported + g, imported + prov, SORT_NEW))
+            onCategories(CatReq("$vodNoun · Kategorien", imported + g, imported + prov, SORT_NEW, area = if (tab == 1) CatOrder.MOVIE else CatOrder.SERIES))
         }
     }
     // One header button per imported service (Letterboxd, Trakt, MyAnimeList) that has titles in this area

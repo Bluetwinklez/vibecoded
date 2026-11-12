@@ -117,6 +117,7 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     // The tab always opens on "Start" (home), so the cursor lands there instead of on the last category or "Alle Sender"
     var sel by remember { mutableStateOf("HOME") }
     HiddenCats.init(ctx)
+    CatOrder.init(ctx)
     // Channel name search ("SEARCH" entry): text is kept while the tab is open
     var query by remember { mutableStateOf("") }
     var showMulti by remember { mutableStateOf(false) }
@@ -135,7 +136,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Recorder.list(ctx).map { Recorder.itemOf(it) } }
         LiveRecCache.items = value
     }
-    val names = (if (PlaylistStore.lists.size > 1) listOf("PL") else emptyList()) + listOf("HOME", "GUIDE", "SEARCH", "MULTI", FAV_CAT) + (if (recs.isNotEmpty()) listOf("REC") else emptyList()) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + genres.keys + favCats + groups.keys.filter { it !in favCats && it !in HiddenCats.list } + (if (HiddenCats.list.any { it in groups }) listOf("HIDDEN") else emptyList())
+    val names = (if (PlaylistStore.lists.size > 1) listOf("PL") else emptyList()) + listOf("HOME", "GUIDE", "SEARCH", "MULTI", FAV_CAT) + (if (recs.isNotEmpty()) listOf("REC") else emptyList()) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + genres.keys + favCats + CatOrder.sorted(CatOrder.LIVE, groups.keys.toList()).filter { it !in favCats && it !in HiddenCats.list } + (if (HiddenCats.list.any { it in groups }) listOf("HIDDEN") else emptyList())
+    val catKeys = remember(names) { val seen = HashSet<String>(); names.mapIndexed { i, n -> if (seen.add(n)) n else "$n#$i" } }
     val curList = ChannelLists.byKey(sel)
     // Own list currently being filled (OK on a channel adds it); declared early because bundling depends on it
     var addTo by remember { mutableStateOf<Int?>(null) }
@@ -214,7 +216,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
         FocusedBackdrop(focusedState, Modifier.fillMaxSize())
         Row(Modifier.fillMaxSize().padding(top = 20.dp)) {
             LazyColumn(Modifier.width(270.dp).fillMaxHeight().padding(start = 24.dp, end = 8.dp), state = catState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                itemsIndexed(names) { _, n ->
+                // Stable keys: after moving a category, focus and menu state move with the row (duplicates get an index suffix)
+                itemsIndexed(names, key = { i, n -> catKeys.getOrElse(i) { "$n#$i" } }) { _, n ->
                     val ml = ChannelLists.byKey(n)
                     if (n == "GUIDE") {
                         // TV guide as in the design: starts the last watched (otherwise first) channel of the selection and opens the guide
@@ -334,11 +337,28 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                             onFav = { if (ml != null) listMenu = true else if (plainCat) catMenu = true else if (n != FAV_CAT && n != "ALL" && n != "REC" && !LiveGenre.isGenreKey(n)) CatFavs.toggle(ctx, n) },
                             icon = icon, raw = ml != null
                         ) { runCatching { firstChan.requestFocus() } }
-                        // Menu of a provider category: favorite on/off, hide
-                        if (catMenu && plainCat) OptionPopup(listOf(if (n in CatFavs.list) "Aus Favoriten entfernen" else "Zu Favoriten hinzufügen", "Kategorie ausblenden"), -1, { catMenu = false }) { i ->
+                        // Menu of a provider category: favorite on/off, hide, move, sorting of all categories
+                        var sortMenu by remember { mutableStateOf(false) }
+                        if (catMenu && plainCat) OptionPopup(
+                            listOf(
+                                if (n in CatFavs.list) "Aus Favoriten entfernen" else "Zu Favoriten hinzufügen", "Kategorie ausblenden",
+                                "Nach oben verschieben", "Nach unten verschieben", "An den Anfang verschieben", "Kategorien sortieren …"
+                            ), -1, { catMenu = false }
+                        ) { i ->
                             catMenu = false
-                            if (i == 0) CatFavs.toggle(ctx, n)
-                            else { if (sel == n) sel = "ALL"; HiddenCats.hide(ctx, n) }
+                            val all = groupsAll.keys.toList()
+                            when (i) {
+                                0 -> CatFavs.toggle(ctx, n)
+                                1 -> { if (sel == n) sel = "ALL"; HiddenCats.hide(ctx, n) }
+                                2 -> CatOrder.move(ctx, CatOrder.LIVE, all, n, -1)
+                                3 -> CatOrder.move(ctx, CatOrder.LIVE, all, n, 1)
+                                4 -> CatOrder.toTop(ctx, CatOrder.LIVE, all, n)
+                                else -> sortMenu = true
+                            }
+                        }
+                        if (sortMenu) OptionPopup(listOf("Anbieter-Reihenfolge", "A–Z", "Eigene Reihenfolge"), CatOrder.mode(CatOrder.LIVE), { sortMenu = false }) { i ->
+                            sortMenu = false
+                            CatOrder.setMode(ctx, CatOrder.LIVE, i)
                         }
                         // Menu of an own list: rename, delete
                         if (listMenu && ml != null) OptionPopup(listOf("Umbenennen", "Liste löschen"), -1, { listMenu = false }) { i ->

@@ -16,6 +16,8 @@ import java.io.File
 /** General app settings: start, quit, refresh. Own file so they are handled separately on reset. */
 object General {
     private const val PREFS = "ipvio_general"
+    /** Refresh mode when the user never picked one: 2 = daily (see [refreshMode]). */
+    const val DEFAULT_REFRESH_MODE = 2
     var autoStart by mutableStateOf(false)
     var startTab by mutableIntStateOf(0)
     var resumeLive by mutableStateOf(false)
@@ -25,7 +27,7 @@ object General {
     /** Live TV: show the quality variants of one channel (8K/4K/FHD/HD/SD) as a single row. */
     var bundleLive by mutableStateOf(true)
     /** Playlist refresh: 0 = at every start, 1 = every X hours, 2 = daily, 3 = weekly, 4 = by hand only */
-    var refreshMode by mutableIntStateOf(0)
+    var refreshMode by mutableIntStateOf(DEFAULT_REFRESH_MODE)
     var refreshInterval by mutableIntStateOf(12)
     var refreshHour by mutableIntStateOf(4)
     var refreshMinute by mutableIntStateOf(0)
@@ -117,7 +119,9 @@ object General {
         resumeVod = p.getBoolean("resume_vod", false)
         confirmExit = p.getBoolean("confirm_exit", true)
         bundleLive = p.getBoolean("bundle_live", true)
-        refreshMode = p.getInt("refresh_mode", 0).coerceIn(0, 4)
+        // Users who never chose a mode get "daily": the first start still loads the list once (lastRefresh = 0),
+        // later starts use the cache. Before 1.4 the default was "at every start", which re-downloaded the whole line each time.
+        refreshMode = p.getInt("refresh_mode", DEFAULT_REFRESH_MODE).coerceIn(0, 4)
         refreshInterval = p.getInt("refresh_interval", 12).coerceIn(1, 168)
         refreshHour = p.getInt("refresh_hour", 4).coerceIn(0, 23)
         refreshMinute = p.getInt("refresh_minute", 0).coerceIn(0, 59)
