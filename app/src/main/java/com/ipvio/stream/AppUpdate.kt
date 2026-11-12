@@ -48,6 +48,10 @@ object AppUpdate {
     fun auto(c: Context) = prefs(c).getBoolean("auto", true)
     fun setAuto(c: Context, on: Boolean) = prefs(c).edit().putBoolean("auto", on).apply()
 
+    /** T-014: the first-start update card was already decided (shown or skipped). New key, existing keys are untouched. */
+    fun firstCardSeen(c: Context) = prefs(c).getBoolean("first_card_seen", false)
+    fun markFirstCardSeen(c: Context) = prefs(c).edit().putBoolean("first_card_seen", true).apply()
+
     fun currentCode(c: Context): Long = runCatching {
         val pi = c.packageManager.getPackageInfo(c.packageName, 0)
         if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode else @Suppress("DEPRECATION") pi.versionCode.toLong()

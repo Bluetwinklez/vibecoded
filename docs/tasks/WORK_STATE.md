@@ -2,7 +2,7 @@ Last update: 2026-11-12. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-No task in progress. Next candidates: T-006 (backup `NAMES`), CHANGELOG entries for 1.2 and 1.3, PR #40 (see open problems).
+T-014 (first-start update check card, option a2): implemented, waiting for CI and the device test. Task file: `docs/tasks/T-014-first-start-update-card.md`. Changed files: `UpdateCardLogic.kt`, `UpdateCard.kt` (new), `AppUpdate.kt` (key `first_card_seen`), `MainActivity.kt` (one line), `DictK.kt` (6 rows), `UpdateCardLogicTest.kt` (new), `CHANGELOG.md`. Checks that ran: `UpdateCardLogicTest` 12/12 and `DictConsistencyTest` 3/3 on the JVM; **not run:** Gradle build of the UI file, device test. The analysis file `claude/update_mechanismus_analyse.md` is not in the repository (read the update code directly instead).
 
 ## Completed steps (12 Nov 2026)
 
@@ -24,4 +24,4 @@ No task in progress. Next candidates: T-006 (backup `NAMES`), CHANGELOG entries 
 
 ## Next step
 
-Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress, #52 online subtitle search from #9). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
+Device test of T-014 (steps in the task report: fresh install, offline, older APK). Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress, #52 online subtitle search from #9). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
