@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Sport: the tab no longer matches games to channels on the main thread; the channels of a game appear shortly after the page. Not measured yet, device test open (T-023)
 - Performance, not measured yet, device test open: home poster cards no longer compute their screen position on every scroll frame (T-020); small devices decode two images at a time instead of four (T-021); the settings files needed at start are loaded in parallel (T-022)
 - Live TV: moving the focus through the channel list no longer rebuilds the content of the rows (guide times, status icons); only the highlight frame changes. Not measured yet, device test open (T-019)
 - Settings > Playlists: switching the content mode no longer jumps back to the first settings page. When the switch re-read the stored playlist copy, the loading screen briefly replaced the settings; it now stays on the settings tab unless a language choice is waiting

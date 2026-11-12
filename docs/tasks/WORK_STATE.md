@@ -31,6 +31,8 @@ Also done in this round (12 Nov 2026, afternoon, pushed together, device test by
 
 - T-020 to T-022 (home card position, image decoding, start-up settings files): see `docs/tasks/T-020-T-022-speed-series.md`. **Status: branch `perf/speed-series` (contains T-019), not built, not tested on a device, nothing measured.** The branch could not be pushed from the assistant's session; it was handed over as a patch file.
 
+- T-023 (sport tab: game-to-channel matching off the main thread): see `docs/tasks/T-023-sport-matching.md`, which also lists what was reviewed without a change (`PlayerLive.kt`, `PlaylistStore.kt`, `PlayerScreen.kt`, series pages). **Status: on branch `perf/speed-series`, not built, not tested on a device.**
+
 ## Open problems
 
 - PR #40 (`integration/2026-11-11`, fork `browanoncoder/IPVIO-Stream`, 32 commits, 66 files) still has 10 conflicting files with `main` (CategoriesScreen, HomeScreen, LiveGenre, LiveTab, Models, PlaylistStore, SearchLogic, SearchScreen, CHANGELOG, WORK_STATE). Much of it is already in `main` in another form (Stalker #7, subtitle search #9). A comment asks the author to update the branch. Unique parts that are not in `main`: Live TV focus fixes, MKV seeking (#10), tap-to-seek (#25), Recently added (#22), translations. If the author does not react, port those parts one by one.
