@@ -1,6 +1,6 @@
 # T-014 First-start update check card
 
-Status: IMPLEMENTED, waiting for the device test. Option a2 (decided by the maintainer on 12 Nov 2026).
+Status: DONE, not device tested. Merged through PR #57 (`9eb22ee`), CI green. Marked as done by the maintainer on 12 Nov 2026 without a device test; the test steps below stay open. Option a2 (decided by the maintainer on 12 Nov 2026).
 
 ## Goal
 
