@@ -233,8 +233,9 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                     }
                 }
                 if (canCancel) FocusButton("Abbrechen", compact = true) { PlaylistStore.clearPending(ctx); onDone() }
-                // Nothing to add yet (first start): just look around the app; the home screen then offers "Playlist hinzufügen"
-                else FocusButton("Weiter ohne Playlist", compact = true) { PlaylistStore.clearPending(ctx); PlaylistStore.error = null; onDone() }
+                // Nothing to add yet (first start): demo mode with sample entries and neutral placeholders, so the UI can be explored.
+                // Settings then offer "Playlist hinzufügen" to leave it.
+                else FocusButton("Weiter ohne Playlist", compact = true) { PlaylistStore.clearPending(ctx); PlaylistStore.error = null; DemoMode.enter(); onDone() }
             }
             // Second device? Take everything over in one step
             Text("Schon ein anderes Gerät mit IPVIO Stream? Spiele die Sicherung ein: Playlists, Zugangsdaten, Verlauf, Favoriten und Einstellungen sind danach sofort da.", color = Muted, fontSize = 12.sp, lineHeight = 16.sp)

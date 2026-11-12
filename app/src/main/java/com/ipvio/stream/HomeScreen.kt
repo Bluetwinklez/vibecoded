@@ -41,7 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -536,11 +535,16 @@ fun HomeScreen(
             val grid = remember(maxWidth, Design.k, General.cardSize) { cardGrid(maxWidth - RowPadX * 2) }
             // Design: big picture 420 px high (start), 345 px (movies/series)
             val heroH = dpx(if (tab == 0) 540 else 450)
+            val keepSettings = AddFlowLogic.keepsSettingsPage(tab, PlaylistStore.lists.isNotEmpty())
             when {
                 // Download/parse without a shown list: loading screen with progress (and possibly language selection)
-                PlaylistStore.loading && all.isEmpty() && PlaylistStore.heavy -> PlaylistLoadingOverlay()
-                (PlaylistStore.loading && all.isEmpty()) || computing -> SkeletonHome()
-                all.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // On the settings tab only when a language choice is waiting: a mode switch re-parses the stored copy (heavy)
+                // and would otherwise unmount the settings, which then reopen on their first page
+                PlaylistStore.loading && all.isEmpty() && PlaylistStore.heavy && (!keepSettings || PlaylistStore.langAsk != null) -> PlaylistLoadingOverlay()
+                // The settings page stays mounted while the list is empty or being rebuilt (e.g. after a playlist mode switch):
+                // replacing it would drop the focus, and the next OK press could land on "Add playlist"
+                !keepSettings && ((PlaylistStore.loading && all.isEmpty()) || computing) -> SkeletonHome()
+                !keepSettings && all.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         BrandMark(Modifier.size(72.dp))
                         val err = PlaylistStore.error
@@ -700,15 +704,15 @@ fun HomeScreen(
                             }
                             if (favLive.isNotEmpty()) {
                                 item(key = "favh") { RowTitle("Favoriten · Sender", null, null, onAll = null) }
-                                item(key = "favg") { ChannelDetailRows(favLive, ContentFocus.req, onOpen) }
+                                item(key = "favg") { ChannelDetailRows(favLive, ContentFocus.req, onOpen, reorder = favLive) }
                             }
                             if (favM.isNotEmpty()) {
                                 item(key = "favmh") { RowTitle("Favoriten · Filme", null, null, onAll = null) }
-                                cardGridItems("favm", favM, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty()) ContentFocus.req else null, onOpen)
+                                cardGridItems("favm", favM, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty()) ContentFocus.req else null, onOpen, reorder = favM)
                             }
                             if (favS.isNotEmpty()) {
                                 item(key = "favsh") { RowTitle("Favoriten · Serien", null, null, onAll = null) }
-                                cardGridItems("favs", favS, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty() && favM.isEmpty()) ContentFocus.req else null, onOpen)
+                                cardGridItems("favs", favS, if (General.cardArt == 1) CARD_LAND else CARD_POSTER, if (favLive.isEmpty() && favM.isEmpty()) ContentFocus.req else null, onOpen, reorder = favS)
                             }
                             val favCats = CatFavs.list.filter { it in liveP }
                             if (favCats.isNotEmpty()) favCats.forEach { g ->
@@ -873,7 +877,7 @@ private fun WideCard(item: Item, sub: String?, progress: Float, modifier: Modifi
                 .background(Brush.linearGradient(listOf(colorFor(item).copy(alpha = .75f), Surf2)))
                 .border(DS.FocusBorder, if (f) Accent2 else Color.Transparent, shape)
         ) {
-            if (img != null) AsyncImage(img, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (img != null) ArtImage(img, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xDD000000))))
             AppIcon(AIcon.Play, Color.White, Modifier.align(Alignment.Center), 30.dp)
             Text(raw = true, text = item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -914,7 +918,7 @@ private fun Hero(
             Box(Modifier.fillMaxSize().graphicsLayer {
                 translationY = if (Look.motion == 0) 0f else scrollY() * 0.4f
             }) {
-                m?.backdrop?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopEnd) }
+                m?.backdrop?.let { ArtImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopEnd) }
             }
         }
         // Gradients: left and bottom into the background, subtle at the top behind the header; plus a soft vignette

@@ -1281,6 +1281,12 @@ object PlaylistStore {
     /** true if the UI is currently showing a playlist (app runs in the same process). */
     val hasData: Boolean get() = rawChannels.isNotEmpty()
 
+    /** Demo mode: show sample entries without a playlist. Memory only, nothing is saved (see [DemoMode]). */
+    fun showDemo(items: List<Item>) { error = null; setItems(items) }
+
+    /** Leaving demo mode: drop the sample entries. */
+    fun clearDemo() { setItems(emptyList()) }
+
     fun clear(c: Context) {
         ensure(c)
         lists.forEach { deleteFiles(c, it.url) }
