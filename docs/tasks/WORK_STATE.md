@@ -6,6 +6,8 @@ T-015 (harden the in-app update: `update.json` as primary source, SHA-256, packa
 
 T-014 (first-start update check card) is merged (PR #57, #58); its device test is still pending.
 
+T-025 (first-start update card closes by itself, branch `fix/T-025-update-card-hide`): maintainer feedback of 12 Nov 2026, the card stayed on screen after a playlist was added. `UpdateCardLogic.leftFirstStart` (saved playlist, loading, or demo mode) closes the card in `UpdateCard.kt`. Task file: `docs/tasks/T-025-update-card-auto-hide.md`. Checks that ran: `UpdateCardLogicTest` 13/13 on the JVM with a stand-in for JUnit (Kotlin 2.2.10 compiler; the real JUnit jar was not reachable). **Not run:** Gradle build (`UpdateCard.kt` is Compose code and was not compiled), device test.
+
 Also done in this round (12 Nov 2026, afternoon, pushed together, device test by the maintainer: works): playlist mode switch fix, demo mode, favorites reorder (T-018), per-page settings reset, long OK 350 ms, refresh migration to daily, donate text. Details under Completed steps.
 
 ## Completed steps (12 Nov 2026)

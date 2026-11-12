@@ -21,6 +21,7 @@ import com.ipvio.stream.UpdateCardLogic.Phase
  * Rules live in [UpdateCardLogic]; this file only draws them.
  *
  * - Shown once: the decision is stored in the new key `first_card_seen` of `ipvio_upd`, and only on a start without a playlist.
+ * - Closes by itself when a playlist is added (loading starts) or the demo mode is entered (T-025).
  * - Non-blocking: no focus request and no dialog, so the add-playlist screen keeps its focus. The buttons are normal
  *   focusable elements (OK on the remote works) that the D-pad reaches by moving down.
  * - While the card is up, the automatic start dialog of [UpdatePromptHost] is held back (`promptDismissed`), so it cannot
@@ -36,7 +37,10 @@ fun UpdateCardHost() {
         s
     }
     var closed by rememberSaveable { mutableStateOf(false) }
-    if (!show || closed) return
+    // T-025: once the user has moved on from the first-start screen the card closes by itself and stays closed.
+    val left = UpdateCardLogic.leftFirstStart(PlaylistStore.lists.isNotEmpty(), PlaylistStore.loading, DemoMode.active)
+    LaunchedEffect(left) { if (left) closed = true }
+    if (!show || closed || left) return
     var state by remember { mutableStateOf(UpdateCardLogic.START) }
     var run by remember { mutableStateOf(0) }
     var auto by remember { mutableStateOf(AppUpdate.auto(ctx)) }

@@ -28,6 +28,12 @@ object UpdateCardLogic {
     /** The "seen" flag is written on the first decision, whether the card is shown or skipped (existing installs). */
     fun shouldMarkSeen(seen: Boolean): Boolean = !seen
 
+    /**
+     * The card belongs to the first-start screen only (T-025). It goes away by itself as soon as the user has moved on:
+     * a playlist is saved, a playlist is being loaded, or the demo mode ("Continue without playlist") is on.
+     */
+    fun leftFirstStart(hasPlaylist: Boolean, loading: Boolean, demo: Boolean): Boolean = hasPlaylist || loading || demo
+
     /** [foundVersion] = name of the new version, null = the installed version is current. */
     fun onResult(foundVersion: String?): State =
         if (foundVersion == null) State(Phase.UP_TO_DATE) else State(Phase.AVAILABLE, version = foundVersion)

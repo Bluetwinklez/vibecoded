@@ -24,6 +24,13 @@ class UpdateCardLogicTest {
         assertFalse(UpdateCardLogic.shouldMarkSeen(true))
     }
 
+    @Test fun leftFirstStart_whenPlaylistLoadingOrDemo() {
+        assertFalse(UpdateCardLogic.leftFirstStart(hasPlaylist = false, loading = false, demo = false))
+        assertTrue(UpdateCardLogic.leftFirstStart(hasPlaylist = true, loading = false, demo = false))
+        assertTrue(UpdateCardLogic.leftFirstStart(hasPlaylist = false, loading = true, demo = false))
+        assertTrue(UpdateCardLogic.leftFirstStart(hasPlaylist = false, loading = false, demo = true))
+    }
+
     @Test fun start_isChecking() = assertEquals(Phase.CHECKING, UpdateCardLogic.START.phase)
 
     @Test fun result_nullMeansUpToDate() = assertEquals(UpdateCardLogic.State(Phase.UP_TO_DATE), UpdateCardLogic.onResult(null))
