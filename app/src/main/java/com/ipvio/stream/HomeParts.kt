@@ -40,6 +40,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -590,6 +591,7 @@ fun CardRow(
     // Highlight stays in the middle (round 15/16): the row slides through under the highlight
     var cur by remember { mutableIntStateOf(-1) }
     CenterFollow(state, cur)
+    val shownList = remember(list) { list.take(60) }   // same list object across recompositions
     Column {
         RowTitle(title, linkReq, firstCard, raw = raw, upReq = upReq, leftReq = leftReq, rowState = state, onAll = onAll)
         // Enough space above/below for the enlargement on highlight (otherwise the cover is cropped)
@@ -603,7 +605,7 @@ fun CardRow(
             contentPadding = PaddingValues(start = RowPadX, end = RowPadX, top = dpx(30), bottom = dpx(30)),
             horizontalArrangement = Arrangement.spacedBy(if (live || style == CARD_LAND) g.gap else g.posterGap)
         ) {
-            itemsIndexed(list.take(60)) { i, it ->
+            itemsIndexed(shownList, contentType = { _, x -> if (x.kind == Kind.LIVE) 0 else style }) { i, it ->
                 val fr = if (i == 0) Modifier.focusRequester(firstCard) else Modifier
                 // Up on a card highlights "Show all" of the same row (otherwise hard to reach)
                 val track = Modifier.onPreviewKeyEvent { ev ->
@@ -803,6 +805,7 @@ fun PreviewQualityBadge(q: String) {
 /** Cards as a grid (favorites, My list): rows of equally wide cards. */
 @Composable
 fun CardGridRows(list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+    // Note: composes every card at once. For lists that can grow (favorites, my list, history) use [cardGridItems].
     val g = LocalCardGrid.current
     val live = list.firstOrNull()?.kind == Kind.LIVE
     // same column count as cardGrid ("Ansicht" button)
@@ -820,6 +823,36 @@ fun CardGridRows(list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen
                         else -> PosterTile(it, Modifier.width(g.poster).restoreFocus(it.id).then(fr)) { onOpen(it) }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Grid of cards as lazy rows of a LazyColumn: only the rows on screen are composed. [CardGridRows] composed every card of
+ * the list at once inside one list item (hundreds of cards for a long history or list: slow and memory hungry).
+ */
+fun LazyListScope.cardGridItems(key: String, list: List<Item>, style: Int, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+    val live = list.firstOrNull()?.kind == Kind.LIVE
+    val sz = General.cardSize.coerceIn(0, 2)
+    val perRow = if (style == CARD_LAND || live) intArrayOf(8, 6, 5)[sz] else intArrayOf(10, 8, 6)[sz]
+    val rows = (list.size + perRow - 1) / perRow
+    items(rows, key = { "$key#$it" }, contentType = { "cardrow$style" }) { r ->
+        CardGridRow(list.subList(r * perRow, minOf(list.size, (r + 1) * perRow)), r == 0, style, live, if (r == 0) firstReq else null, onOpen)
+    }
+}
+
+@Composable
+private fun CardGridRow(row: List<Item>, first: Boolean, style: Int, live: Boolean, firstReq: FocusRequester?, onOpen: (Item) -> Unit) {
+    val g = LocalCardGrid.current
+    val gap = if (style == CARD_LAND || live) g.gap else g.posterGap
+    Row(Modifier.padding(start = RowPadX, end = RowPadX, top = if (first) dpx(12) else gap), horizontalArrangement = Arrangement.spacedBy(gap)) {
+        row.forEachIndexed { c, it ->
+            val fr = if (c == 0 && firstReq != null) Modifier.focusRequester(firstReq) else Modifier
+            when {
+                it.kind == Kind.LIVE -> ChannelNowCard(it, Modifier.width(g.chan).then(fr)) { onOpen(it) }
+                style == CARD_LAND -> LandscapeCard(it, Modifier.width(g.land).restoreFocus(it.id).then(fr)) { onOpen(it) }
+                else -> PosterTile(it, Modifier.width(g.poster).restoreFocus(it.id).then(fr)) { onOpen(it) }
             }
         }
     }

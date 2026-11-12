@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 
 /** Channel info block: logo, number, name, running show with progress and "Next". */
@@ -163,23 +164,34 @@ fun ChannelOverlay(
     val ctx = LocalContext.current
     val byId = remember(liveAll) { liveAll.associateBy { it.id } }
     val groups = remember(liveAll) { liveAll.groupBy { it.group } }
-    val favItems = Library.favs.mapNotNull { byId[it] }
-    val favCats = CatFavs.list.filter { it in groups }
-    val catNames = favCats + groups.keys.filter { it !in favCats }
+    // Remembered: the overlay recomposes on every focus step (focusedCh), the lists only change with their sources
+    val favItems = remember(byId, Library.favs.size) { Library.favs.mapNotNull { byId[it] } }
+    val favCats = remember(groups, CatFavs.list.size) { CatFavs.list.filter { it in groups } }
+    val catNames = remember(groups, favCats) { favCats + groups.keys.filter { it !in favCats } }
     // Own channel lists (created in the Live TV area with the menu key)
     val myLists = ChannelLists.lists.toList()
     val curList = ChannelLists.byKey(chanCat)
-    val chanList = when {
-        chanCat == FAV_CAT -> favItems
-        chanCat == "ALL" -> liveAll
-        curList != null -> ChannelListLogic.resolve(curList, byId)
-        else -> groups[chanCat].orEmpty()
+    val chanList = remember(chanCat, favItems, liveAll, curList, curList?.ids?.size, groups) {
+        when {
+            chanCat == FAV_CAT -> favItems
+            chanCat == "ALL" -> liveAll
+            curList != null -> ChannelListLogic.resolve(curList, byId)
+            else -> groups[chanCat].orEmpty()
+        }
     }
-    val startIdx = chanList.indexOfFirst { it.id == curId }
+    val startIdx = remember(chanList, curId) { chanList.indexOfFirst { it.id == curId } }
     val ls = rememberLazyListState()
     LaunchedEffect(chanCat) { ls.scrollToItem(maxOf(startIdx - 2, 0)) }
     val fc = focusedCh ?: curItem
-    val fe by produceState(emptyList<EpgEntry>(), fc?.id) { value = if (fc != null) EpgFull.get(fc) else emptyList() }
+    // Program of the highlighted channel: only after a short pause and not while Up/Down is held (before, every step started a request)
+    val fe by produceState(emptyList<EpgEntry>(), fc?.id) {
+        value = emptyList()
+        if (fc == null) return@produceState
+        EpgFull.peek(fc)?.let { value = it; return@produceState }
+        kotlinx.coroutines.delay(250)
+        while (LiveHold.active()) kotlinx.coroutines.delay(100)
+        value = EpgFull.get(fc)
+    }
     val panelShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 
     Row(Modifier.fillMaxSize()) {
@@ -249,12 +261,23 @@ fun ChannelOverlay(
                 }
             }
             Text("OK = ansehen  ·  halten = Favorit  ·  Links = Kategorien", color = Muted, fontSize = 13.sp)
-            LazyColumn(state = ls) {
-                itemsIndexed(chanList) { i, it ->
+            val jumpScope = androidx.compose.runtime.rememberCoroutineScope()
+            LazyColumn(
+                state = ls,
+                // Held Up/Down: at most ~9 steps per second and no scroll animation per step (as in Live TV)
+                modifier = Modifier.onPreviewKeyEvent { e ->
+                    if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionDown || e.key == Key.DirectionUp) && e.nativeKeyEvent.repeatCount > 0) {
+                        val now = android.os.SystemClock.uptimeMillis()
+                        LiveHold.lastRepeat = now
+                        if (now - LiveHold.lastStep < 110) true else { LiveHold.lastStep = now; false }
+                    } else false
+                }
+            ) {
+                itemsIndexed(chanList, contentType = { _, _ -> "ch" }) { i, it ->
                     ChannelRow(
                         it, it.id == curId,
                         if (i == startIdx || (startIdx < 0 && i == 0)) Modifier.focusRequester(chanFocus) else Modifier,
-                        onFocus = { onFocusedCh(it) }
+                        onFocus = { onFocusedCh(it); jumpScope.launch { holdJump(ls, i) } }
                     ) { onPick(it, chanList) }
                 }
             }
@@ -333,7 +356,15 @@ private fun ChannelRow(item: Item, current: Boolean, modifier: Modifier, onFocus
     val ctx = LocalContext.current
     var f by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(DS.RadiusS)
-    val epg by produceState(emptyList<EpgEntry>(), item.id) { value = Epg.now(item) }
+    // Cached program at once; otherwise wait briefly and not while Up/Down is held (rows that fly past load nothing)
+    val epg by produceState(Epg.peek(item) ?: emptyList(), item.id) {
+        val cached = Epg.peek(item)
+        value = cached ?: emptyList()
+        if (cached != null) return@produceState
+        kotlinx.coroutines.delay(150)
+        while (LiveHold.active()) kotlinx.coroutines.delay(120)
+        value = Epg.now(item)
+    }
     val nowE = Epg.current(epg)
     // Menu key (if present): favorite and own channel lists. Holding OK = favorite immediately (user's wish).
     var menu by remember { mutableStateOf(false) }
@@ -376,5 +407,52 @@ private fun ChannelRow(item: Item, current: Boolean, modifier: Modifier, onFocus
         if (Catchup.version >= 0 && Catchup.has(item)) AppIcon(AIcon.Catchup, if (f) PT.InkSoft else Accent2, size = 18.dp)
         if (DeadLinks.isDead(item.url)) AppIcon(AIcon.Warning, if (f) PT.InkSoft else PT.Gold, size = 18.dp)
         if (Library.isFav(item.id)) AppIcon(AIcon.Star, if (f) PT.InkSoft else PT.Gold, size = 18.dp)
+    }
+}
+
+/**
+ * Recently watched channels (wish from the Wishbox): a row in the live controls (OK while watching) to switch back quickly.
+ * Uses the existing history ([History]); the current channel is left out. Resolved in one pass over the channels in the
+ * background, so opening the controls stays fast with very large playlists.
+ */
+@Composable
+fun RecentChannelsRow(liveAll: List<Item>, curId: String, onLabel: (String) -> Unit, onPick: (Item) -> Unit) {
+    val recent by produceState(emptyList<Item>(), liveAll, curId, History.ids.size) {
+        val want = History.ids.toList().filter { it != curId }.take(40)
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val pos = HashMap<String, Int>(want.size * 2)
+            want.forEachIndexed { i, id -> pos.putIfAbsent(id, i) }
+            val out = arrayOfNulls<Item>(want.size)
+            for (x in liveAll) { val p = pos[x.id] ?: continue; if (out[p] == null) out[p] = x }
+            out.filterNotNull().take(10)
+        }
+    }
+    if (recent.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Zuletzt gesehen", color = Muted, fontSize = 13.sp)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(recent, key = { it.id }) { ch -> RecentChannelChip(ch, onLabel) { onPick(ch) } }
+        }
+    }
+}
+
+@Composable
+private fun RecentChannelChip(item: Item, onLabel: (String) -> Unit, onClick: () -> Unit) {
+    var f by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(DS.RadiusS)
+    Row(
+        Modifier.height(44.dp).widthIn(max = 220.dp).clip(shape)
+            .background(if (f) Color.White else Color(0x24FFFFFF))
+            .onFocusChanged { f = it.isFocused; if (it.isFocused) onLabel(item.title) }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
+            val lg = item.logo
+            if (lg != null) AsyncImage(lg, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            else Text(raw = true, text = item.title.take(2).uppercase(), color = if (f) Color.Black else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(raw = true, text = item.title, color = if (f) Color.Black else Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

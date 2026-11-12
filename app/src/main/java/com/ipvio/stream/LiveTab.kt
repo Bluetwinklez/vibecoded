@@ -59,6 +59,27 @@ object LiveHold {
     @Volatile var lastRepeat = 0L
     /** True while the key is held (a repeat arrived within the last 300 ms). */
     fun active(): Boolean = android.os.SystemClock.uptimeMillis() - lastRepeat < 300
+    /** Time of the last repeat that was let through to the list (key-repeat throttle). */
+    @Volatile var lastStep = 0L
+}
+
+/**
+ * While Up/Down is held, the list jumps to the focused row at once instead of animating every step: the scroll animation of
+ * one step takes longer than the pause between two held steps, so the list was animating without a break while new rows
+ * were built. Single key presses keep the soft scrolling. Does nothing when the row is already fully visible.
+ */
+internal suspend fun holdJump(state: LazyListState, index: Int) {
+    if (!LiveHold.active()) return
+    val info = state.layoutInfo
+    val row = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+    val peek = 90   // same margin as the app-wide soft scrolling
+    if (row.offset < info.viewportStartOffset) state.scrollToItem(index, -peek)
+    else if (row.offset + row.size > info.viewportEndOffset) state.scrollToItem(index, -(info.viewportEndOffset - peek - row.size).coerceAtLeast(0))
+}
+
+/** Last read recordings (session only), shown while the folder is read again in the background. */
+private object LiveRecCache {
+    @Volatile var items: List<Item> = emptyList()
 }
 
 /** Reads the focused channel only here, so a focus change recomposes the backdrop and not the whole Live TV tab. */
@@ -113,7 +134,11 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     val byIdLazy = remember(live) { lazy { live.associateBy { it.id } } }
     // Order: favorites, own channel lists, "New channel list", all channels, categories
     // Recordings (round 20): own category as soon as there are any
-    val recs = remember(Recorder.active.size, sel == "REC") { Recorder.list(ctx).map { Recorder.itemOf(it) } }
+    // Reading the recordings folder (also USB storage) is file I/O: done in the background, the last result shows meanwhile
+    val recs by produceState(LiveRecCache.items, Recorder.active.size, sel == "REC") {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Recorder.list(ctx).map { Recorder.itemOf(it) } }
+        LiveRecCache.items = value
+    }
     val names = (if (PlaylistStore.lists.size > 1) listOf("PL") else emptyList()) + listOf("HOME", "GUIDE", "SEARCH", "MULTI", FAV_CAT) + (if (recs.isNotEmpty()) listOf("REC") else emptyList()) + myLists.map { ChannelListLogic.key(it) } + listOf("NEW", "ALL") + genres.keys + favCats + groups.keys.filter { it !in favCats && it !in HiddenCats.list } + (if (HiddenCats.list.any { it in groups }) listOf("HIDDEN") else emptyList())
     val curList = ChannelLists.byKey(sel)
     // Own list currently being filled (OK on a channel adds it); declared early because bundling depends on it
@@ -125,6 +150,8 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     val searchOn = sel == "SEARCH"
     val searchRes by produceState(if (addTo != null && query.isBlank()) live else emptyList(), live, query, addTo, searchOn) {
         if (!searchOn) return@produceState
+        // Short pause while typing: a new letter cancels the pending search instead of queueing a full pass over all channels
+        if (query.isNotBlank()) kotlinx.coroutines.delay(120)
         value = if (addTo != null && query.isBlank()) live
             else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ChannelSearch.filter(live, query) }
     }
@@ -180,7 +207,6 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     // Round 17b: the selected channel determines the background and the big display on the right ("What is on now")
     // Kept as State and read only in FocusedBackdrop / FocusedNowPanel (see there)
     val focusedState = remember { mutableStateOf<Item?>(null) }
-    var lastRepeat by remember { mutableStateOf(0L) }
     // 17c: switch only after a short dwell (no loading of logo and program while paging quickly)
     var focusTarget by remember { mutableStateOf<Item?>(null) }
     // snapshotFlow instead of LaunchedEffect(focusTarget): reading the state in composition would recompose the whole tab on every focus move
@@ -375,7 +401,7 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                         if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionDown || e.key == Key.DirectionUp) && e.nativeKeyEvent.repeatCount > 0) {
                             val now = android.os.SystemClock.uptimeMillis()
                             LiveHold.lastRepeat = now
-                            if (now - lastRepeat < 110) true else { lastRepeat = now; false }
+                            if (now - LiveHold.lastStep < 110) true else { LiveHold.lastStep = now; false }
                         } else false
                     },
                     verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 40.dp)
@@ -386,7 +412,7 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                             ch, (if (i == 0) Modifier.focusRequester(firstChan) else Modifier)
                                 .then(if (ch.id == restoreId) Modifier.focusRequester(restoreReq) else Modifier), curList,
                             onNewList = { newList(ch.id) },
-                            onFocus = { focusTarget = ch },
+                            onFocus = { focusTarget = ch; plScope.launch { holdJump(chanState, i) } },
                             variants = variantsOf[ch.id].orEmpty(),
                             onVariant = { v -> ZapContext.list = list; ZapContext.key = sel; LiveMemory.setSel(ctx, sel); onOpen(v) }
                         ) {
@@ -405,7 +431,11 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
                 if (sel == "SEARCH") Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f).fillMaxWidth()) { FocusedNowPanel(focusedState, list.firstOrNull()) }
                     Spacer(Modifier.height(10.dp))
-                    SearchKeyboard(
+                    // Setting "device keyboard" (Wishbox): a normal text field opens Gboard & co. (all languages, voice input)
+                    if (AppSettings.systemKeyboard) Field(
+                        query, { query = it.take(40) }, "Sender suchen",
+                        Modifier.fillMaxWidth().padding(bottom = dpx(24)), inner = Modifier.focusRequester(kbFirst)
+                    ) else SearchKeyboard(
                         Modifier.fillMaxWidth().padding(bottom = dpx(24)),
                         onKey = { query = (query + it).take(40) },
                         onSpace = { if (query.isNotEmpty() && !query.endsWith(" ")) query += " " },
@@ -482,7 +512,12 @@ private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewLi
     val shape = RoundedCornerShape(DS.RadiusM)
     // Wait briefly before loading the guide data: rows that only fly past while scrolling are cancelled and cost nothing
     // While Up/Down is held no guide data is loaded: the row would grow by two lines and the list would re-measure while it scrolls
-    val epg by produceState(emptyList<EpgEntry>(), item.id) {
+    // Start with the cached guide data: a row that comes into view is composed once with its program, not first empty
+    val epg by produceState(Epg.peek(item) ?: emptyList(), item.id) {
+        // The same row slot can show another channel (list changed): never keep the previous channel's program
+        val cached = Epg.peek(item)
+        value = cached ?: emptyList()
+        if (cached != null) return@produceState
         kotlinx.coroutines.delay(150)
         while (LiveHold.active()) kotlinx.coroutines.delay(120)
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { Epg.now(item) }   // off the main thread: the guide lookup must not block scrolling
@@ -504,10 +539,7 @@ private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewLi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(DS.RadiusS)).background(DS.Overlay2), contentAlignment = Alignment.Center) {
-            if (item.logo != null) AsyncImage(item.logo, null, Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Fit)
-            else Text(raw = true, text = item.title.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold)
-        }
+        ChannelLogo(item.logo, item.title)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(raw = true, text = item.title, color = Tok.TextHi, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -533,6 +565,15 @@ private fun ChannelLine(item: Item, modifier: Modifier, inList: ChList?, onNewLi
         if (DeadLinks.isDead(item.url)) AppIcon(AIcon.Warning, DS.Gold, size = 20.dp)
         if (Library.isFav(item.id)) AppIcon(AIcon.Star, DS.Gold, size = 20.dp)
     }
+    }
+}
+
+/** Logo of a channel row. Own composable with plain String parameters, so a focus change of the row skips it (no new image request). */
+@Composable
+private fun ChannelLogo(logo: String?, title: String) {
+    Box(Modifier.size(56.dp).clip(RoundedCornerShape(DS.RadiusS)).background(DS.Overlay2), contentAlignment = Alignment.Center) {
+        if (logo != null) AsyncImage(logo, null, Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Fit)
+        else Text(raw = true, text = title.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold)
     }
 }
 

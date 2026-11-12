@@ -1359,6 +1359,8 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
                     if (cur.live) {
                         LiveInfoBlock(curItem, cur.title, if (curIdx >= 0) curIdx + 1 else 0, epg)
                         Spacer(Modifier.height(20.dp))
+                        // Recently watched channels (Up from the buttons): switch back with one press
+                        RecentChannelsRow(liveAll, cur.itemId, setLabel) { switchTo(it, zapSrc) }
                         val fav = Library.isFav(cur.itemId)
                         Row(
                             Modifier.horizontalScroll(rememberScrollState()).onPreviewKeyEvent { e ->

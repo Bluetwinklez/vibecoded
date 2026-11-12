@@ -64,7 +64,8 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
     var q by remember { mutableStateOf("") }
     val fr = remember { FocusRequester() }
     val kbFirst = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(150); runCatching { kbFirst.requestFocus() } }
+    // With the device keyboard setting the text field gets the focus (OK opens Gboard & co.), otherwise the app keyboard
+    LaunchedEffect(Unit) { delay(150); runCatching { (if (AppSettings.systemKeyboard) fr else kbFirst).requestFocus() } }
     val hits by produceState(emptyList<GuideSearchLogic.Hit>(), q) {
         if (q.isBlank()) { value = emptyList(); return@produceState }
         delay(250)
@@ -77,7 +78,7 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
         ) {
             Text("Im TV-Guide suchen", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SearchKeyboard(
+            if (!AppSettings.systemKeyboard) SearchKeyboard(
                 Modifier.width(430.dp),
                 onKey = { q = (q + it).take(40) },
                 onSpace = { if (q.isNotEmpty() && !q.endsWith(" ")) q += " " },

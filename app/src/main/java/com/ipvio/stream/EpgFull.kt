@@ -1,5 +1,8 @@
 package com.ipvio.stream
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 object EpgFull {
     private val cache = LruCache<String, Pair<Long, List<EpgEntry>>>(300)
     fun trim() = cache.clear()
@@ -12,6 +15,17 @@ object EpgFull {
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000
         cache[item.id]?.let { if (nowMs - it.first < 600_000) return it.second }
+        // The full program table can hold days of shows: parsing and Base64 decoding run off the main thread, whoever calls this
+        return withContext(Dispatchers.Default) { getFresh(item, nowMs, nowSec) }
+    }
+
+    /** Cached program if still fresh, without lookup or network (cheap enough for composition). */
+    fun peek(item: Item): List<EpgEntry>? {
+        val c = cache[item.id] ?: return null
+        return if (System.currentTimeMillis() - c.first < 600_000) c.second else null
+    }
+
+    private suspend fun getFresh(item: Item, nowMs: Long, nowSec: Long): List<EpgEntry> {
         val days = Catchup.of(item)?.days ?: 0
         val from = if (days > 0) nowSec - days * 86400L else nowSec - 3600
         val local = Xmltv.forChannel(item.tvgId).filter { it.end > from }

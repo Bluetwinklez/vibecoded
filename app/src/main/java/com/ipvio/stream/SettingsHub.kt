@@ -975,6 +975,56 @@ private fun FilterPage(ctx: Context, onLanguages: () -> Unit) {
     Hint("Welche Sprachen geladen werden, stellst du unter „Playlists“ ein – das bestimmt, was aus der Playlist geladen wird.")
     PillButton("Sprachen der Inhalte öffnen", icon = AIcon.Globe) { onLanguages() }
     IgnoredGroupsSection(ctx)
+    CategoryFilterSection(ctx)
+}
+
+/**
+ * Categories of movies, series and Live TV (Wishbox): hide single categories, or switch all off and only the wanted ones
+ * back on (as in TiviMate). Uses the "ignore" store, so hidden categories disappear everywhere without reloading.
+ * Each type is collapsed at first: a playlist can have hundreds of categories.
+ */
+@Composable
+private fun CategoryFilterSection(ctx: Context) {
+    IgnoredGroups.init(ctx)
+    val ver = IgnoredGroups.version
+    val all = PlaylistStore.channels
+    val groups by produceState<Map<Kind, List<Pair<String, Int>>>>(emptyMap(), all.size, PlaylistStore.langCounts) {
+        value = withContext(Dispatchers.Default) {
+            val raw = PlaylistStore.unfilteredChannels()
+            val out = LinkedHashMap<Kind, List<Pair<String, Int>>>()
+            for (k in listOf(Kind.MOVIE, Kind.SERIES, Kind.LIVE)) {
+                val m = HashMap<String, Int>()
+                for (i in raw) if (i.kind == k && i.group.isNotBlank()) m[i.group] = (m[i.group] ?: 0) + 1
+                out[k] = m.entries.sortedBy { it.key.lowercase() }.map { it.key to it.value }
+            }
+            out
+        }
+    }
+    if (groups.values.all { it.isEmpty() }) return
+    SectionTitle("Kategorien ein- und ausblenden")
+    Hint("Blende einzelne Kategorien aus oder schalte alle aus und nur die gewünschten wieder ein. Ausgeblendete Kategorien verschwinden sofort überall, ohne die Playlist neu zu laden.")
+    val names = mapOf(Kind.MOVIE to "Filme", Kind.SERIES to "Serien", Kind.LIVE to "Live-TV")
+    var open by remember { mutableStateOf<Kind?>(null) }
+    for ((kind, list) in groups) {
+        if (list.isEmpty()) continue
+        val keys = remember(list) { list.map { IgnoredGroups.groupKey(kind, it.first) } }
+        val off = remember(keys, ver) { keys.count { IgnoredGroups.has(it) } }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PillButton(
+                Lang.tr(names.getValue(kind)) + ": " + (list.size - off) + " / " + list.size,
+                icon = if (open == kind) AIcon.Up else AIcon.Down, raw = true
+            ) { open = if (open == kind) null else kind }
+            if (open == kind) {
+                PillButton("Alle aus") { IgnoredGroups.setMany(ctx, keys, true) }
+                PillButton("Alle ein") { IgnoredGroups.setMany(ctx, keys, false) }
+            }
+        }
+        if (open == kind) for ((g, n) in list) {
+            val key = IgnoredGroups.groupKey(kind, g)
+            ToggleRow(g, n.toString() + " " + Lang.tr("Titel"), !IgnoredGroups.has(key)) { on -> IgnoredGroups.set(ctx, key, !on) }
+        }
+    }
+    if (ver < 0) Spacer(Modifier.height(0.dp))
 }
 
 /**
@@ -1152,6 +1202,13 @@ private fun PlaylistPage(ctx: Context, onAdd: () -> Unit, reload: () -> Unit) {
             if (!isActive) SmallPill("Zur Hauptliste machen") {
                 PlaylistStore.activate(ctx, i)
                 scope.launch { PlaylistStore.load(ctx, pl.url, false) }
+            }
+            // Content mode (Wishbox): Live TV + VOD / Live TV only / VOD only, cycles on OK
+            val mode = remember(PlaylistMode.version, pl.url) { PlaylistMode.get(ctx, pl.url) }
+            SmallPill(PlaylistMode.labels[mode]) {
+                PlaylistMode.set(ctx, pl.url, (mode + 1) % PlaylistMode.labels.size)
+                // Parsed again from the stored list without network (the mode is applied while loading, saves memory)
+                scope.launch { if (!PlaylistStore.reapplyLanguages(ctx)) PlaylistStore.applyMode(ctx) }
             }
             SmallPill("Umbenennen") { editing = i; name = pl.name }
             if (XtreamLogic.fromUrl(pl.url) != null) SmallPill("Backup-Server") {

@@ -72,6 +72,9 @@ object SportData {
         League("Ligue 1", "soccer/fra.1", "Fußball"),
         League("Champions League", "soccer/uefa.champions", "Fußball"),
         League("Europa League", "soccer/uefa.europa", "Fußball"),
+        // Wishbox: North American leagues (same ESPN scoreboard as the others)
+        League("MLS", "soccer/usa.1", "Fußball"),
+        League("Liga MX", "soccer/mex.1", "Fußball"),
         League("NBA", "basketball/nba", "Basketball", "basketball"),
         League("NFL", "football/nfl", "American Football", "nfl"),
         League("College Football", "football/college-football", "American Football", "nfl"),

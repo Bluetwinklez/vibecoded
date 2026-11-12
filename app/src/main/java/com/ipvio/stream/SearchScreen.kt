@@ -65,11 +65,36 @@ fun SearchScreen(
     val scope = rememberCoroutineScope()
     val all = PlaylistStore.channels
     // Build the index in the background; searches also run in the background and only after a short typing pause
-    val index by produceState(SearchCache.get(all), all) { value = withContext(Dispatchers.Default) { SearchCache.build(all) } }
-    val byId = index?.byId.orEmpty()
-    val suggestIdx by produceState<WordSuggest?>(null, all) { value = withContext(Dispatchers.Default) { SearchCache.suggest(all) } }
+    // With very large playlists memory can run out while the index is built: then free the image cache and try once more,
+    // and if it still does not fit, the search stays empty instead of the app crashing.
+    val index by produceState(SearchCache.get(all), all) {
+        value = withContext(Dispatchers.Default) {
+            if (Mem.heapTight(0.6)) Mem.trim(ctx)
+            try { SearchCache.build(all) } catch (e: OutOfMemoryError) {
+                Mem.trim(ctx)
+                try { SearchCache.build(all) } catch (e2: OutOfMemoryError) { null }
+            }
+        }
+    }
+    // Word suggestions are optional: built only after the index, skipped when memory is tight
+    val suggestIdx by produceState<WordSuggest?>(null, all, index != null) {
+        if (index == null) return@produceState
+        value = withContext(Dispatchers.Default) {
+            if (Mem.heapTight(0.7)) null else try { SearchCache.suggest(all) } catch (e: OutOfMemoryError) { null }
+        }
+    }
     val firstSugg = remember { FocusRequester() }
-    val hist = History.ids.mapNotNull { byId[it] }
+    // Recently watched: resolved in one pass over the playlist in the background (order of the history is kept)
+    val hist by produceState(emptyList<Item>(), all, History.ids.size) {
+        val want = History.ids.toList()
+        value = withContext(Dispatchers.Default) {
+            val pos = HashMap<String, Int>(want.size * 2)
+            want.forEachIndexed { i, id -> pos.putIfAbsent(id, i) }
+            val out = arrayOfNulls<Item>(want.size)
+            for (x in all) { val p = pos[x.id] ?: continue; if (out[p] == null) out[p] = x }
+            out.filterNotNull()
+        }
+    }
     // Smaller cards than elsewhere so more hits are visible next to the keyboard
     val cardW = (AppSettings.cardW * 0.8f).toInt().coerceAtLeast(110)
     val firstRes = remember { FocusRequester() }
@@ -107,7 +132,11 @@ fun SearchScreen(
         val idx = index ?: return@produceState
         if (q.length < 2) { value = q to none; return@produceState }
         delay(250)
-        value = q to withContext(Dispatchers.Default) { idx.find(q) }
+        // Also the de-duplication of movie versions runs here in the background (for short queries it can be tens of
+        // thousands of hits, before it ran on the main thread while typing)
+        value = q to withContext(Dispatchers.Default) {
+            idx.find(q).let { (m, s, l) -> Triple(PlaylistLogic.firstPerKey(m) { it.mk + "|" + it.lang }, s, l) }
+        }
     }
     val searching = q.length >= 2 && found.first != q
     val (rm0, rs0, rl0) = if (q.length < 2 || searching) none else found.second
@@ -115,10 +144,11 @@ fun SearchScreen(
     // Word suggestions for the word being typed
     val sugg = remember(SearchState.query, suggestIdx) { suggestIdx?.suggest(WordSuggest.lastWord(SearchState.query)).orEmpty() }
     // Sports hub filter: live channels that look like sports channels (the hub itself opens with the button)
-    val rl = when (fl) { 0, 3 -> rl0; 4 -> rl0.filter { SearchSport.isSport(it) }; else -> emptyList() }
+    val rlSport = remember(rl0, fl == 4) { if (fl == 4) rl0.filter { SearchSport.isSport(it) } else emptyList() }
+    val rl = when (fl) { 0, 3 -> rl0; 4 -> rlSport; else -> emptyList() }
     val rs = if (fl == 0 || fl == 2) rs0 else emptyList()
     // The same movie in several versions only once (the source is chosen on the detail page)
-    val rmAll: List<Item> = remember(rm0) { PlaylistLogic.firstPerKey(rm0) { it.mk + "|" + it.lang } }
+    val rmAll: List<Item> = rm0   // already one per movie (see the search above)
     val rm = if (fl == 0 || fl == 1) rmAll else emptyList()
     val firstKey = when { rm.isNotEmpty() -> "rm"; rs.isNotEmpty() -> "rs"; rl.isNotEmpty() -> "rl"; else -> "" }
     // Back: in the search field (keyboard already closed) first to the recent searches or hits, otherwise into the sidebar

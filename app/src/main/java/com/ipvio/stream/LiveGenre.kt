@@ -28,13 +28,14 @@ object LiveGenre {
     /** Channels per genre; empty genres are missing. */
     fun split(live: List<Item>): LinkedHashMap<String, List<Item>> {
         // The same list is asked again and again (every recomposition, every tab): remember the last result
-        synchronized(this) { last?.let { if (it.first === live) return it.second } }
+        synchronized(this) { last.firstOrNull { it.first === live }?.let { return it.second } }
         val r = compute(live)
-        synchronized(this) { last = live to r }
+        // Three results: a filtered source in Live TV no longer evicts the prepared result of all channels
+        synchronized(this) { last.add(0, live to r); while (last.size > 3) last.removeAt(last.size - 1) }
         return r
     }
 
-    private var last: Pair<List<Item>, LinkedHashMap<String, List<Item>>>? = null
+    private val last = ArrayList<Pair<List<Item>, LinkedHashMap<String, List<Item>>>>()
 
     private fun compute(live: List<Item>): LinkedHashMap<String, List<Item>> {
         val out = LinkedHashMap<String, List<Item>>()

@@ -10,6 +10,21 @@ package com.ipvio.stream
  */
 object LangTagLogic {
     const val UNKNOWN = "?"
+    /** Own "language" for adult categories (Wishbox): they no longer land in a real language or in "untagged". */
+    const val ADULT = "xxx"
+
+    /**
+     * Content mode of a playlist (see PlaylistMode) travels with the hidden languages as two pseudo codes. That way it is
+     * applied while parsing and while reading the cache, and a changed mode makes the stored cache (which remembers its
+     * hidden set) invalid, so the list is parsed again from the stored file.
+     */
+    const val NO_LIVE = "~live"
+    const val NO_VOD = "~vod"
+    val PSEUDO = setOf(NO_LIVE, NO_VOD)
+
+    /** Is an entry of this language and kind left out? */
+    fun hides(hidden: Set<String>, lang: String, kind: Kind): Boolean =
+        lang in hidden || (if (kind == Kind.LIVE) NO_LIVE in hidden else NO_VOD in hidden)
 
     /** Abbreviation → language. Ambiguous abbreviations (IN, AL, NO, CA, SE, BE, MY) deliberately left out: "beIN Sports", "Al Jazeera" … */
     private val CODES = mapOf(
@@ -80,7 +95,7 @@ object LangTagLogic {
         "yu" to "Ex-YU / Balkan", "el" to "Ελληνικά", "ro" to "Română", "hu" to "Magyar", "cs" to "Čeština",
         "sv" to "Svenska", "da" to "Dansk", "nb" to "Norsk", "fi" to "Suomi", "fa" to "فارسی", "ku" to "Kurdî",
         "he" to "עברית", "uk" to "Українська", "bg" to "Български", "ur" to "اردو", "vi" to "Tiếng Việt",
-        "th" to "ไทย", "tl" to "Filipino"
+        "th" to "ไทย", "tl" to "Filipino", ADULT to "18+"
     )
 
     fun name(code: String): String = NAMES[code] ?: code.uppercase()
@@ -129,7 +144,8 @@ object LangTagLogic {
      * for movies and series only from an explicit tag in the playlist's original name ("DE | …", "… [GER]").
      */
     fun of(group: String, title: String, live: Boolean): String =
-        detect(group) ?: (if (live) detect(title) else detectTagged(title)) ?: UNKNOWN
+        if (ParentalLogic.isAdult(group, "")) ADULT
+        else detect(group) ?: (if (live) detect(title) else detectTagged(title)) ?: UNKNOWN
 
     /** Store hidden languages as text and read them again. */
     fun encode(hidden: Set<String>): String = hidden.sorted().joinToString(",")

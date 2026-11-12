@@ -66,6 +66,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /** Shortly after closing a selection window in the guide (Back) do not perform another back step. */
@@ -149,6 +150,8 @@ fun Guide(
     LaunchedEffect(shown) {
         val order = shown.indices.sortedBy { kotlin.math.abs(it - idx) }.map { shown[it] }
         for (chunk in order.take(80).chunked(8)) {
+            // No preloading while Up/Down is held: network and parsing would compete with scrolling
+            while (LiveHold.active()) delay(150)
             coroutineScope { chunk.map { async { EpgFull.get(it) } }.awaitAll() }
         }
     }
@@ -161,6 +164,21 @@ fun Guide(
     fun jumpNow() {
         winStart = (nowSec - 20 * 60L).coerceIn(minStart, base + maxSpan - viewMin * 60L)
         runCatching { focus.requestFocus() }
+    }
+
+    // Focus on a channel cell: info and time window follow only after a short pause. Each shift moves the whole grid and
+    // recomposes every visible row; while Down is held this happened on every step. Written only, read in the flow below.
+    val rowFocus = remember { mutableStateOf<Pair<EpgEntry?, Item>?>(null) }
+    val jumpScope = rememberCoroutineScope()
+    val shiftLatest by androidx.compose.runtime.rememberUpdatedState<(EpgEntry) -> Unit> { e -> shiftFor(e) }
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { rowFocus.value }.collectLatest { p ->
+            if (p == null) return@collectLatest
+            delay(120)
+            while (LiveHold.active()) delay(80)
+            infoE = p.first; infoItem = p.second
+            p.first?.let { shiftLatest(it) }
+        }
     }
 
     // Back (user's wish, round 14): in the shows → to the channel of this row (whose program you are looking at);
@@ -302,14 +320,25 @@ fun Guide(
                         }
                     }
                     if (shown.isEmpty()) Text("Keine Sender", color = Muted, fontSize = 15.sp, modifier = Modifier.padding(16.dp))
-                    LazyColumn(state = ls, modifier = Modifier.weight(1f)) {
+                    LazyColumn(
+                        state = ls,
+                        // Held Up/Down: at most ~9 steps per second (as in the Live TV list), and rows wait with loading
+                        modifier = Modifier.weight(1f).onPreviewKeyEvent { e ->
+                            if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionDown || e.key == Key.DirectionUp) && e.nativeKeyEvent.repeatCount > 0) {
+                                val now = android.os.SystemClock.uptimeMillis()
+                                LiveHold.lastRepeat = now
+                                if (now - LiveHold.lastStep < 110) true else { LiveHold.lastStep = now; false }
+                            } else false
+                        }
+                    ) {
                         itemsIndexed(shown) { i, ch ->
                             val cellReq = if (i == idx) focus else remember { FocusRequester() }
                             GuideRow(
-                                ch, ch.id == curId, winStart, viewMin, dpm, nowSec, rowH.dp, GuidePrefs.hidePast, cellReq,
+                                ch, ch.id == curId, { winStart }, viewMin, dpm, nowSec, rowH.dp, GuidePrefs.hidePast, cellReq,
                                 onInfo = { e -> infoE = e; infoItem = ch },
                                 onShift = { e -> shiftFor(e) },
-                                onBlock = { inB, r -> inBlock = inB; inCats = false; rowReq = r },
+                                onRowFocus = { e -> rowFocus.value = e to ch; jumpScope.launch { holdJump(ls, i) } },
+                                onBlock = { inB, r -> inBlock = inB; inCats = false; rowReq = r; if (inB) rowFocus.value = null },
                                 // Left from the channel column: to the categories (before: close)
                                 onClose = { if (!runCatching { catReq.requestFocus() }.isSuccess) onClose() },
                                 onArchive = { e -> onArchive(ch, e) },
@@ -465,22 +494,34 @@ private fun guideOkAction(e: EpgEntry?, ch: Item?, nowSec: Long): String {
 
 @Composable
 private fun GuideRow(
-    ch: Item, current: Boolean, winStart: Long, viewMin: Int, dpm: Float, nowSec: Long, rowH: Dp, hidePast: Boolean,
-    cellReq: FocusRequester, onInfo: (EpgEntry?) -> Unit, onShift: (EpgEntry) -> Unit,
+    ch: Item, current: Boolean, winStart: () -> Long, viewMin: Int, dpm: Float, nowSec: Long, rowH: Dp, hidePast: Boolean,
+    cellReq: FocusRequester, onInfo: (EpgEntry?) -> Unit, onShift: (EpgEntry) -> Unit, onRowFocus: (EpgEntry?) -> Unit,
     onBlock: (Boolean, FocusRequester) -> Unit, onClose: () -> Unit, onArchive: (EpgEntry) -> Unit, onPick: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val cu = remember(ch.id, Catchup.version) { Catchup.of(ch) }
     // null = still loading (shows "loading …" instead of wrongly "No program available")
-    val raw by produceState<List<EpgEntry>?>(null, ch.id) { value = EpgFull.get(ch) }
+    // Cached program right away; otherwise wait briefly and not while Up/Down is held (rows that only fly past load nothing)
+    // While Up/Down is held even cached rows stay empty: a row with its program builds a dozen focusable fields
+    val raw by produceState<List<EpgEntry>?>(if (LiveHold.active()) null else EpgFull.peek(ch), ch.id) {
+        value = if (LiveHold.active()) null else EpgFull.peek(ch)
+        if (value != null) return@produceState
+        delay(150)
+        while (LiveHold.active()) delay(120)
+        value = EpgFull.get(ch)
+    }
     // "Hide past" leaves shows in the archive: they can still be watched
     val entries = remember(raw, hidePast, cu) {
         cleanEpg(raw.orEmpty()).let { l -> if (hidePast) l.filter { it.end > nowSec || CatchupLogic.canPlay(cu, it.start, it.end, nowSec) } else l }
     }
     val blockReqs = remember(entries) { HashMap<Long, FocusRequester>() }
-    val from = winStart - 120 * 60L
-    val to = winStart + (viewMin + 120) * 60L
+    // The time window is read as a lambda: moving it only shifts the row content (placement), the shows are not recomposed.
+    // Which shows exist in the row changes only when the window crosses a full hour.
+    val origin = remember { winStart() }
+    val hour by remember { androidx.compose.runtime.derivedStateOf { Math.floorDiv(winStart(), 3600L) } }
+    val from = hour * 3600L - 120 * 60L
+    val to = hour * 3600L + 3600L + (viewMin + 120) * 60L
     Row(Modifier.height(rowH).padding(vertical = 3.dp)) {
         var f by remember { mutableStateOf(false) }
         val shape = RoundedCornerShape(DS.RadiusS)
@@ -492,9 +533,7 @@ private fun GuideRow(
                     f = it.isFocused
                     if (it.isFocused) {
                         onBlock(false, cellReq)
-                        val now = Epg.current(entries)
-                        onInfo(now)
-                        if (now != null) onShift(now)
+                        onRowFocus(Epg.current(entries))
                     }
                 }
                 .onPreviewKeyEvent { ev ->
@@ -518,9 +557,10 @@ private fun GuideRow(
                 if (raw == null) "lädt …" else "Kein Programm verfügbar", color = Muted, fontSize = 13.sp,
                 modifier = Modifier.padding(start = 8.dp).align(Alignment.CenterStart)
             )
+            Box(Modifier.fillMaxSize().offset { IntOffset(-((winStart() - origin) / 60f * dpm).dp.roundToPx(), 0) }) {
             shown.forEach { e ->
                 key(e.start) {
-                    val x = (e.start - winStart) / 60f * dpm
+                    val x = (e.start - origin) / 60f * dpm
                     val w = ((e.end - e.start) / 60f * dpm - 3f).coerceIn(3f, 6000f)
                     val isNow = nowSec >= e.start && nowSec < e.end
                     val past = e.end <= nowSec
@@ -610,8 +650,9 @@ private fun GuideRow(
                     }
                 }
             }
-            val nx = (nowSec - winStart) / 60f * dpm
-            if (nx > 0f && nx < viewMin * dpm) Box(Modifier.offset(x = nx.dp).width(2.dp).fillMaxHeight().background(Accent2.copy(alpha = 0.8f)))
+            // "Now" line: moves with the row content, the clipping hides it outside the window
+            Box(Modifier.offset(x = ((nowSec - origin) / 60f * dpm).dp).width(2.dp).fillMaxHeight().background(Accent2.copy(alpha = 0.8f)))
+            }
         }
     }
 }
