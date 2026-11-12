@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (T-024). **Not built and not device tested.** Becomes accepted when the release build starts on a Fire TV stick and the checks in `docs/tasks/T-024-r8-whole-app.md` pass. Supersedes [ADR 0001](0001-no-r8-for-now.md) then.
+Accepted (T-024), released with 1.4. Reported by the maintainer on 12 Nov 2026: built and tested on the device, works. The individual checks and any measurements were not recorded. The original condition was: accepted when the release build starts on a Fire TV stick and the checks in `docs/tasks/T-024-r8-whole-app.md` pass. Supersedes [ADR 0001](0001-no-r8-for-now.md) then.
 
 Number 0004 ("R8 for the libraries again") exists only on the old branch `perf/T-007` and was never merged into `main`. Its approach is the one that failed; this record replaces it.
 

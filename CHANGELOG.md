@@ -1,9 +1,11 @@
 # Changelog
 
 ## Unreleased
-- Sport: the tab no longer matches games to channels on the main thread; the channels of a game appear shortly after the page. Not measured yet, device test open (T-023)
-- Performance, not measured yet, device test open: home poster cards no longer compute their screen position on every scroll frame (T-020); small devices decode two images at a time instead of four (T-021); the settings files needed at start are loaded in parallel (T-022)
-- Live TV: moving the focus through the channel list no longer rebuilds the content of the rows (guide times, status icons); only the highlight frame changes. Not measured yet, device test open (T-019)
+
+## 1.4
+- Sport: the tab no longer matches games to channels on the main thread; the channels of a game appear shortly after the page. Not measured (T-023)
+- Performance (not measured): home poster cards no longer compute their screen position on every scroll frame (T-020); small devices decode two images at a time instead of four (T-021); the settings files needed at start are loaded in parallel (T-022)
+- Live TV: moving the focus through the channel list no longer rebuilds the content of the rows (guide times, status icons); only the highlight frame changes. Not measured (T-019)
 - Settings > Playlists: switching the content mode no longer jumps back to the first settings page. When the switch re-read the stored playlist copy, the loading screen briefly replaced the settings; it now stays on the settings tab unless a language choice is waiting
 - Remote: a long OK (menu on channels, categories and favorites, marking an episode as seen) now triggers after 0.35 s instead of the system long press (about 0.5 s or more)
 - Playlist refresh: existing installs that still use "at every start" switch once to "daily"; choosing "at every start" again later is kept
@@ -14,9 +16,9 @@
 - Onboarding: "Weiter ohne Playlist" now opens a demo mode with sample channels, movies and series so the UI can be explored without connecting anything; artwork is replaced by neutral placeholder blocks, no images or metadata are requested, playback is disabled, and nothing is saved (leaves when a playlist is added)
 - App update: the app reads `update.json` from the latest release first (GitHub API as fallback; a custom address still works). Before the installer opens it checks the SHA-256, the package name, the version number and that the new APK is signed with the same key as the installed app, and shows a clear message instead of Android's "App not installed". `update.json` can mark an update as required (T-015, not device tested yet)
 - First start: a small card at the bottom checks for an app update once and shows the result (checking / up to date / update available / error with "Retry"), with the switch for the automatic check. It appears only once and only on a start without a playlist, never takes the focus from the add-playlist screen, and works with the TV remote (T-014)
-- First start: the update check card now closes by itself as soon as a playlist is added (loading starts) or "Weiter ohne Playlist" is chosen; it no longer stays on top of the home screen. Not built, not device tested (T-025)
+- First start: the update check card now closes by itself as soon as a playlist is added (loading starts) or "Weiter ohne Playlist" is chosen; it no longer stays on top of the home screen. (T-025)
 - Internal: player helper code split from Media3 (no user-visible change).
-- Build: the release build uses R8 again, now over the whole app, with the app's own code kept unchanged and no renaming or repackaging of classes. Expected: smoother UI and a smaller APK. Not built and not device tested yet; rollback is `enable = false` in `app/build.gradle.kts` (T-024)
+- Build: the release build uses R8 again, now over the whole app, with the app's own code kept unchanged and no renaming or repackaging of classes. Expected: smoother UI and a smaller APK. Rollback is `enable = false` in `app/build.gradle.kts` (T-024)
 - Search: the query box above the app keyboard can now be selected; OK or a tap opens the device keyboard for typing
 - TV guide in the player: a playback error box (for example "check username, password or subscription") no longer sits on top of the guide
 - TV guide search: channel hits show the show running right now with its times (also for providers without XMLTV, via the guide query)

@@ -48,4 +48,4 @@ Turn R8 on again for the release build without the start-up crash seen with AGP 
 
 ## Status
 
-Implemented on branch `build/T-024-r8-whole-app`. Not built, not device tested.
+Released with 1.4. Reported by the maintainer on 12 Nov 2026: built and tested on the device, works. The individual checks and any measurements were not recorded.

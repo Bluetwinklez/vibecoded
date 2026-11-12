@@ -51,4 +51,4 @@ Revert the commit (three source files).
 
 ## Status
 
-Implemented on branch `fix/T-025-update-card-hide`. Not built, not device tested.
+Released with 1.4. Reported by the maintainer on 12 Nov 2026: built and tested on the device, works. The individual checks and any measurements were not recorded.
