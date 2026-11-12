@@ -2,7 +2,7 @@ Last update: 2026-11-12 (T-015). Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-T-015 (harden the in-app update: `update.json` as primary source, SHA-256, package/version/signer check, clear error texts): implemented on branch `feat/T-015-harden-update`, waiting for CI and the device test. Task file: `docs/tasks/T-015-harden-update.md`. Changed files: `Round17Logic.kt` (`UpdateLogic`), `AppUpdate.kt`, `UpdateVerify.kt` (new), `UpdatePrompt.kt`, `DictK.kt` (10 rows), `UpdateLogicTest.kt` (new), `docs/RELEASE.md`, `docs/SECURITY.md`, `CHANGELOG.md`. Checks that ran: `UpdateLogicTest` 15/15 (with a stand-in for `org.json`, the real jar was not available) and `DictConsistencyTest` 3/3 on the JVM. **Not run:** Gradle build, device test, the signature check on API below 28. Before the next release: create `update.json` as described in `docs/RELEASE.md`.
+T-015 (harden the in-app update: `update.json` as primary source, SHA-256, package/version/signer check, clear error texts): merged through PR #59 (`2fbd874`), CI green (unit tests and debug APK), waiting for the device test. Task file: `docs/tasks/T-015-harden-update.md`. Changed files: `Round17Logic.kt` (`UpdateLogic`), `AppUpdate.kt`, `UpdateVerify.kt` (new), `UpdatePrompt.kt`, `DictK.kt` (10 rows), `UpdateLogicTest.kt` (new), `docs/RELEASE.md`, `docs/SECURITY.md`, `CHANGELOG.md`. Checks that ran: `UpdateLogicTest` 15/15 (with a stand-in for `org.json`, the real jar was not available) and `DictConsistencyTest` 3/3 on the JVM. **Not run:** device test, the signature check on API below 28. Before the next release: create `update.json` as described in `docs/RELEASE.md`.
 
 T-014 (first-start update check card) is merged (PR #57, #58); its device test is still pending.
 

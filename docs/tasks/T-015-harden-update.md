@@ -1,6 +1,6 @@
 # T-015 Harden the in-app update
 
-Status: IMPLEMENTED, waiting for CI and the device test. Plan approved by the maintainer on 12 Nov 2026; the three open decisions were left to the assistant (recommended options taken).
+Status: IMPLEMENTED and merged (PR #59, `2fbd874`), CI green; waiting for the device test. Plan approved by the maintainer on 12 Nov 2026; the three open decisions were left to the assistant (recommended options taken).
 
 ## Goal
 
@@ -41,7 +41,7 @@ Status: IMPLEMENTED, waiting for CI and the device test. Plan approved by the ma
 
 ## Risks
 
-- `UpdateVerify.kt` and the changes in `AppUpdate.kt` / `UpdatePrompt.kt` use Android APIs. The assistant has no Android SDK; they are compiled for the first time by CI. Never run on a device.
+- `UpdateVerify.kt` and the changes in `AppUpdate.kt` / `UpdatePrompt.kt` use Android APIs. The assistant has no Android SDK; they compile in CI (green) but have never run on a device.
 - **Unverified:** `getPackageArchiveInfo(..., GET_SIGNATURES)` on API 24-27 returns the signatures of an APK file. Test on a Fire TV Stick with Fire OS 6 (API 25) or an emulator with API 24-27.
 - A debug build (Android Studio, CI artifact) has another key than the release APK. Installing a release update over a debug build is rejected on purpose by the new check. Positive tests need two builds signed with the same key.
 - The first release with `update.json` must be uploaded correctly: a wrong `versionCode` or `sha256` blocks every user's update with a clear message. RELEASE.md says to check the URL in a browser.
@@ -58,7 +58,7 @@ Run by the assistant (JVM, Kotlin 2.0.21 compiler and JUnit 4.13.2 from the Grad
 - `UpdateLogicTest`: 15 of 15 passed. **Caveat:** the real `org.json` jar was not available offline, so the run used a small stand-in `JSONObject` (flat objects only). The real library runs in CI.
 - `DictConsistencyTest`: 3 of 3 passed.
 
-Not run: Gradle build, CI, any device test. Android files were only checked for syntax.
+CI on PR #59 (`testDebugUnitTest` and `assembleDebug`): success, so the Android files compile and all unit tests pass with the real `org.json`. Not run: any device test.
 
 ## Test steps for the maintainer
 
