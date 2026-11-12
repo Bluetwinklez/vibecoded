@@ -49,6 +49,9 @@ fun UpdatePromptHost() {
                     color = Tok.TextMid, fontSize = 18.sp, raw = true
                 )
                 if (upd.notes.isNotBlank()) Text(upd.notes, color = Muted, fontSize = 16.sp, lineHeight = 22.sp, raw = true)
+                // T-015: update.json can mark an update as required. Back still closes the dialog (no lock-out when offline).
+                val required = AppUpdate.isRequired(ctx, upd)
+                if (required) Text("Dieses Update ist erforderlich.", color = Accent2, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text("Deine Playlists und Einstellungen bleiben erhalten. Android fragt vor der Installation einmal nach.", color = Muted, fontSize = 15.sp, lineHeight = 21.sp)
                 if (status.isNotBlank()) Text(status, color = Accent2, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -60,7 +63,7 @@ fun UpdatePromptHost() {
                             busy = false
                         }
                     }
-                    PillButton("Später") { if (!busy) AppUpdate.promptDismissed = true }
+                    if (!required) PillButton("Später") { if (!busy) AppUpdate.promptDismissed = true }
                 }
             }
         }

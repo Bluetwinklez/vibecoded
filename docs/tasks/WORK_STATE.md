@@ -1,8 +1,10 @@
-Last update: 2026-11-12. Read `CLAUDE.md` first, then this file.
+Last update: 2026-11-12 (T-015). Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-No task in progress. T-014 (first-start update check card, option a2): DONE, **not device tested** (merged through PR #57, `9eb22ee`, CI green; marked done by the maintainer on 12 Nov 2026). Task file: `docs/tasks/T-014-first-start-update-card.md`. Changed files: `UpdateCardLogic.kt`, `UpdateCard.kt` (new), `AppUpdate.kt` (key `first_card_seen`), `MainActivity.kt` (one line), `DictK.kt` (6 rows), `UpdateCardLogicTest.kt` (new), `CHANGELOG.md`. Checks that ran: `UpdateCardLogicTest` 12/12 and `DictConsistencyTest` 3/3 on the JVM; CI build of the UI file: success. **Not run:** device test. The analysis file `claude/update_mechanismus_analyse.md` is not in the repository (read the update code directly instead).
+T-015 (harden the in-app update: `update.json` as primary source, SHA-256, package/version/signer check, clear error texts): implemented on branch `feat/T-015-harden-update`, waiting for CI and the device test. Task file: `docs/tasks/T-015-harden-update.md`. Changed files: `Round17Logic.kt` (`UpdateLogic`), `AppUpdate.kt`, `UpdateVerify.kt` (new), `UpdatePrompt.kt`, `DictK.kt` (10 rows), `UpdateLogicTest.kt` (new), `docs/RELEASE.md`, `docs/SECURITY.md`, `CHANGELOG.md`. Checks that ran: `UpdateLogicTest` 15/15 (with a stand-in for `org.json`, the real jar was not available) and `DictConsistencyTest` 3/3 on the JVM. **Not run:** Gradle build, device test, the signature check on API below 28. Before the next release: create `update.json` as described in `docs/RELEASE.md`.
+
+T-014 (first-start update check card) is merged (PR #57, #58); its device test is still pending.
 
 ## Completed steps (12 Nov 2026)
 
@@ -24,4 +26,4 @@ No task in progress. T-014 (first-start update check card, option a2): DONE, **n
 
 ## Next step
 
-Device test of T-014 (steps in the task report: fresh install, offline, older APK). Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress, #52 online subtitle search from #9). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
+Device tests of T-015 (steps in its task file; needs a test release with `update.json`) and of T-014 (steps in the task report: fresh install, offline, older APK). Device tests of everything merged on 12 Nov 2026 (#41, #43, #45, #47 Stalker, #49 category order and refresh default, #50 Xtream progress, #52 online subtitle search from #9). Then decide T-010 and T-012 against the on-demand loading, and PR #40 / PR #9.
