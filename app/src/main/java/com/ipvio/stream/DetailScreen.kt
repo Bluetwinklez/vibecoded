@@ -109,6 +109,11 @@ fun DetailScreen(
                 } else {
                     Text(item.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     Text("Die Folgen konnten nicht geladen werden. Verbindung oder Zugang prüfen.", color = Muted, fontSize = 17.sp)
+                    // Stalker portal: what the portal answered (masked), so the cause can be found
+                    if (StalkerLogic.isLazy(item) && StalkerApi.lastSeriesDetail.isNotEmpty()) {
+                        Text(StalkerApi.lastSeriesDetail, color = Muted, fontSize = 12.sp, raw = true, maxLines = 6,
+                            modifier = Modifier.widthIn(max = 760.dp))
+                    }
                     PillButton("Erneut versuchen", Modifier.focusRequester(retry)) { tryNo++ }
                     if (!embedded) PillButton("Zurück", light = true) { onBack() }
                 }
