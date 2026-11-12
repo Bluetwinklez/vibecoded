@@ -1186,7 +1186,8 @@ fun PlayerScreen(req: PlayReq, zapList: List<Item>, liveAll: List<Item>, seriesI
         if (buffering && msg == null && !showGuide) {
             Spinner(Accent2, Modifier.align(Alignment.Center).size(48.dp))
         }
-        msg?.takeIf { !Boomer.enabled }?.let { m ->
+        // Hidden while the TV guide is open: the error box would sit on top of the guide (it comes back when the guide closes)
+        msg?.takeIf { !Boomer.enabled && !showGuide }?.let { m ->
             Box(
                 Modifier.align(Alignment.Center).clip(RoundedCornerShape(DS.RadiusM)).background(PT.PanelBg)
                     .padding(horizontal = 28.dp, vertical = 18.dp)
