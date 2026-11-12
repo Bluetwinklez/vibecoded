@@ -26,10 +26,12 @@ In the search screen, pressing Back while a title in the result list is selected
 
 - `Sidebar.kt`: if the active tab is not visible in the menu, the requester goes to the first visible entry (`anchorId`). Both sidebar layouts (top bar and side bar) use it. The behaviour for visible tabs and the `enterTo` rule are unchanged.
 
+- `SearchScreen.kt`: maintainer decision (12 Nov 2026): Back from a hit goes to the input (app keyboard, or the text field with the device keyboard); Back from the input or keyboard opens the sidebar. The old logic went from the input to the hits and from everything else to the sidebar.
+
 ## Acceptance criteria
 
-- Back on a selected result returns focus to the sidebar on Android TV and Fire TV.
-- Back in the search field with a closed keyboard still goes to the recent searches or the first hit first (existing behaviour).
+- Back on a selected result moves focus to the input (keyboard).
+- Back in the input or keyboard moves focus to the sidebar on Android TV and Fire TV.
 - Back in the sidebar on a tab other than 0 still goes to tab 0 (existing behaviour).
 
 ## Risks
@@ -45,7 +47,8 @@ In the search screen, pressing Back while a title in the result list is selected
 Not run: Gradle and a device are not available to the assistant.
 
 Test steps for the maintainer (debug build):
-1. Default menu (Search hidden): open Search, type a word, move to a result, press Back. Expected: focus goes to the sidebar.
-2. Same with Search shown in the menu (Settings > menu): Back goes to the Search entry.
-3. Back in the search field with a closed keyboard still goes to the first hit; Back in the sidebar on tab 4 still goes to Home.
+1. Default menu (Search hidden): open Search, type a word, move to a result, press Back. Expected: focus goes to the keyboard. Press Back again: the sidebar opens.
+2. Same with Search shown in the menu (Settings > menu): the second Back lands on the Search entry.
+3. Back in the sidebar on tab 4 still goes to Home.
+3b. With the device keyboard setting on: Back on a hit goes to the text field; Back closes the keyboard if open, Back again opens the sidebar.
 4. Sidebar at the top and on the right: repeat step 1.
