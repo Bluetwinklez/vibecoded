@@ -200,7 +200,13 @@ fun SearchScreen(
                         onDone = { SearchState.query.trim().takeIf { it.length >= 2 }?.let { AppSettings.addSearch(ctx, it) } }
                     )
                 } else {
-                QueryBox(SearchState.query, Modifier.fillMaxWidth())
+                // Tappable: OK or a tap opens the device keyboard for typing (the app keyboard below stays available).
+                // Deliberately not wired to fieldFocused: that flag belongs to the BackHandler and tracks the app keyboard only.
+                Field(
+                    SearchState.query, { SearchState.query = it.take(60) }, "Filme, Serien oder Sender suchen…",
+                    Modifier.fillMaxWidth(),
+                    onDone = { SearchState.query.trim().takeIf { it.length >= 2 }?.let { AppSettings.addSearch(ctx, it) } }
+                )
                 // Own on-screen keyboard (instead of the TV's keyboard): hits appear while typing
                 SearchKeyboard(
                     Modifier.fillMaxWidth(),
@@ -392,19 +398,6 @@ private fun SearchRow(
     }
 }
 
-
-/** Display of the input (read only: typing is done with the on-screen keyboard on the left). */
-@Composable
-private fun QueryBox(text: String, modifier: Modifier) {
-    val shape = RoundedCornerShape(16.dp)
-    Box(
-        modifier.height(62.dp).clip(shape).background(Surf).border(DS.Border, Surf2, shape).padding(horizontal = 20.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        if (text.isEmpty()) Text("Filme, Serien oder Sender suchen…", color = Muted, fontSize = 20.sp, maxLines = 1)
-        else Text(text, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, raw = true)
-    }
-}
 
 private val SEARCH_FILTERS = listOf("Alle", "Filme", "Serien", "Live TV", "Sport")
 

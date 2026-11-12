@@ -23,7 +23,7 @@ Device test by the maintainer (debug build, app ID `.test`):
 ## Open problems
 
 - Search: going back from a selected title in the result list does not return to the sidebar. The back logic in `SearchScreen.kt` is identical on `main`, so the bug predates this work. To be tracked as T-013, created on a branch from `main`.
-- Search: with the app keyboard on, the query box is display-only and tapping it does not open an input. A small change in `SearchScreen.kt` is proposed but not made.
+- Search: with the app keyboard on, the query box was display-only. Fixed in this branch: the box is now a `Field` (OK or tap opens the device keyboard). Not yet tested on a device. The system keyboard is a setting (Settings, keyboard of the device in search) and is **off by default**.
 - PR #40 (`integration/2026-11-11`) is open and not merged. It overlaps PR #41 in `LiveTab.kt` and `SearchScreen.kt`. Merge order is undecided.
 - Branch `fix/round28-major` (T-010 to T-012) is not in `main` and not in PR #40.
 - Branch `perf/T-007` on GitHub: T-008 Xtream loading indicator, device test status unknown.
