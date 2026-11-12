@@ -133,6 +133,6 @@ If you do not know how something works: read the code first. Do not guess. Ask b
 
 - Current phase: **P2 (comments to English) done** with batch 8 (final sweep). Next: restructuring steps U-1 to U-5 (P4 names, P5 file splits, package structure). P1 still has PENDING values (T-004). S1 from P3 was done early as T-002.
 - Completed tasks: T-001 (test expectation for 10 languages), T-001b (`org.json` test dependency), T-002 (`/listimport` needs the access code, upload limit 16 MiB), T-003 (repo hygiene: `*.apk` ignored, CLAUDE.md corrected), T-005 (documentation skeleton and CHANGELOG for 1.2 and 1.3), P2 batches 1-8 (comments to English), P6 (repository documents checked, already English).
-- Open tasks: T-004 (quality baseline, values pending), T-006 (add five missing stores to the backup `NAMES`; also translate the last German comment, `Backup.kt:17`), U-1 to U-5.
+- Open tasks: T-004 (quality baseline, values pending), U-2 to U-5. T-006 (backup `NAMES`) is done.
 - Next step: U-1 (move the Media3-dependent code out of `PlayerLogic.kt` without changing behaviour). T-004 and T-006 stay open in parallel.
 - Details: `docs/REFACTORING-PROGRESS.md` and `docs/tasks/WORK_STATE.md`.
