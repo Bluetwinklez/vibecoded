@@ -36,14 +36,17 @@ import kotlinx.coroutines.withContext
 
 /** Search inside the TV guide: channel names plus show titles from the loaded XMLTV data (no network). */
 object GuideSearchLogic {
-    class Hit(val channel: Item, val entry: EpgEntry?)
+    /** [now]: for a channel hit, the show running on that channel right now (null if the guide has none). */
+    class Hit(val channel: Item, val entry: EpgEntry?, val now: EpgEntry? = null)
 
     fun search(channels: List<Item>, query: String, nowSec: Long, limit: Int = 60, maxChannels: Int = 150): List<Hit> {
         val q = ChannelSearch.norm(query)
         if (q.isEmpty()) return emptyList()
         val words = q.split(' ').filter { it.isNotEmpty() }
         val out = ArrayList<Hit>()
-        for (c in ChannelSearch.filter(channels, query).take(maxChannels)) out.add(Hit(c, null))
+        for (c in ChannelSearch.filter(channels, query).take(maxChannels)) {
+            out.add(Hit(c, null, Xmltv.forChannel(c.tvgId).firstOrNull { it.start <= nowSec && nowSec < it.end }))
+        }
         val shows = ArrayList<Hit>()
         for (c in channels) {
             for (e in Xmltv.forChannel(c.tvgId)) {
@@ -105,7 +108,7 @@ fun GuideSearchDialog(channels: List<Item>, onPick: (Item) -> Unit, onClose: () 
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             raw = true,
-                            text = if (e == null) h.channel.group else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
+                            text = if (e == null) h.channel.group + (h.now?.let { "  ·  " + Lang.tr("Jetzt") + ": " + it.title + "  " + hhmm(it.start) + " - " + hhmm(it.end) } ?: "") else h.channel.title + "  ·  " + dayLabel(e.start) + " " + hhmm(e.start) + " - " + hhmm(e.end),
                             color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }
