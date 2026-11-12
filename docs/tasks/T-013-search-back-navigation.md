@@ -1,6 +1,6 @@
 # T-013 Search: Back from a selected result does not return to the sidebar
 
-Status: FIX WRITTEN, device test PENDING. Branch `fix/T-013-search-back`. Not part of PR #41 (the back logic was left untouched there on purpose).
+Status: DONE. Merged through PR #43 (`cfa223b`). Device test 12 Nov 2026: works.
 
 ## Goal
 
@@ -44,7 +44,7 @@ In the search screen, pressing Back while a title in the result list is selected
 
 ## Test results
 
-Not run: Gradle and a device are not available to the assistant.
+Device test by the maintainer on 12 Nov 2026: Back from a hit goes to the keyboard, Back again opens the sidebar. Works. The assistant did not run Gradle or a device (CI build on GitHub: success).
 
 Test steps for the maintainer (debug build):
 1. Default menu (Search hidden): open Search, type a word, move to a result, press Back. Expected: focus goes to the keyboard. Press Back again: the sidebar opens.
