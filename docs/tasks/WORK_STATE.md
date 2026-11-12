@@ -13,6 +13,17 @@ Device test by the maintainer (debug build, app ID `.test`):
 - Playlist loads after an app restart. Not explicitly confirmed.
 - Search with the system keyboard. Not tested (setting `systemKeyboard` is off by default).
 
+## Small follow-ups on the same branch (12 Nov 2026, after the device test)
+
+Commits on top of `0f3b073`: `820ff95`, `73a3dbc`, `f1025e1`, `e0f4303`, `c64910f`, `de98f37`. CI is green on each. The maintainer confirmed on the device that they work ("all done"); no per-item test log beyond that.
+
+- `SearchScreen.kt`: with the app keyboard on, the query box is a `Field` (OK or tap opens the device keyboard). `BackHandler` untouched (T-013).
+- `PlayerScreen.kt` (protected area, one condition): playback error box is hidden while the TV guide is open.
+- `GuideSearch.kt`: channel hits show the running show (XMLTV, otherwise `Epg.now` for rows on screen).
+- `LiveTab.kt`: tab always opens on "HOME"; hint about the playlist content mode when there are no live channels. `LiveMemory.sel` is still written but no longer read.
+- `HomeScreen.kt`: same hint on movies, series and home when the playlist has none.
+- The hint texts are English on purpose (maintainer request) and not in the dictionaries; the system keyboard setting (`systemKeyboard`) is off by default.
+
 ## Completed steps
 
 - U-1 (move Media3 code out of `PlayerLogic.kt`) is merged into `main` through PR #30 (merge commit `02bebe8`, 12 Nov 2026).
