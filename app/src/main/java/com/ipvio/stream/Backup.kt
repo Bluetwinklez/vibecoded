@@ -14,12 +14,14 @@ object Backup {
         "ipvio_general", "ipvio_settings", "ipvio_lib", "ipvio_quality", "ipvio_hist", "ipvio_watch",
         "ipvio_catfavs", "ipvio_variants", "ipvio_guide", "ipvio_browse", "ipvio_cat", "ipvio_lang",
         "ipvio_chlists", "ipvio_tracks", "ipvio_eprog",
-        // Runde 20: Live-Puffer/Aufnahmen, Seitenleiste, Handy, Updates
+        // Round 20: live buffer/recordings, sidebar, phone, updates
         "ipvio_livetv", "ipvio_side", "ipvio_mobile", "ipvio_upd",
         // 1.2: sports (teams, notifications, leagues, channel correction), hidden/ignored groups, learned live quality
         "ipvio_sportfavs", "ipvio_sportalerts", "ipvio_sportleagues", "ipvio_sporthub", "ipvio_sportfix", "ipvio_hidecats", "ipvio_browselang", "ipvio_ignored", "ipvio_livequal",
         // Home block builder and Boomer mode
-        "ipvio_homelayout", "ipvio_boomerlayout", "ipvio_boomer"
+        "ipvio_homelayout", "ipvio_boomerlayout", "ipvio_boomer",
+        // T-006: dual view, last live category, new episodes, imported lists, resume log (profile-scoped like the others)
+        "ipvio_dual", "ipvio_live", "ipvio_newep", "ipvio_importedlists", "ipvio_resumelog"
     )
 
     /** A real backup never gets bigger; larger files are not even read. */
