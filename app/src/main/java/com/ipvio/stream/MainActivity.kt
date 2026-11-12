@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
             ImageLoader.Builder(this)
                 .memoryCache { MemoryCache.Builder(this).maxSizePercent(Mem.imageCachePercent(Mem.tier(this))).build() }
                 .allowRgb565(true)
+                .bitmapFactoryMaxParallelism(Mem.imageDecoders(Mem.tier(this)))
                 .crossfade(false)
                 .build()
         )

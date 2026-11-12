@@ -37,6 +37,9 @@ object Mem {
     /** Share of the working memory for the image cache (Coil). */
     fun imageCachePercent(tier: Int): Double = when (tier) { 0 -> 0.08; 1 -> 0.13; else -> 0.18 }
 
+    /** Images decoded at the same time (Coil default: 4). Two on small boxes, so decoding leaves CPU cores for scrolling. */
+    fun imageDecoders(tier: Int): Int = if (tier >= 2) 4 else 2
+
     /** Buffer sizes for the player: (min ms, max ms, start ms, rebuffer ms, byte limit). */
     fun bufferPlan(tier: Int): IntArray = when (tier) {
         // After a stall playback resumes only with a few seconds in the buffer (rebuffer ms); too little means stall, play 1 s, stall again
