@@ -34,7 +34,7 @@ Unit tests cannot cover these. Each needs a test step for the maintainer after a
 |---|---|---|
 | Phone import, transfer and phone search over real Wi-Fi | HTTP server on the TV, access code, QR code. The emulator test used `adb forward` and a PC browser (T-002) | `PhoneImport.kt`, `RemoteHub.kt` |
 | Software audio (headphones, Bluetooth) | FFmpeg decoder is loaded by reflection; Media3 1.11.1 with decoder 1.9.0+1 is untested | `SoftAudio.kt:24`, `app/build.gradle.kts:96-102` |
-| Enabling R8 | the earlier R8 build did not start | [ADR 0001](adr/0001-no-r8-for-now.md) |
+| R8 release build (T-024) | earlier R8 builds did not start; start, software audio and scrolling need a device | [ADR 0005](adr/0005-r8-whole-app.md), `docs/tasks/T-024-r8-whole-app.md` |
 | Playback of HLS, DASH and provider streams | needs real providers | `PlayerScreen.kt` |
 | Live rewind, recording, second stream, multi view | player and storage behaviour | `LiveTimeshift.kt`, `Recorder.kt`, `DualView.kt`, `MultiView.kt` |
 | Remote-control focus and navigation | TV focus handling | `Nav.kt` |

@@ -45,7 +45,7 @@ TODO: EPG (XMLTV) source: whether it always comes from the playlist provider is 
 - State lives in global singletons (`object`) with Compose `mutableStateOf`. No dependency injection, no ViewModel.
 - Persistence in SharedPreferences and files. No database. See [ADR 0003](adr/0003-shared-prefs-no-database.md).
 - UI text: the German string is the translation key. See [ADR 0002](adr/0002-german-text-as-i18n-key.md).
-- R8 is disabled for now. See [ADR 0001](adr/0001-no-r8-for-now.md).
+- R8 runs over the whole app in the release build; the app's own code is kept unchanged (not device tested yet). See [ADR 0005](adr/0005-r8-whole-app.md).
 
 ## 5. Building block view
 
@@ -124,6 +124,7 @@ TODO: not covered by the audit. Candidates: app start, playback start, playlist 
 - [ADR 0001](adr/0001-no-r8-for-now.md): R8 stays off for now.
 - [ADR 0002](adr/0002-german-text-as-i18n-key.md): German text is the translation key.
 - [ADR 0003](adr/0003-shared-prefs-no-database.md): SharedPreferences and files, no database.
+- [ADR 0005](adr/0005-r8-whole-app.md): R8 over the whole app, own code kept (0004 exists only on the old branch `perf/T-007`).
 
 ## 10. Quality requirements
 

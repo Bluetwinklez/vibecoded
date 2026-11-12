@@ -12,6 +12,7 @@
 - App update: the app reads `update.json` from the latest release first (GitHub API as fallback; a custom address still works). Before the installer opens it checks the SHA-256, the package name, the version number and that the new APK is signed with the same key as the installed app, and shows a clear message instead of Android's "App not installed". `update.json` can mark an update as required (T-015, not device tested yet)
 - First start: a small card at the bottom checks for an app update once and shows the result (checking / up to date / update available / error with "Retry"), with the switch for the automatic check. It appears only once and only on a start without a playlist, never takes the focus from the add-playlist screen, and works with the TV remote (T-014)
 - Internal: player helper code split from Media3 (no user-visible change).
+- Build: the release build uses R8 again, now over the whole app, with the app's own code kept unchanged and no renaming or repackaging of classes. Expected: smoother UI and a smaller APK. Not built and not device tested yet; rollback is `enable = false` in `app/build.gradle.kts` (T-024)
 - Search: the query box above the app keyboard can now be selected; OK or a tap opens the device keyboard for typing
 - TV guide in the player: a playback error box (for example "check username, password or subscription") no longer sits on top of the guide
 - TV guide search: channel hits show the show running right now with its times (also for providers without XMLTV, via the guide query)

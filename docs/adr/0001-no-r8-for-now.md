@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Records the state of release 1.3. Revisit after the refactoring (audit roadmap, "later").
+Superseded by [ADR 0005](0005-r8-whole-app.md) once its device test has passed. Records the state of release 1.3.
 
 ## Context
 
