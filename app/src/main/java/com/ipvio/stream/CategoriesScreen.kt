@@ -230,7 +230,7 @@ private fun ListMode(
             itemsIndexed(entries) { i, e ->
                 val all = if (isTopEntry(e.first)) e.second else StalkerMore.withAdded(e.first, e.second)
                 CatListRow(
-                    e.first, StalkerMore.total(ctx, e.first) ?: all.size, i == sel,
+                    e.first, StalkerMore.total(ctx, e.first, setOfNotNull(e.second.firstOrNull()?.kind)) ?: all.size, i == sel,
                     if (i == sel) Modifier.focusRequester(firstFocus) else Modifier,
                     onFocus = { sel = i }, onRight = { focusPreview() }
                 ) { onPick(e.first, all, sortFor(e.first, sort)) }

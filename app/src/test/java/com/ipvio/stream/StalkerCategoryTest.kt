@@ -69,4 +69,36 @@ class StalkerCategoryTest {
         assertEquals("http://p.tld/media/1.mp4", StalkerLogic.playUrl("http://p.tld/portal.php", "ffmpeg /media/1.mp4"))
         assertNull(StalkerLogic.playUrl("http://p.tld/portal.php", ""))
     }
+
+    @Test fun echoedCommandIsNoPlayUrl() {
+        val ep = "http://p.tld/stalker_portal/server/load.php"
+        assertNull(StalkerLogic.playUrl(ep, "ffmpeg /media/file_9.mpg", "/media/file_9.mpg"))
+        assertNull(StalkerLogic.playUrl(ep, "/media/77.mpg", "ffmpeg /media/77.mpg"))
+        assertEquals("http://p.tld/stalker_portal/media/vod/9.m3u8", StalkerLogic.playUrl(ep, "/media/vod/9.m3u8", "/media/file_9.mpg"))
+        assertEquals("http://p.tld/x.mp4", StalkerLogic.playUrl(ep, "ffmpeg http://p.tld/x.mp4", "ffmpeg http://p.tld/x.mp4"))
+    }
+
+    @Test fun fileLookupNeverPlaysAnotherMovie() {
+        // Proper file list: the entry carrying its own file command wins
+        assertEquals("/media/file_5.mpg", StalkerLogic.fileCmdOf(listOf(mapOf("id" to "1"), mapOf("id" to "5", "cmd" to "ffmpeg /media/file_5.mpg")), 2))
+        // Short list without commands: first entry ID
+        assertEquals("/media/file_42.mpg", StalkerLogic.fileCmdOf(listOf(mapOf("id" to "42")), 1))
+        // Portal ignored movie_id and sent a category (many entries / large total): no guess
+        assertNull(StalkerLogic.fileCmdOf(listOf(mapOf("id" to "42")), 4200))
+        assertNull(StalkerLogic.fileCmdOf((1..21).map { mapOf("id" to "$it") }, 21))
+        assertNull(StalkerLogic.fileCmdOf(emptyList(), 0))
+        assertNull(StalkerLogic.fileCmdOf(listOf(mapOf("id" to "0")), 1))
+    }
+
+    @Test fun categoryAreasWithTheSameNameStaySeparate() {
+        val vod = StalkerLogic.CatRef("vod", "1", "ENGLISH", 4200, 1)
+        val ser = StalkerLogic.CatRef("series", "9", "ENGLISH", 300, 1)
+        val other = StalkerLogic.CatRef("vod", "2", "KIDS", 50, 1)
+        val all = listOf(vod, ser, other)
+        assertEquals(listOf(vod), StalkerLogic.catsFor(all, "ENGLISH", movies = true, series = false))
+        assertEquals(listOf(ser), StalkerLogic.catsFor(all, "ENGLISH", movies = false, series = true))
+        // Series view without a series area of that name: series filed in the movie area
+        assertEquals(listOf(other), StalkerLogic.catsFor(all, "KIDS", movies = false, series = true))
+        assertEquals(emptyList<StalkerLogic.CatRef>(), StalkerLogic.catsFor(all, "ENGLISH", movies = false, series = false))
+    }
 }

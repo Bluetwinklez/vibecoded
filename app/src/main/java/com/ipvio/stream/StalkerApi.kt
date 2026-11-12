@@ -307,12 +307,13 @@ object StalkerApi {
         return Chunk(sb.toString(), cur, r.ok && !r.more, r.ok)
     }
 
-    /** Play command of a movie with its own files: "/media/file_<file ID>.mpg" of the first file. */
+    /** Play command of a movie with its own files: "/media/file_<file ID>.mpg" of the first file ([StalkerLogic.fileCmdOf]). */
     private fun movieFileCmd(src: StalkerLogic.Source, s: Session, movieId: String): String? {
         val o = js(src, StalkerLogic.api(s.endpoint, "vod", "get_ordered_list", "&movie_id=${enc(movieId)}&p=1"), s.token)
         val a = (o as? JSONObject)?.optJSONArray("data") ?: (o as? JSONArray) ?: return null
-        val id = a.optJSONObject(0)?.opt("id")?.toString()?.takeIf { it.isNotBlank() } ?: return null
-        return "/media/file_$id.mpg"
+        val items = (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let(::fields) }
+        val total = (o as? JSONObject)?.optInt("total_items", items.size) ?: items.size
+        return StalkerLogic.fileCmdOf(items, total)
     }
 
     private fun sourceOf(key: Int): StalkerLogic.Source? =
@@ -326,7 +327,7 @@ object StalkerApi {
             val s = runCatching { login(src, force = attempt > 0) }.getOrNull() ?: return@withContext null
             val (type, cmd) = if (ref.type == "mfile") "vod" to (movieFileCmd(src, s, ref.cmd) ?: continue) else ref.type to ref.cmd
             val r = js(src, StalkerLogic.createLink(s.endpoint, type, cmd, ref.series), s.token) as? JSONObject
-            val u = StalkerLogic.playUrl(s.endpoint, r?.optString("cmd"))
+            val u = StalkerLogic.playUrl(s.endpoint, r?.optString("cmd"), cmd)
             if (u != null) return@withContext u
         }
         if (ref.type == "mfile") return@withContext null

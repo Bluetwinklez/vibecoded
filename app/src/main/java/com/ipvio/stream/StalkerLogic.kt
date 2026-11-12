@@ -266,13 +266,34 @@ object StalkerLogic {
     /**
      * Answer of create_link as a playable address: "ffmpeg http://…" → http://…; an address without a server
      * ("/media/…") is resolved against the portal installation ([endpoint] without "/server/load.php" or "/portal.php").
+     * [sent] = the command that was asked for: a portal that only echoes it back has no address, so null.
      */
-    fun playUrl(endpoint: String, cmd: String?): String? {
+    fun playUrl(endpoint: String, cmd: String?, sent: String = ""): String? {
         stripCmd(cmd)?.let { return it }
         val c = cmd?.trim()?.substringAfterLast(' ')?.takeIf { it.startsWith("/") } ?: return null
+        if (c == sent.trim().substringAfterLast(' ')) return null
         val m = Regex("""^(https?://[^/]+)(/.*)?$""").find(endpoint) ?: return null
         val path = m.groupValues[2].replace(Regex("""/(?:server/load\.php|[^/]*\.php)$""", RegexOption.IGNORE_CASE), "")
         return m.groupValues[1] + path + c
+    }
+
+    /** More entries than this in a file list means the portal ignored movie_id and sent a whole category. */
+    private const val MAX_FILES = 20
+
+    /**
+     * Play command of a movie's first file from get_ordered_list with movie_id ([items], [total] = total_items).
+     * An entry that already carries "/media/file_…" wins. A bare entry ID only counts for a short list: a portal that
+     * ignores movie_id returns a whole category, and its first movie must not be played instead. null = no file.
+     */
+    fun fileCmdOf(items: List<Map<String, String>>, total: Int): String? {
+        for (f in items) {
+            val c = f["cmd"]?.trim().orEmpty()
+            val i = c.indexOf("/media/file_")
+            if (i >= 0) return c.substring(i).substringBefore(' ')
+        }
+        if (items.isEmpty() || items.size > MAX_FILES || total > MAX_FILES) return null
+        val id = items[0]["id"]?.trim()?.takeIf { it.isNotEmpty() && it != "null" && it != "0" } ?: return null
+        return "/media/file_$id.mpg"
     }
 
     /** A series as a placeholder (two M3U lines); the name ends in "S01E01" so parsing recognizes it as a series. */
@@ -308,6 +329,18 @@ object StalkerLogic {
 
     fun encodeCats(l: List<CatRef>): String = l.joinToString("") { it.encode() + "\n" }
     fun decodeCats(text: String?): List<CatRef> = text.orEmpty().lineSequence().mapNotNull { CatRef.decode(it) }.toList()
+
+    /**
+     * Categories named [group] that belong to a view showing [movies] and/or [series]. Movie and series areas can use the
+     * same name ("ENGLISH"); a movie view uses the movie area ("vod"), a series view the series area and, if the portal
+     * has none of that name, the movie area (portals also file series there).
+     */
+    fun catsFor(refs: Collection<CatRef>, group: String, movies: Boolean, series: Boolean): List<CatRef> {
+        val named = refs.filter { it.name == group }
+        if (movies) return named.filter { it.type == "vod" }
+        if (!series) return emptyList()
+        return named.filter { it.type == "series" }.ifEmpty { named.filter { it.type == "vod" } }
+    }
 
     /** Page count from total and page size; [fallback] if the portal sends no numbers. */
     fun pageCount(total: Int, perPage: Int, fallback: Int): Int =
