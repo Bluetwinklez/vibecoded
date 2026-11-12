@@ -1,42 +1,35 @@
-# Work state
-
-Last update: 2026-11-11. Read `CLAUDE.md` first, then this file.
+Last update: 2026-11-12. Read `CLAUDE.md` first, then this file.
 
 ## Current task
 
-**T-009 Xtream backup servers** (see `docs/tasks/T-009-xtream-backup-servers.md`): merged into `main` through #37 (#3 rebased with the review fixes from #35, without the commit of #2; #3 and #35 closed). CI passed. Device test PENDING before the next release.
+**Wishbox round 1 and T-007 performance** on branch `feat/wishbox-perf-runde1`, draft pull request #41 against `main`. The branch holds commit `0f3b073`, a cherry-pick of the local WIP commit `12da745` onto `origin/main`. The CI build on that commit succeeded.
 
-**U-1** (move the Media3-dependent code out of `PlayerLogic.kt`) is done on branch `refactor/U-1`, based on `pre-U-1`. The pull request is open; the maintainer confirmed the merge after the device test. Merging it into `main` (PR #30) is the step that follows.
+Device test by the maintainer (debug build, app ID `.test`):
+
+- Live TV: recently watched channels row. OK
+- Live TV: scroll the channel list and change category. OK
+- Playlist content mode (live or VOD). OK
+- Hide a category. OK
+- Playlist loads after an app restart. Not explicitly confirmed.
+- Search with the system keyboard. Not tested (setting `systemKeyboard` is off by default).
 
 ## Completed steps
 
-- P2 batch 8 (comment sweep) is on `main` (commit 8d01000 and the work-state commit 581099c). The earlier note "commit pending" is obsolete.
-- U-1: `collectTracks`, `TrackOpt`, `trackLabel` and `httpStatusOf` moved verbatim into the new `PlayerTracks.kt` (Media3 side).
-- U-1: `PlaybackErrorCodes` (eight numbers, `internal`) and `IptvRetryRules` (pure) added to `PlayerLogic.kt`; `epgSane` moved from `Epg.kt` into `PlayerLogic.kt`.
-- U-1: `IptvLoadErrorPolicy` companion delegates to `IptvRetryRules`; the class name stays.
-- U-1: `CoreLogicTest` uses `PlaybackErrorCodes` (import removed); `PlayerBufferTest` uses `IptvRetryRules`.
-- U-1: new `Media3ContractTest.kt` compares the eight numbers with Media3 `PlaybackException`.
-- U-1: `PlayerLogic.kt` has no `androidx`/`android` import left.
-
-## Changed files
-
-Main: `PlayerLogic.kt`, `PlayerTracks.kt` (new), `PlayerNet.kt`, `Epg.kt`.
-Tests: `CoreLogicTest.kt`, `PlayerBufferTest.kt`, `Media3ContractTest.kt` (new).
-Docs: `docs/REFACTORING-PROGRESS.md`, `docs/tasks/WORK_STATE.md`, `CHANGELOG.md` (Unreleased entry).
-
-## Test results
-
-- Literal fingerprint of `app/src/main`: 4206 distinct string literals, identical before and after.
-- Run in the cloud (Kotlin 2.0.21 compiler, JUnit 4.13.2): `PlayerLogicTest` and `PlayerBufferTest`, 20 tests, OK.
-- Not run in the cloud: Gradle (`assembleDebug`, `testDebugUnitTest`), `CoreLogicTest` (its dependencies do not translate without Android), `Media3ContractTest` (needs the Media3 jars). The CI workflow "Build APK" on the pull request is the check for these.
+- U-1 (move Media3 code out of `PlayerLogic.kt`) is merged into `main` through PR #30 (merge commit `02bebe8`, 12 Nov 2026).
+- Wishbox round 1 and T-007 performance were committed locally as `12da745` (marked untested).
+- The commit is pushed as the backup branch `backup/wishbox-runde1-12da745`.
+- The commit is cherry-picked onto `feat/wishbox-perf-runde1` (`0f3b073`) and opened as draft PR #41.
 
 ## Open problems
 
-- `PlaybackErrorCodes` values come from the Media3 documentation; `Media3ContractTest` verifies them in CI.
-- Device test for U-1 is still open (see `docs/REFACTORING-PROGRESS.md`).
-- T-004 (quality baseline values), T-006 (backup NAMES, `Backup.kt:17`) and the CHANGELOG entries for 1.2 and 1.3 remain open.
-- T-002: device test on TV or Fire TV.
+- Search: going back from a selected title in the result list does not return to the sidebar. The back logic in `SearchScreen.kt` is identical on `main`, so the bug predates this work. To be tracked as T-013, created on a branch from `main`.
+- Search: with the app keyboard on, the query box is display-only and tapping it does not open an input. A small change in `SearchScreen.kt` is proposed but not made.
+- PR #40 (`integration/2026-11-11`) is open and not merged. It overlaps PR #41 in `LiveTab.kt` and `SearchScreen.kt`. Merge order is undecided.
+- Branch `fix/round28-major` (T-010 to T-012) is not in `main` and not in PR #40.
+- Branch `perf/T-007` on GitHub: T-008 Xtream loading indicator, device test status unknown.
+- T-009 backup servers: device test still pending.
+- T-004 (quality baseline values), T-006 (backup `NAMES`, `Backup.kt:17`) and CHANGELOG entries for 1.2 and 1.3 remain open.
 
 ## Next step
 
-U-2 (inventory of German identifiers, list only) after U-1 is merged.
+Decide the merge order of PR #40 and PR #41. Confirm the open device checks (playlist after restart, search with the system keyboard), then mark PR #41 ready for review. Create T-013 from `main`.
