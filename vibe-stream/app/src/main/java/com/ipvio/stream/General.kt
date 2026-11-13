@@ -68,6 +68,12 @@ object General {
     /** Adjust screen (1.2): margin in percent left/right and top/bottom so nothing is cut off at the TV edge. */
     var fitX by mutableIntStateOf(0)
     var fitY by mutableIntStateOf(0)
+    /**
+     * Security: reach a provider whose certificate does not match its address over plain http (see [TlsFallback]).
+     * Default off, because login data is then sent without encryption.
+     */
+    var allowBadCert by mutableStateOf(false)
+        private set
     val FIT_STEPS = listOf(0, 1, 2, 3, 4, 5, 6, 8, 10)
 
     fun plan() = UpdatePlan(refreshMode, refreshInterval, refreshHour, refreshMinute, refreshDow)
@@ -146,6 +152,8 @@ object General {
         heroSec = p.getInt("hero_sec", 9).coerceIn(0, 60)
         showClock = p.getBoolean("show_clock", true)
         sportLive = p.getBoolean("sport_live", true)
+        allowBadCert = p.getBoolean("allow_bad_cert", false)
+        TlsFallback.setAllowed(allowBadCert)
         fitX = p.getInt("fit_x", 0).coerceIn(0, 10)
         fitY = p.getInt("fit_y", 0).coerceIn(0, 10)
         cardSize = p.getInt("card_size", 2).coerceIn(0, 2)
@@ -158,6 +166,11 @@ object General {
         PlayerLocale.locale = Lang.locale()
     }
 
+    fun setAllowBadCert(c: Context, v: Boolean) {
+        allowBadCert = v
+        TlsFallback.setAllowed(v)
+        prefs(c).edit().putBoolean("allow_bad_cert", v).apply()
+    }
     fun setAutoStart(c: Context, v: Boolean) { autoStart = v; prefs(c).edit().putBoolean("auto_start", v).apply() }
     fun setStartTab(c: Context, v: Int) { startTab = v.coerceIn(0, 4); prefs(c).edit().putInt("start_tab", startTab).apply() }
     fun setResumeLive(c: Context, v: Boolean) { resumeLive = v; prefs(c).edit().putBoolean("resume_live", v).apply() }

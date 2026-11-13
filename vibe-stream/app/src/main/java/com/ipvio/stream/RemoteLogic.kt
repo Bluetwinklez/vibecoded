@@ -49,7 +49,7 @@ object RemoteLogic {
     fun clock(sec: Long): String {
         val s = sec.coerceAtLeast(0)
         val h = s / 3600; val m = (s % 3600) / 60; val r = s % 60
-        return if (h > 0) String.format("%d:%02d:%02d", h, m, r) else String.format("%d:%02d", m, r)
+        return if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, r) else String.format(java.util.Locale.ROOT, "%d:%02d", m, r)
     }
 
     private fun tr(li: Int, de: String, en: String): String = when (li) {
@@ -69,7 +69,7 @@ object RemoteLogic {
         val lang = I18nCore.CODES.getOrElse(li) { "en" }
         return """<!doctype html><html lang="$lang"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1220">
-<title>IPVIO Stream</title>
+<title>Vibe Stream</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1220;color:#fff;font:16px/1.35 system-ui,sans-serif;padding-bottom:150px}

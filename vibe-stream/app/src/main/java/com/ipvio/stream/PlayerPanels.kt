@@ -211,7 +211,7 @@ fun BoxScope.EpisodesPanel(
                 val ep = r.ep
                 if (ep == null) PColumnHeader(r.header ?: "")
                 else {
-                    val req = if (i == focusIdx) focus else reqs.getOrPut(i) { FocusRequester() }
+                    val req = if (i == focusIdx) focus else reqs.getOrPut(i, ::newFocusRequester)
                     if (i == focusIdx) reqs[i] = focus
                     PPanelRow(
                         "Folge ${ep.num}", i == curIdx,

@@ -46,7 +46,7 @@ object SettingsResetLogic {
 
     /** Keys in the preference file `ipvio_general` (object `General`), per tab. */
     private val generalKeyMap: Map<Int, Set<String>> = mapOf(
-        GENERAL to setOf("auto_start", "start_tab", "resume_live", "resume_vod", "confirm_exit"),
+        GENERAL to setOf("auto_start", "start_tab", "resume_live", "resume_vod", "confirm_exit", "allow_bad_cert"),
         REGION to setOf("lang", "tz_id", "time_fmt"),
         VIEW to setOf("card_size", "card_art", "preview_style", "hero_sec", "per_row", "kino_per_row"),
         // "font" is the key of the old font list; init() reads it as long as "font2" is missing

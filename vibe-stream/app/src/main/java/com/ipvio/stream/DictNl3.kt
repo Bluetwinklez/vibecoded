@@ -76,7 +76,7 @@ keine¦geen
 Installiert¦Geïnstalleerd
 Oder vom Handy senden (gleiches WLAN):¦Of verstuur vanaf je telefoon (zelfde wifi):
 Bitte mit dem Internet verbinden¦Maak verbinding met internet
-So schaltest du IPVIO Stream frei – ohne etwas am Fernseher zu tippen:¦Zo ontgrendel je IPVIO Stream – zonder iets op de tv te typen:
+So schaltest du Vibe Stream frei – ohne etwas am Fernseher zu tippen:¦Zo ontgrendel je Vibe Stream – zonder iets op de tv te typen:
 1.  Öffne auf deinem Handy diese Adresse:¦1.  Open op je telefoon dit adres:
 3.  Dieser Bildschirm schaltet sich danach automatisch frei.¦3.  Dit scherm wordt daarna automatisch ontgrendeld.
 Prüfe …¦Controleren …

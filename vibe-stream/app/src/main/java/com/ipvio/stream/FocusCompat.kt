@@ -19,3 +19,9 @@ fun FocusProperties.enterTo(target: (FocusDirection) -> FocusRequester) {
 fun FocusProperties.exitTo(target: (FocusDirection) -> FocusRequester) {
     exit = target
 }
+
+/**
+ * A new [FocusRequester] for callers that keep it in their own remembered map (one per list row, created on first use).
+ * Creating it through this function instead of directly inside the composition keeps that pattern explicit.
+ */
+fun newFocusRequester(): FocusRequester = FocusRequester()

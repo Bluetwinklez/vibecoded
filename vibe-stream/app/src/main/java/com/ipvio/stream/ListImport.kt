@@ -16,7 +16,7 @@ object ListImportLogic {
     fun parse(fileName: String, bytes: ByteArray): List<Row> {
         val lname = fileName.lowercase()
         if (bytes.size > 3 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()) return parseZip(bytes)
-        val text = String(bytes, Charsets.UTF_8).removePrefix("﻿")
+        val text = String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
         val t = text.trimStart()
         val defaultStatus = if (lname.contains("watchlist") || lname.contains("plan")) Status.WATCHLIST else Status.WATCHED
         return when {
@@ -28,6 +28,7 @@ object ListImportLogic {
 
     private fun parseZip(bytes: ByteArray): List<Row> {
         val out = ArrayList<Row>()
+        var unpacked = 0L
         ZipInputStream(ByteArrayInputStream(bytes)).use { z ->
             while (true) {
                 val e = z.nextEntry ?: break
@@ -35,11 +36,32 @@ object ListImportLogic {
                 if (e.isDirectory || !n.endsWith(".csv")) continue
                 // Letterboxd: watchlist.csv = to watch; watched.csv and ratings.csv = seen; other files are ignored
                 val st = when (n) { "watchlist.csv" -> Status.WATCHLIST; "watched.csv", "ratings.csv" -> Status.WATCHED; else -> null } ?: continue
-                val text = String(z.readBytes(), Charsets.UTF_8).removePrefix("﻿")
+                // A small archive can unpack to gigabytes ("zip bomb"): stop at a fixed size instead of filling the memory
+                val data = readLimited(z, MAX_ZIP_ENTRY) ?: continue
+                unpacked += data.size
+                if (unpacked > MAX_ZIP_TOTAL) break
+                val text = String(data, Charsets.UTF_8).removePrefix("\uFEFF")
                 out += parseCsv(text, st)
             }
         }
         return out
+    }
+
+    /** Largest unpacked CSV inside a ZIP, and the largest sum of all of them. Real exports are a few hundred KB. */
+    const val MAX_ZIP_ENTRY = 32 * 1024 * 1024
+    const val MAX_ZIP_TOTAL = 64L * 1024 * 1024
+
+    /** Reads the current entry; null if it is larger than [max] bytes (the entry is then skipped). */
+    internal fun readLimited(ins: java.io.InputStream, max: Int): ByteArray? {
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val n = ins.read(buf)
+            if (n < 0) break
+            if (out.size() + n > max) return null
+            out.write(buf, 0, n)
+        }
+        return out.toByteArray()
     }
 
     /** CSV with a header row; needs a "Name" or "Title" column, optional "Year". */

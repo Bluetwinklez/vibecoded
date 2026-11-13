@@ -113,14 +113,14 @@ class TapAwareDataSource(private val normal: DataSource) : DataSource {
         val d = if (dataSpec.uri.scheme == "tap") TapDataSource().also { s -> listeners.forEach { s.addTransferListener(it) } } else normal
         cur = d
         if (dataSpec.uri.scheme != "https") return d.open(dataSpec)
-        // Provider certificate does not match its address: use the same address over http (once per host, remembered)
+        // Provider certificate does not match its address: use the same address over http (once per host, remembered).
+        // Only when the user allowed it (TlsFallback.allowed, default off); otherwise the certificate error is reported.
         val url = dataSpec.uri.toString()
         if (TlsFallback.isBrokenUrl(url)) TlsFallback.downgradeUrl(url)?.let { return d.open(dataSpec.withUri(Uri.parse(it))) }
         try {
             return d.open(dataSpec)
         } catch (e: IOException) {
-            val low = if (TlsFallback.isHostMismatch(e)) TlsFallback.downgradeUrl(url) else null
-            if (low == null) throw e
+            val low = TlsFallback.fallbackUrl(url, e) ?: throw e
             dataSpec.uri.host?.let { TlsFallback.markBroken(it) }
             Diag.report("Zertifikat passt nicht zur Adresse – Wiedergabe ohne Verschlüsselung")
             runCatching { d.close() }

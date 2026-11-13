@@ -35,7 +35,24 @@ object PhoneImportLogic {
         return if (host.isNotEmpty() && user.isNotEmpty() && pass.isNotEmpty()) PhoneInput("", host, user, pass) else null
     }
 
-    fun newCode(rnd: java.util.Random): String = (1000 + rnd.nextInt(9000)).toString()
+    /** Number of digits of the access code. Six digits and the lock after [MAX_FAILS] wrong tries make guessing impractical. */
+    const val CODE_DIGITS = 6
+    const val MAX_FAILS = 5
+    const val LOCK_MS = 60_000L
+
+    fun newCode(rnd: java.util.Random): String = (100_000 + rnd.nextInt(900_000)).toString()
+
+    /** Compares the typed code with the real one in constant time (no hint about how many digits were right). */
+    fun sameCode(given: String, code: String): Boolean =
+        java.security.MessageDigest.isEqual(given.toByteArray(Charsets.UTF_8), code.toByteArray(Charsets.UTF_8))
+
+    /**
+     * May this caller use the server at all? Only devices in the same local network: loopback, private IPv4 ranges
+     * (10/8, 172.16/12, 192.168/16) and link-local addresses. The socket listens on all interfaces, so without this
+     * check a device with a public (IPv6 or mobile) address would offer the pages to the internet.
+     */
+    fun isLocalPeer(a: java.net.InetAddress?): Boolean =
+        a != null && (a.isLoopbackAddress || a.isLinkLocalAddress || (a is Inet4Address && a.isSiteLocalAddress))
 
     /** Language of the phone page from "Accept-Language": the first of the app languages (de, en, tr, bs, hr, sr, es, fr, it), otherwise English. */
     fun langIndex(accept: String): Int {
@@ -76,34 +93,34 @@ document.getElementById('$statusId').textContent='…';fetch('$path?code='+encod
     fun page(li: Int, feats: Features): String {
         fun t(a: String, b: String) = tr(li, a, b)
         return """<!doctype html><html lang="${I18nCore.CODES.getOrElse(li) { "en" }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IPVIO Stream</title><style>
+<title>Vibe Stream</title><style>
 body{font-family:system-ui,sans-serif;background:#0B0F19;color:#fff;margin:0;padding:20px;max-width:560px}
 h1{font-size:22px}h2{font-size:16px;color:#9aa;margin-top:28px}
 input,textarea{width:100%;box-sizing:border-box;padding:14px;margin:6px 0;border-radius:10px;border:1px solid #333;background:#171a26;color:#fff;font-size:16px}
 button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;background:#4ADE80;color:#0B0F19;font-size:17px;font-weight:700}
-</style></head><body><h1>IPVIO Stream</h1>
+</style></head><body><h1>Vibe Stream</h1>
 <p>${t("Sende deine Playlist an den Fernseher. Den Code siehst du auf dem Bildschirm.", "Send your playlist to the TV. You can see the code on the screen.")}</p>
 <form method="post" action="/send"><h2>${t("M3U-Link", "M3U link")}</h2>
-<input name="code" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
+<input name="code" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
 <textarea name="url" rows="3" placeholder="http://…/playlist.m3u"></textarea>
 <button type="submit">${t("An den Fernseher senden", "Send to TV")}</button></form>
 <form method="post" action="/send"><h2>${t("oder Xtream-Login", "or Xtream login")}</h2>
-<input name="code" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
+<input name="code" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
 <input name="host" placeholder="${t("Server (z. B. http://server.tld:8080)", "Server (e.g. http://server.tld:8080)")}">
 <input name="user" placeholder="${t("Benutzername", "Username")}" autocapitalize="off">
 <input name="pass" placeholder="${t("Passwort", "Password")}" autocapitalize="off">
 <button type="submit">${t("An den Fernseher senden", "Send to TV")}</button></form>""" +
             (if (feats.upload) """<h2>${t("oder Playlist-Datei vom Handy", "or a playlist file from your phone")}</h2>
-<input id="uc" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
+<input id="uc" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
 <input id="uf" type="file" accept=".m3u,.m3u8,.txt,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain">
 <button onclick="up()">${t("Datei hochladen", "Upload file")}</button><p id="us"></p>""" + sendFileJs("up", "/upload", "uc", "uf", "us") else "") +
             (if (feats.epg) """<form method="post" action="/epg"><h2>${t("TV-Guide-Adresse (EPG, XMLTV)", "TV guide address (EPG, XMLTV)")}</h2>
-<input name="code" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
+<input name="code" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
 <textarea name="epg" rows="3" placeholder="http://…/xmltv.php?username=…&amp;password=…"></textarea>
 <button type="submit">${t("An den Fernseher senden", "Send to TV")}</button></form>""" else "") +
             (if (feats.list) """<h2>${t("Listen importieren (Letterboxd, MyAnimeList, Trakt)", "Import lists (Letterboxd, MyAnimeList, Trakt)")}</h2>
 <p>${t("Exportdatei wählen: Letterboxd ZIP oder CSV, MyAnimeList XML, Trakt JSON. Titel, die in deiner Playlist vorkommen, kommen in Merkliste bzw. Verlauf.", "Choose the export file: Letterboxd ZIP or CSV, MyAnimeList XML, Trakt JSON. Titles found in your playlist go to the watchlist or history.")}</p>
-<input id="lc" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
+<input id="lc" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
 <input id="lf" type="file">
 <button onclick="lu()">${t("Liste hochladen", "Upload list")}</button><p id="ls"></p>""" + sendFileJs("lu", "/listimport", "lc", "lf", "ls") else "") +
             (if (feats.transfer) """<h2><a href="/transfer">${t("Einstellungen auf ein anderes Gerät übertragen", "Transfer settings to another device")}</a></h2>""" else "") +
@@ -114,15 +131,15 @@ button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;backg
     /** Transfer: download a backup (optionally with playlists) or restore a backup. */
     fun transferPage(li: Int): String {
         fun t(a: String, b: String) = tr(li, a, b)
-        return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IPVIO Stream</title><style>$CSS</style></head><body>
+        return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vibe Stream</title><style>$CSS</style></head><body>
 <h1>${t("Auf ein anderes Gerät übertragen", "Transfer to another device")}</h1>
 <p>${t("1. Auf dem alten Gerät die Sicherung herunterladen. 2. Auf dem neuen Gerät diese Seite öffnen und die Datei einspielen.", "1. Download the backup on the old device. 2. Open this page on the new device and upload the file.")}</p>
 <form method="get" action="/backup"><h2>${t("Sicherung herunterladen", "Download backup")}</h2>
-<input name="code" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
+<input name="code" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
 <label><input type="checkbox" name="pl" value="1"> ${t("Playlists mit Zugangsdaten mitnehmen", "Include playlists with logins")}</label>
 <button type="submit">${t("Herunterladen", "Download")}</button></form>
 <h2>${t("Sicherung einspielen", "Upload backup")}</h2>
-<input id="rc" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
+<input id="rc" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}">
 <input id="rf" type="file" accept=".json,application/json">
 <button onclick="rs()">${t("Einspielen", "Restore")}</button><p id="rst"></p>""" + sendFileJs("rs", "/restore", "rc", "rf", "rst") +
             """<p>${t("Die Datei mit Playlists enthält deine Zugangsdaten. Gib sie nicht weiter.", "The file with playlists contains your logins. Do not share it.")}</p></body></html>"""
@@ -133,12 +150,12 @@ button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;backg
         fun t(a: String, b: String) = tr(li, a, b)
         val esc = text?.replace("&", "&amp;")?.replace("<", "&lt;")?.replace(">", "&gt;")
         val body = when {
-            text == null -> """<form method="get" action="/crash"><input name="code" inputmode="numeric" maxlength="4" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
+            text == null -> """<form method="get" action="/crash"><input name="code" inputmode="numeric" maxlength="6" placeholder="${t("Code vom Fernseher", "Code from the TV")}" required>
 <button type="submit">${t("Anzeigen", "Show")}</button></form>"""
             text.isBlank() -> "<p>" + t("Kein Absturz gespeichert.", "No crash saved.") + "</p>"
             else -> "<p>" + t("Text markieren und kopieren, z. B. für einen Fehlerbericht auf GitHub.", "Select and copy the text, e.g. for a bug report on GitHub.") + "</p><pre>$esc</pre>"
         }
-        return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IPVIO Stream</title><style>$CSS</style></head><body>
+        return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vibe Stream</title><style>$CSS</style></head><body>
 <h1>${t("Absturzbericht", "Crash report")}</h1>$body</body></html>"""
     }
 
@@ -159,7 +176,7 @@ button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;backg
 /**
  * Small server in the local network: the phone opens the displayed address and sends the playlist,
  * so nothing has to be typed on the TV. Runs only while the screen for it is open.
- * Protected by a four-digit code and a lock after 5 failed attempts.
+ * Protected by a six-digit code, a lock after 5 failed attempts, and it answers only callers from the local network.
  *
  * Round 20: additionally upload a playlist file ([saveUpload]), download/restore a backup ([backup]/[restore],
  * for transfer to another device) and read the last crash report ([crash]). What is not set
@@ -167,8 +184,9 @@ button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;backg
  */
 class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
     @Volatile private var server: ServerSocket? = null
-    private val fails = java.util.concurrent.atomic.AtomicInteger(0)
-    @Volatile private var lockedAt = 0L
+    private val failLock = Any()
+    private var fails = 0
+    private var lockedAt = 0L
     val code: String = PhoneImportLogic.newCode(SecureRandom())
     @Volatile var port: Int = 0
         private set
@@ -198,6 +216,8 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
         thread(isDaemon = true, name = "phone-import") {
             while (!ss.isClosed) {
                 val s = runCatching { ss.accept() }.getOrNull() ?: break
+                // Callers from outside the local network get no answer at all
+                if (!PhoneImportLogic.isLocalPeer(s.inetAddress)) { runCatching { s.close() }; continue }
                 thread(isDaemon = true) { runCatching { handle(s) }; runCatching { s.close() } }
             }
         }
@@ -273,15 +293,19 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
         return out
     }
 
-    private fun codeOk(given: String?): Int = when {
-        fails.get() >= 5 && System.currentTimeMillis() - lockedAt < 60_000 -> 429
-        given.orEmpty().trim() != code -> {
-            // thread-safe counter; the lock ends after one minute without new attempts
-            if (fails.get() >= 5) fails.set(0)
-            if (fails.incrementAndGet() >= 5) lockedAt = System.currentTimeMillis()
-            403
+    /** 200 = code right, 403 = wrong, 429 = locked. Check and count happen under one lock, so parallel guesses cannot slip through. */
+    private fun codeOk(given: String?): Int = synchronized(failLock) {
+        val now = System.currentTimeMillis()
+        if (fails >= PhoneImportLogic.MAX_FAILS) {
+            if (now - lockedAt in 0 until PhoneImportLogic.LOCK_MS) return 429
+            fails = 0
         }
-        else -> { fails.set(0); 200 }
+        if (!PhoneImportLogic.sameCode(given.orEmpty().trim(), code)) {
+            if (++fails >= PhoneImportLogic.MAX_FAILS) lockedAt = now
+            return 403
+        }
+        fails = 0
+        200
     }
 
     private class Reply(val status: Int, val body: ByteArray, val type: String = "text/html; charset=utf-8", val extra: String = "")
@@ -371,10 +395,8 @@ class PhoneImport(private val onReceive: (PhoneInput) -> Unit) {
                 else if (c != 200) html(c, PhoneImportLogic.message(li, if (c == 403) "code" else "lock"))
                 else if (h.len <= 0 || h.len > 4L * 1024 * 1024) html(400, PhoneImportLogic.message(li, "bad"))
                 else {
-                    val bytes = ByteArray(h.len.toInt())
-                    var n = 0
-                    while (n < bytes.size) { val k = ins.read(bytes, n, bytes.size - n); if (k < 0) break; n += k }
-                    if (rs(String(bytes, 0, n, Charsets.UTF_8))) html(200, PhoneImportLogic.message(li, "restored"))
+                    // Memory grows only with the data that really arrives (a declared length alone reserves nothing)
+                    if (rs(String(readBody(ins, h.len), Charsets.UTF_8))) html(200, PhoneImportLogic.message(li, "restored"))
                     else html(400, PhoneImportLogic.message(li, "file"))
                 }
             }

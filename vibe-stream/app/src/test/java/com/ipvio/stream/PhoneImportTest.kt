@@ -20,7 +20,7 @@ class PhoneImportTest {
     }
 
     @Test fun codeHatVierStellen() {
-        repeat(50) { assertEquals(4, PhoneImportLogic.newCode(java.util.Random(it.toLong())).length) }
+        repeat(50) { assertEquals(PhoneImportLogic.CODE_DIGITS, PhoneImportLogic.newCode(java.util.Random(it.toLong())).length) }
     }
 
     private fun post(port: Int, body: String): String {
@@ -37,7 +37,7 @@ class PhoneImportTest {
         val pi = PhoneImport { got = it }
         assertTrue(pi.start())
         try {
-            assertTrue(post(pi.port, "code=0000&url=http%3A%2F%2Fa%2Fb.m3u").startsWith("HTTP/1.1 403"))
+            assertTrue(post(pi.port, "code=000000&url=http%3A%2F%2Fa%2Fb.m3u").startsWith("HTTP/1.1 403"))
             assertNull(got)
             assertTrue(post(pi.port, "code=${pi.code}&url=http%3A%2F%2Fa%2Fb.m3u").startsWith("HTTP/1.1 200"))
             assertEquals("http://a/b.m3u", got?.url)
@@ -50,6 +50,36 @@ class PhoneImportTest {
         try {
             repeat(5) { post(pi.port, "code=x&url=http%3A%2F%2Fa") }
             assertTrue(post(pi.port, "code=${pi.code}&url=http%3A%2F%2Fa").startsWith("HTTP/1.1 429"))
+        } finally { pi.stop() }
+    }
+
+    @Test fun codeVergleichUndLokaleAdressen() {
+        assertTrue(PhoneImportLogic.sameCode("123456", "123456"))
+        assertFalse(PhoneImportLogic.sameCode("123457", "123456"))
+        assertFalse(PhoneImportLogic.sameCode("12345", "123456"))
+        assertFalse(PhoneImportLogic.sameCode("", "123456"))
+        fun ip(s: String) = java.net.InetAddress.getByName(s)
+        assertTrue(PhoneImportLogic.isLocalPeer(ip("127.0.0.1")))
+        assertTrue(PhoneImportLogic.isLocalPeer(ip("192.168.1.20")))
+        assertTrue(PhoneImportLogic.isLocalPeer(ip("10.0.0.7")))
+        assertTrue(PhoneImportLogic.isLocalPeer(ip("172.16.5.1")))
+        assertTrue(PhoneImportLogic.isLocalPeer(ip("169.254.10.1")))
+        assertFalse(PhoneImportLogic.isLocalPeer(ip("8.8.8.8")))
+        assertFalse(PhoneImportLogic.isLocalPeer(ip("172.32.0.1")))
+        assertFalse(PhoneImportLogic.isLocalPeer(ip("2001:db8::1")))
+        assertFalse(PhoneImportLogic.isLocalPeer(null))
+    }
+
+    /** After the lock, a right code is accepted again once the wrong tries stop being counted (new server = fresh counter). */
+    @Test fun richtigerCodeNachWenigenFehlversuchenGeht() {
+        val pi = PhoneImport { }
+        assertTrue(pi.start())
+        try {
+            repeat(4) { assertTrue(post(pi.port, "code=x&url=http%3A%2F%2Fa").startsWith("HTTP/1.1 403")) }
+            assertTrue(post(pi.port, "code=${pi.code}&url=http%3A%2F%2Fa").startsWith("HTTP/1.1 200"))
+            // the counter starts again after a success
+            repeat(4) { assertTrue(post(pi.port, "code=x&url=http%3A%2F%2Fa").startsWith("HTTP/1.1 403")) }
+            assertTrue(post(pi.port, "code=${pi.code}&url=http%3A%2F%2Fa").startsWith("HTTP/1.1 200"))
         } finally { pi.stop() }
     }
 

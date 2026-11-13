@@ -178,10 +178,13 @@ fun ClockWidget(
         }
     }
     val h24 = when (General.timeFmt) { 1 -> true; 2 -> false; else -> General.sys24 }
-    val tf = remember(h24) {
-        java.text.SimpleDateFormat(if (h24) "HH:mm" else "h:mm a", java.util.Locale.getDefault()).also { it.timeZone = General.zone() }
+    // Date and time in the app language (not the device language); rebuilt when language or time zone change
+    val loc = Lang.locale()
+    val zoneId = General.tzId
+    val tf = remember(h24, loc, zoneId) {
+        java.text.SimpleDateFormat(if (h24) "HH:mm" else "h:mm a", loc).also { it.timeZone = General.zone() }
     }
-    val df = remember { java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL, java.util.Locale.getDefault()).also { it.timeZone = General.zone() } }
+    val df = remember(loc, zoneId) { java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL, loc).also { it.timeZone = General.zone() } }
     Row(
         modifier,
         verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(dpx(24))

@@ -32,14 +32,16 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ipvio.stream"
+        // Own app ID for the fork: installs next to the original IPVIO Stream instead of colliding with it.
+        // The code package (namespace) stays com.ipvio.stream so that upstream changes still merge.
+        applicationId = "com.vibecoded.stream"
         minSdk = 24
         targetSdk = 37
         // Raise both for every release; the GitHub release tag must match versionName (e.g. tag "v1.1").
-        versionCode = 6
-        versionName = "1.4.1"
+        versionCode = 7
+        versionName = "1.5.0"
         // Name under the icon; the debug build overrides it (see buildTypes)
-        manifestPlaceholders["appLabel"] = "IPVIO Stream"
+        manifestPlaceholders["appLabel"] = "Vibe Stream"
 
         buildConfigField("String", "TMDB_KEY", "\"${secret("TMDB_KEY")}\"")
         buildConfigField("String", "OMDB_KEY", "\"${secret("OMDB_KEY")}\"")
@@ -61,7 +63,7 @@ android {
         // is not overwritten. Both apps can be installed side by side (own data, own name).
         debug {
             applicationIdSuffix = ".test"
-            manifestPlaceholders["appLabel"] = "IPVIO Stream"
+            manifestPlaceholders["appLabel"] = "Vibe Stream"
         }
         release {
             if (hasKeystore) signingConfig = signingConfigs.getByName("release")

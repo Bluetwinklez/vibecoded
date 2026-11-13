@@ -36,7 +36,7 @@ Speicher¦Opslag
 Cache, Verlauf, Fortsetzen¦Cache, geschiedenis, hervatten
 Diagnose¦Diagnose
 Status und Fehlersuche¦Status en foutopsporing
-Über IPVIO Stream¦Over IPVIO Stream
+Über Vibe Stream¦Over Vibe Stream
 Version, Quellen, Zurücksetzen¦Versie, bronnen, herstellen
 Wirklich? OK zum Bestätigen¦Zeker weten? OK om te bevestigen
 ‹ Zurück¦‹ Terug
@@ -73,7 +73,7 @@ PIN entfernen¦Pincode verwijderen
 Mit einer PIN lässt sich der Schutz nur nach Eingabe der PIN ändern. Die Erkennung arbeitet mit Stichwörtern in Kategorie- und Titelnamen und ist kein vollständiger Filter. Beim Zurücksetzen aller Einstellungen bleibt die PIN erhalten.¦Met een pincode kan de beveiliging alleen na invoer van de pincode worden gewijzigd. De herkenning werkt met trefwoorden in categorie- en titelnamen en is geen volledig filter. Bij het herstellen van alle instellingen blijft de pincode behouden.
 Start¦Start
 Beim Einschalten des Geräts öffnen¦Openen bij het inschakelen van het apparaat
-IPVIO Stream startet automatisch, sobald der Fernseher oder die Box hochgefahren ist.¦IPVIO Stream start automatisch zodra de tv of box is opgestart.
+Vibe Stream startet automatisch, sobald der Fernseher oder die Box hochgefahren ist.¦Vibe Stream start automatisch zodra de tv of box is opgestart.
 Berechtigung erteilt¦Toestemming verleend
 Berechtigung „Über anderen Apps einblenden“ fehlt¦Toestemming „Weergeven over andere apps” ontbreekt
 Einstellung öffnen¦Instelling openen
@@ -160,7 +160,7 @@ Letzter Fehler¦Laatste fout
 Fehler seit Start¦Fouten sinds de start
 Playlist neu laden¦Playlist opnieuw laden
 Bericht kopieren¦Rapport kopiëren
-IPVIO Diagnose¦IPVIO-diagnose
+Vibe Stream Diagnose¦Vibe Stream-diagnose
 Der Bericht enthält keine Adressen, Benutzernamen oder Passwörter. Er wird nur in die Zwischenablage kopiert und nirgendwohin gesendet.¦Het rapport bevat geen adressen, gebruikersnamen of wachtwoorden. Het wordt alleen naar het klembord gekopieerd en nergens naartoe gestuurd.
 Tonspur¦Audiospoor
 Automatische Genres¦Automatische genres
@@ -198,8 +198,8 @@ noch nie¦nog nooit
 Nächste Aktualisierung:¦Volgende update:
 „Bei jedem Start“ lädt die Playlist bei jedem Öffnen der App. Die geplanten Varianten laufen auch im Hintergrund, solange das Gerät eingeschaltet und online ist, und holen verpasste Termine beim nächsten Start nach. „Nur von Hand“ nutzt immer den gespeicherten Stand; Neu laden geht jederzeit mit dem Knopf oben. Die Uhrzeit richtet sich nach deiner Zeitzone unter „Sprache & Region“.¦„Bij elke start” laadt de playlist telkens als je de app opent. De geplande varianten draaien ook op de achtergrond zolang het apparaat aan en online is, en halen gemiste momenten bij de volgende start in. „Alleen handmatig” gebruikt altijd de opgeslagen stand; opnieuw laden kan altijd met de knop bovenaan. De tijd volgt je tijdzone onder „Taal & regio”.
 Zugangsdaten werden nur auf diesem Gerät gespeichert und hier nicht angezeigt. Es ist immer eine Playlist aktiv. Mit „Aktivieren“ wechselst du die Liste.¦Inloggegevens worden alleen op dit apparaat opgeslagen en hier niet getoond. Er is altijd één playlist actief. Met „Activeren” wissel je van lijst.
-IPVIO Stream · Version¦IPVIO Stream · Versie
-IPVIO Stream ist ein Player und liefert selbst keine Inhalte. Nutze nur Quellen, für die du eine Berechtigung hast.¦IPVIO Stream is een speler en levert zelf geen inhoud. Gebruik alleen bronnen waarvoor je toestemming hebt.
+Vibe Stream · Version¦Vibe Stream · Versie
+Vibe Stream ist ein Player und liefert selbst keine Inhalte. Nutze nur Quellen, für die du eine Berechtigung hast.¦Vibe Stream is een speler en levert zelf geen inhoud. Gebruik alleen bronnen waarvoor je toestemming hebt.
 Dieses Produkt verwendet die TMDB-API, wird aber nicht von TMDB unterstützt oder zertifiziert. Intro-Zeiten: TheIntroDB.¦Dit product gebruikt de TMDB-API, maar wordt niet door TMDB ondersteund of gecertificeerd. Introtijden: TheIntroDB.
 Systemeinstellungen der App¦Systeeminstellingen van de app
 Setzt Ansicht, Design, Menü, Player, Ton und Start auf die Standardwerte. Playlists, Favoriten, Verlauf und Fortsetzen-Positionen bleiben erhalten. Zwischenspeicher leerst du unter „Speicher“.¦Zet weergave, ontwerp, menu, speler, geluid en start terug op de standaardwaarden. Playlists, favorieten, geschiedenis en hervatposities blijven behouden. De cache maak je leeg onder „Opslag”.

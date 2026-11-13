@@ -112,7 +112,7 @@ fun LiveTab(liveAll: List<Item>, groupsAll: Map<String, List<Item>>, favsAll: Li
     val favs = remember(favsAll, srcK) { if (srcK < 0) favsAll else favsAll.filter { it.src == srcK } }
     CatFavs.init(ctx)
     ChannelLists.init(ctx)
-    remember { LiveQuality.init(ctx) }
+    remember { LiveQuality.init(ctx); true }
     // Last chosen category / list (round 14): the same one again after Back from the player and after a restart
     // The tab always opens on "Start" (home), so the cursor lands there instead of on the last category or "Alle Sender"
     var sel by remember { mutableStateOf("HOME") }

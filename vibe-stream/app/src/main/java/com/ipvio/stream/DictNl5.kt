@@ -110,7 +110,7 @@ Schlüssel ungültig¦Sleutel ongeldig
 Keine Verbindung¦Geen verbinding
 Die Schlüssel bleiben nur auf diesem Gerät. Nach dem Eintragen die App einmal neu starten, damit alle Bereiche die Infos laden. Intro- und Abspann-Zeiten kommen von TheIntroDB und brauchen keinen Schlüssel.¦De sleutels blijven alleen op dit apparaat. Start de app na het invoeren eenmaal opnieuw, zodat alle onderdelen de info laden. Intro- en aftitelingtijden komen van TheIntroDB en hebben geen sleutel nodig.
 Dieses Produkt verwendet die TMDB-API, wird aber nicht von TMDB unterstützt oder zertifiziert. Wertungen: OMDb. Intro-Zeiten: TheIntroDB.¦Dit product gebruikt de TMDB-API, maar wordt niet door TMDB ondersteund of gecertificeerd. Scores: OMDb. Introtijden: TheIntroDB.
-IPVIO Stream ist freie Software unter der GNU General Public License v3 (GPL-3.0). Verwendete Bibliotheken: AndroidX/Jetpack Compose, Media3 (Apache 2.0), OkHttp, Coil (Apache 2.0), Jellyfin FFmpeg-Decoder (GPL-3.0), Schriften Outfit und Inter (SIL Open Font License).¦IPVIO Stream is vrije software onder de GNU General Public License v3 (GPL-3.0). Gebruikte bibliotheken: AndroidX/Jetpack Compose, Media3 (Apache 2.0), OkHttp, Coil (Apache 2.0), Jellyfin FFmpeg-decoder (GPL-3.0), lettertypen Outfit en Inter (SIL Open Font License).
+Vibe Stream ist freie Software unter der GNU General Public License v3 (GPL-3.0). Verwendete Bibliotheken: AndroidX/Jetpack Compose, Media3 (Apache 2.0), OkHttp, Coil (Apache 2.0), Jellyfin FFmpeg-Decoder (GPL-3.0), Schriften Outfit und Inter (SIL Open Font License).¦Vibe Stream is vrije software onder de GNU General Public License v3 (GPL-3.0). Gebruikte bibliotheken: AndroidX/Jetpack Compose, Media3 (Apache 2.0), OkHttp, Coil (Apache 2.0), Jellyfin FFmpeg-decoder (GPL-3.0), lettertypen Outfit en Inter (SIL Open Font License).
 Automatische Genres brauchen einen TMDB-Schlüssel (Einstellungen > API-Schlüssel).¦Automatische genres hebben een TMDB-sleutel nodig (Instellingen > API-sleutels).
 Tipp: Unter Einstellungen > API-Schlüssel einen eigenen TMDB-Schlüssel eintragen, dann erscheinen hier Beschreibung, Cover und Bewertungen.¦Tip: voer onder Instellingen > API-sleutels een eigen TMDB-sleutel in, dan verschijnen hier beschrijving, cover en beoordelingen.
 Zugang wird geprüft …¦Toegang wordt gecontroleerd …
@@ -239,7 +239,7 @@ Mit der Handy-Kamera scannen¦Scannen met de camera van je telefoon
 Folgen werden geladen …¦Afleveringen worden geladen …
 Die Folgen konnten nicht geladen werden. Verbindung oder Zugang prüfen.¦De afleveringen konden niet worden geladen. Controleer de verbinding of toegang.
 Dieser QR-Code ist der PayPal-Link für meine Spende. Mit der Handy-Kamera scannen, dann öffnet sich PayPal.¦Deze QR-code is de PayPal-link voor mijn donatie. Scan hem met de camera van je telefoon, dan opent PayPal.
-Unterstütze IPVIO Stream¦Steun IPVIO Stream
+Unterstütze Vibe Stream¦Steun Vibe Stream
 Raster & Ansicht¦Raster & weergave
 American Football¦American football
 Basketball¦Basketbal
@@ -269,7 +269,7 @@ Dein Anbieter erlaubt vermutlich nur eine Verbindung gleichzeitig. Frage nach ei
 Die Verbindung ist zu langsam oder wurde abgelehnt. Ein Sender in niedrigerer Qualität hilft oft.¦De verbinding is te traag of geweigerd. Een zender in lagere kwaliteit helpt vaak.
 Dein Gerät schafft zwei Videos gleichzeitig nicht. Wähle für beide Bilder SD-Sender.¦Je apparaat kan geen twee video's tegelijk aan. Kies SD-zenders voor beide beelden.
 Probiere einen anderen Sender oder eine niedrigere Qualität.¦Probeer een andere zender of een lagere kwaliteit.
-Schon ein anderes Gerät mit IPVIO Stream? Spiele die Sicherung ein: Playlists, Zugangsdaten, Verlauf, Favoriten und Einstellungen sind danach sofort da.¦Heb je al een ander apparaat met IPVIO Stream? Speel de back-up in: afspeellijsten, inloggegevens, geschiedenis, favorieten en instellingen zijn meteen aanwezig.
+Schon ein anderes Gerät mit Vibe Stream? Spiele die Sicherung ein: Playlists, Zugangsdaten, Verlauf, Favoriten und Einstellungen sind danach sofort da.¦Heb je al een ander apparaat met Vibe Stream? Speel de back-up in: afspeellijsten, inloggegevens, geschiedenis, favorieten en instellingen zijn meteen aanwezig.
 Sicherung von anderem Gerät einspielen¦Back-up van ander apparaat inspelen
 Keine gültige Sicherung gefunden.¦Geen geldige back-up gevonden.
 Auf diesem Gerät gibt es keine Dateiauswahl. Spiele die Sicherung über die Handy-Seite rechts ein.¦Dit apparaat heeft geen bestandskiezer. Speel de back-up in via de telefoonpagina rechts.
@@ -277,7 +277,7 @@ Sicherung mit Playlists speichern …¦Back-up met afspeellijsten opslaan …
 Auf diesem Gerät gibt es keine Dateiauswahl. Nutze die Übertragung im WLAN.¦Dit apparaat heeft geen bestandskiezer. Gebruik de wifi-overdracht.
 Gesichert werden Einstellungen, Favoriten, Verlauf, Weiterschauen und Profile. Playlists und Zugangsdaten sind nur in „Sicherung mit Playlists“ enthalten (die Datei enthält Passwörter, gib sie nicht weiter). Beim Wiederherstellen startet die App neu. Auf einem neuen Gerät geht das gleich beim Hinzufügen der ersten Playlist.¦Instellingen, favorieten, geschiedenis, verder kijken en profielen worden opgeslagen. Afspeellijsten en inloggegevens staan alleen in “Back-up met afspeellijsten opslaan” (het bestand bevat wachtwoorden, deel het niet). De app herstart bij het terugzetten. Op een nieuw apparaat kan dat meteen bij het toevoegen van de eerste afspeellijst.
 Wichtig zu wissen¦Goed om te weten
-IPVIO Stream ist nur ein Abspielgerät. Die App liefert selbst keine Sender, Filme, Serien und keine Playlist. Den Link oder die Zugangsdaten bekommst du von deinem IPTV-Anbieter oder aus deiner eigenen Quelle. Wir können dir keinen Link nennen.¦IPVIO Stream is alleen een speler. De app levert zelf geen zenders, films, series of afspeellijst. De link of inloggegevens krijg je van je IPTV-aanbieder of eigen bron. Wij kunnen je geen link geven.
+Vibe Stream ist nur ein Abspielgerät. Die App liefert selbst keine Sender, Filme, Serien und keine Playlist. Den Link oder die Zugangsdaten bekommst du von deinem IPTV-Anbieter oder aus deiner eigenen Quelle. Wir können dir keinen Link nennen.¦Vibe Stream is alleen een speler. De app levert zelf geen zenders, films, series of afspeellijst. De link of inloggegevens krijg je van je IPTV-aanbieder of eigen bron. Wij kunnen je geen link geven.
 OK = groß¦OK = groot
 Handy und dieses Gerät müssen im selben WLAN sein. Halte die Kamera auf das Bild. Es klappt auch aus einiger Entfernung.¦Telefoon en dit apparaat moeten op hetzelfde wifi zitten. Houd de camera op het beeld. Het werkt ook op enige afstand.
 Oder Adresse im Browser eintippen:¦Of typ het adres in de browser:
@@ -446,7 +446,7 @@ Heute keine Spiele deiner Favoriten.¦Vandaag geen wedstrijden van je favorieten
 Noch keine Teams gemerkt. Im Team Center gibt es „Team merken“.¦Nog geen teams onthouden. Gebruik “Team onthouden” in het Teamcentrum.
 Design und Farbe¦Ontwerp en kleur
 Berechtigung erteilt. Der Autostart ist bereit.¦Toestemming verleend. Automatisch starten is klaar.
-Berechtigung fehlt noch. Bitte „Einstellung öffnen“ wählen und IPVIO Stream erlauben.¦Toestemming ontbreekt nog. Kies “Instelling openen” en sta IPVIO Stream toe.
+Berechtigung fehlt noch. Bitte „Einstellung öffnen“ wählen und Vibe Stream erlauben.¦Toestemming ontbreekt nog. Kies “Instelling openen” en sta Vibe Stream toe.
 Hauptliste¦hoofdlijst
 zusätzlich angezeigt¦ook getoond
 Nicht mehr zusätzlich anzeigen¦Niet meer extra tonen
