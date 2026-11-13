@@ -10,6 +10,8 @@
 - Security: Android cloud backup and device-to-device transfer exclude all app data (data extraction rules); the app's own backup is unchanged
 - Fix: clock and dates in the header, home screen and sports tab follow the app language instead of the device language, and update when the language changes
 - Fix: the 9 Android Lint errors (FocusRequester created during composition, `remember` returning Unit, byte-order marks in the source)
+- Security: a backup server typed without "http://" or "https://" takes the scheme of the main server (before: always http, so the login of an https playlist went to the backup unencrypted)
+- Security: every screen that opens the phone pages (add playlist, transfer, phone remote, list import) warns that the connection is not encrypted and should only be used in your own Wi-Fi (10 languages)
 - Removed the unused folder `app/src/main/_to_delete_keepRules`
 - New: iPhone / iPad app (`ios/`), see ios/README.md
 

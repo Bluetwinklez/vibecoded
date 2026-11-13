@@ -61,6 +61,7 @@ internal fun TransferSection(ctx: Context) {
             Modifier.clip(RoundedCornerShape(DS.RadiusM)).background(Color(0x14FFFFFF)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            LanWarning()
             if (ip == null) Text("Das Gerät ist nicht mit einem WLAN verbunden.", color = Color(0xFFFFB86B), fontSize = 16.sp)
             else {
                 Text("Am Handy (im selben WLAN) öffnen:", color = Muted, fontSize = 15.sp)
@@ -98,4 +99,13 @@ internal fun QrWithLabel(text: String, size: Dp = 160.dp, scanLabel: Boolean = t
         if (scanLabel) Text("Oder mit der Handy-Kamera scannen", color = Muted, fontSize = 15.sp)
         else Text("Mit der Handy-Kamera scannen", color = Muted, fontSize = 15.sp)
     }
+}
+
+/**
+ * Hint on every screen that starts the phone server: the pages use plain http inside the local network, so codes,
+ * logins and backups can be read by others in the same Wi-Fi.
+ */
+@Composable
+internal fun LanWarning() {
+    Text("Die Verbindung zum Handy ist nicht verschlüsselt. Nur im eigenen, vertrauenswürdigen WLAN verwenden, nicht in Hotel-, Café- oder Gäste-WLANs.", color = Color(0xFFFFB86B), fontSize = 14.sp, lineHeight = 20.sp)
 }

@@ -1,6 +1,6 @@
 # Security
 
-> **Vibe Stream fork (1.5.0):** items 1 (partly: local-network check), 2, 3, 7 and the `/restore` and ZIP follow-ups are fixed.
+> **Vibe Stream fork (1.5.0):** items 2, 3, 7, 16 and the `/restore` and ZIP follow-ups are fixed; item 1 is partly fixed (local-network check and a warning on every phone screen, still plain HTTP).
 > Item 7 is now an opt-in setting (default off). Items 1 and 5 remain partly open: the phone pages still use plain HTTP
 > inside the local network. Item 15: report vulnerabilities through a private GitHub security advisory on Bluetwinklez/vibecoded.
 

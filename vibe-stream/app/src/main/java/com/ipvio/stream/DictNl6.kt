@@ -20,4 +20,5 @@ Kostenlos unter subdl.com > Konto > API. Im Player unter „Audio & Untertitel�
 Sicherheit¦Beveiliging
 Anbieter mit falschem Zertifikat zulassen¦Aanbieders met een verkeerd certificaat toestaan
 Aus (empfohlen): Passt das Zertifikat eines Anbieters nicht zu seiner Adresse, wird die Verbindung abgelehnt. An: Die App verbindet sich mit diesem Anbieter dann unverschlüsselt (http); Zugangsdaten können im selben Netz mitgelesen werden. Nur im eigenen WLAN einschalten.¦Uit (aanbevolen): als het certificaat van een aanbieder niet bij zijn adres past, wordt de verbinding geweigerd. Aan: de app verbindt dan zonder versleuteling (http) met die aanbieder; inloggegevens kunnen door anderen op hetzelfde netwerk worden meegelezen. Alleen inschakelen op je eigen wifi.
+Die Verbindung zum Handy ist nicht verschlüsselt. Nur im eigenen, vertrauenswürdigen WLAN verwenden, nicht in Hotel-, Café- oder Gäste-WLANs.¦De verbinding met de telefoon is niet versleuteld. Gebruik deze alleen op je eigen, vertrouwde wifi, niet op wifi van hotels, cafés of gasten.
 """

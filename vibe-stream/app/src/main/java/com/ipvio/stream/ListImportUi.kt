@@ -58,6 +58,7 @@ internal fun ListImportPage(ctx: Context) {
             Modifier.clip(RoundedCornerShape(DS.RadiusM)).background(Color(0x14FFFFFF)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            LanWarning()
             if (ip == null) Text("Das Gerät ist nicht mit einem WLAN verbunden.", color = Color(0xFFFFB86B), fontSize = 16.sp)
             else {
                 Text("Am Handy (im selben WLAN) öffnen:", color = Muted, fontSize = 15.sp)

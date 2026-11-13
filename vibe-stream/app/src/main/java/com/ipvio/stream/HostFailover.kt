@@ -24,11 +24,14 @@ import java.util.concurrent.ConcurrentHashMap
 object HostFailoverLogic {
     private val BASE = Regex("""^https?://[^\s/?#]+(?:/[^\s?#]*)?$""", RegexOption.IGNORE_CASE)
 
-    /** Input as in the server field ("server.tld:8080" becomes "http://server.tld:8080"); null = invalid or empty. */
-    fun normalize(s: String): String? {
+    /**
+     * Input as in the server field ("server.tld:8080" becomes "http://server.tld:8080"); null = invalid or empty.
+     * [scheme] is used when the input has none.
+     */
+    fun normalize(s: String, scheme: String = "http"): String? {
         var h = s.trim().trimEnd('/')
         if (h.isEmpty()) return null
-        if (!h.startsWith("http://", true) && !h.startsWith("https://", true)) h = "http://$h"
+        if (!h.startsWith("http://", true) && !h.startsWith("https://", true)) h = "$scheme://$h"
         return if (BASE.matches(h)) h else null
     }
 
@@ -55,11 +58,16 @@ object HostFailoverLogic {
         return (listOf(first) + bases.indices.filter { it != first }).map { bases[it] + rest }
     }
 
-    /** Main server + valid, distinct backup servers in the order entered; empty entries are dropped. */
+    /**
+     * Main server + valid, distinct backup servers in the order entered; empty entries are dropped.
+     * A backup typed without "http://" or "https://" takes the main server's scheme, so the login of an https playlist
+     * is never sent to a backup over plain http only because the scheme was left out.
+     */
     fun group(primary: String, backups: List<String>): List<String> {
         val out = arrayListOf(primary.trimEnd('/'))
+        val scheme = if (primary.trim().startsWith("https://", ignoreCase = true)) "https" else "http"
         for (b in backups) {
-            val n = normalize(b) ?: continue
+            val n = normalize(b, scheme) ?: continue
             if (out.none { it.equals(n, ignoreCase = true) }) out.add(n)
         }
         return out

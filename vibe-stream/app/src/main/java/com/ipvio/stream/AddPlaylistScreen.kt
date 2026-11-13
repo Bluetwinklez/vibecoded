@@ -291,6 +291,7 @@ private fun PhoneCard(modifier: Modifier, address: String?, code: String) {
             )
         } else {
             Step(1, "Handy mit demselben WLAN verbinden wie dieses Gerät.")
+            LanWarning()
             Step(2, "Im Browser des Handys diese Adresse öffnen:")
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(

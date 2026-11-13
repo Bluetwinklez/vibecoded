@@ -88,4 +88,11 @@ class HostFailoverLogicTest {
     @Test fun pickGroup_unknown_host_gets_no_failover() {
         assertNull(HostFailoverLogic.pickGroup("http://other.tld/x", listOf(providerA, providerB)))
     }
+
+    @Test fun backupWithoutSchemeTakesTheMainServersScheme() {
+        assertEquals(listOf("https://a.tld", "https://b.tld:8443", "http://c.tld"),
+            HostFailoverLogic.group("https://a.tld/", listOf("b.tld:8443", "http://c.tld")))
+        assertEquals(listOf("http://a.tld", "http://b.tld"), HostFailoverLogic.group("http://a.tld", listOf("b.tld")))
+        assertEquals("https://b.tld", HostFailoverLogic.normalize("b.tld", "https"))
+    }
 }
