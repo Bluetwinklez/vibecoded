@@ -1,22 +1,30 @@
-# IPVIO Stream
+# Vibe Stream
 
-DOWNLOADER CODE: 4200542
+A free, open-source IPTV player for **Android TV, Google TV, Fire TV and Android phones**, plus a native **iPhone / iPad** app.
+Vibe Stream is a fork of [IPVIO Stream](https://github.com/Emrodev/IPVIO-Stream) by Emrodev (GPL-3.0) with security fixes,
+its own app ID (installs next to the original) and an iOS version.
 
-A free, open-source IPTV player for **Android TV, Google TV and Amazon Fire TV**, built with Kotlin and Jetpack Compose and designed for the remote control.
+![Vibe Stream](app/src/main/res/drawable/banner.png)
 
-![IPVIO Stream home screen](docs/screenshots/homescreen.jpg)
-
-> **IPVIO Stream does not provide any content.** It contains no channels, playlists, films or series. It is only a player for playlists that **you** add yourself (Xtream Codes login or M3U address). Only use sources that you are legally allowed to use.
+> **Vibe Stream does not provide any content.** It contains no channels, playlists, films or series. It is only a player for playlists that **you** add yourself (Xtream Codes login, M3U address or Stalker portal). Only use sources that you are legally allowed to use.
 
 ## Install
 
-**Download:** [IPVIO-Stream.apk (latest release)](https://github.com/Emrodev/IPVIO-Stream/releases/latest/download/IPVIO-Stream.apk)
+**Android / Fire TV:** download `Vibe-Stream.apk` from the [releases](https://github.com/Bluetwinklez/vibecoded/releases) of this repository
+(or the `vibe-stream-release-apk` artifact of the latest CI run), allow "Install unknown apps" for your browser or Downloader, install.
 
-**Fire TV / Android TV with the Downloader app:** enter
-```
-https://github.com/Emrodev/IPVIO-Stream/releases/latest/download/IPVIO-Stream.apk
-```
-Allow "Install unknown apps" for Downloader (or your file manager) when asked, then install. No account or registration needed.
+**iPhone / iPad:** see [ios/README.md](ios/README.md). Short version: the app has to be signed with your Apple ID
+(free with Sideloadly or AltStore, renewed every 7 days) because Apple does not allow installing unsigned apps.
+
+## Differences from Vibe Stream 1.4.1
+
+- **Security:** no silent switch from HTTPS to unencrypted HTTP when a provider's certificate does not match
+  (now an opt-in setting, default off); phone pages use a 6-digit code, answer only devices in the local network and
+  lock correctly under parallel guessing; ZIP imports and restores have size limits; no Android cloud backup of
+  playlists and logins.
+- **Fixes:** all Android Lint errors (dates in the app language, Compose state issues, stray byte-order marks).
+- **Identity:** app name Vibe Stream, app ID `com.vibecoded.stream`, own icon, updates from this repository.
+- **iOS app** (new): Xtream and M3U, live/movies/series, favorites, resume, TV guide, picture-in-picture.
 
 ## Features
 
@@ -61,7 +69,7 @@ Allow "Install unknown apps" for Downloader (or your file manager) when asked, t
 - In-app updates from GitHub Releases
 
 **Look and feel**
-- IPVIO green on navy plus 12 colour themes, 5 backgrounds, custom colours
+- green on navy plus 12 colour themes, 5 backgrounds, custom colours
 - Fonts Outfit, Inter or system; adjustable text and display size; animations off/subtle/normal
 - Sidebar left, right or top, icons only or with text; phones: landscape, tap and double-tap controls
 - 10 languages: German, English, Turkish, Bosnian, Croatian, Serbian, Spanish, French, Italian, Dutch
@@ -93,7 +101,7 @@ The app ships **without any API keys**. You can enter your own free keys in the 
 1. Create an account at https://www.themoviedb.org/signup and confirm the e-mail address.
 2. **Log in.** The API page shows "restricted" as long as you are not logged in.
 3. Open https://www.themoviedb.org/settings/api (or: profile picture > Settings > API) and click **Request an API key**.
-4. Choose **Developer**, accept the terms and fill in the form (application name e.g. "IPVIO Stream", type "Personal use", a short description; the URL can be your GitHub page).
+4. Choose **Developer**, accept the terms and fill in the form (application name e.g. "Vibe Stream", type "Personal use", a short description; the URL can be your GitHub page).
 5. Copy the **API Key** (the 32-character one, not the "API Read Access Token").
 
 ### Get a free OMDb key
@@ -111,7 +119,7 @@ Requirements: Android Studio (current version) with the Android SDK; the Gradle 
 
 ```
 git clone <this repository>
-cd IPVIO-Stream
+cd vibecoded/vibe-stream
 ./gradlew assembleDebug        # Windows: gradlew.bat assembleDebug
 ```
 
@@ -134,22 +142,18 @@ app/src/main/res/font/                Outfit and Inter (SIL Open Font License)
 licenses/                             font licences
 ```
 
-## Support the project
+## Credits
 
-Hello, I'm Claude. If you enjoy using this project and want to help this wannabe developer keep building things (and occasionally understand what he's doing), feel free to support the project.
-
-- Ko-fi: https://ko-fi.com/ipviodude
-- PayPal: https://www.paypal.com/ncp/payment/EUSU4WAGRJNXY
-
-IPVIO Stream stays free, ad-free and open source. Donations are voluntary and do not unlock any features.
+Original project: IPVIO Stream by Emrodev – https://github.com/Emrodev/IPVIO-Stream. If you want to support the
+original author: https://ko-fi.com/ipviodude
 
 ## License
 
-Copyright (C) 2026 IPVIO Stream contributors
+Copyright (C) 2026 IPVIO Stream contributors and Vibe Stream contributors
 
-IPVIO Stream is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License version 3** (see [LICENSE](LICENSE)). The GPL is required because the app includes the GPL-3.0 licensed FFmpeg audio decoder. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the libraries, fonts and services used.
+Vibe Stream is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License version 3** (see [LICENSE](LICENSE)). The GPL is required because the app includes the GPL-3.0 licensed FFmpeg audio decoder. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the libraries, fonts and services used.
 
-The name "IPVIO" and the IPVIO logo identify the original project. If you publish a modified version, please use your own name and logo so that users are not confused.
+The name "IPVIO" and the IPVIO logo identify the original project; this fork uses its own name and logo as the original author asked.
 
 ## Disclaimer
 

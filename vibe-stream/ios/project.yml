@@ -1,0 +1,51 @@
+name: VibeStream
+options:
+  bundleIdPrefix: com.vibecoded
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+packages:
+  VibeCore:
+    path: VibeCore
+targets:
+  VibeStream:
+    type: application
+    platform: iOS
+    sources:
+      - path: VibeStream
+    dependencies:
+      - package: VibeCore
+    info:
+      path: VibeStream/Info.plist
+      properties:
+        CFBundleDisplayName: Vibe Stream
+        CFBundleShortVersionString: "1.5.0"
+        CFBundleVersion: "7"
+        UILaunchScreen:
+          UIColorName: ""
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIRequiresFullScreen: false
+        ITSAppUsesNonExemptEncryption: false
+        # IPTV providers mostly serve plain http; the app only plays what the user enters
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsArbitraryLoadsForMedia: true
+        LSApplicationQueriesSchemes: [vlc-x-callback, vlc]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vibecoded.stream
+        PRODUCT_NAME: VibeStream
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "1.5.0"
+        CURRENT_PROJECT_VERSION: "7"
+schemes:
+  VibeStream:
+    build:
+      targets:
+        VibeStream: all

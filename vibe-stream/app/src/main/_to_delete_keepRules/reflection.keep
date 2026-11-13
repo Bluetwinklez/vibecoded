@@ -1,3 +1,0 @@
-# Loaded by reflection in SoftAudio.kt (optional FFmpeg audio decoder)
--keep class androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer { *; }
--keep class androidx.media3.decoder.ffmpeg.FfmpegLibrary { *; }

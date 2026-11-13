@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.5.0 (Vibe Stream fork)
+- Fork: app name Vibe Stream, app ID `com.vibecoded.stream` (installs next to IPVIO Stream; data does not carry over – use Settings > Backup on the old app and restore it in the new one), own icon and TV banner, in-app updates from Bluetwinklez/vibecoded releases
+- Security: a provider whose certificate does not match its address is no longer reached over plain http without asking. New switch Settings > General > Security > "Allow providers with a wrong certificate" (default off)
+- Security: phone pages (add playlist, transfer, remote, crash report) use a 6-digit code instead of 4, the wrong-code counter and lock can no longer be bypassed with parallel requests, the code compare is constant-time, and only devices in the local network get an answer
+- Security: `/restore` no longer reserves the announced size before the data arrives; ZIP list imports stop at 32 MB per file / 64 MB in total
+- Security: Android cloud backup and device-to-device transfer exclude all app data (data extraction rules); the app's own backup is unchanged
+- Fix: clock and dates in the header, home screen and sports tab follow the app language instead of the device language, and update when the language changes
+- Fix: the 9 Android Lint errors (FocusRequester created during composition, `remember` returning Unit, byte-order marks in the source)
+- Removed the unused folder `app/src/main/_to_delete_keepRules`
+- New: iPhone / iPad app (`ios/`), see ios/README.md
+
 ## 1.4.1
 - Fix: 1.4 did not open after the update on user devices. R8 over the whole app (T-024) is switched off again (`enable = false` in app/build.gradle.kts, the rollback from ADR 0005); versionCode 6. Cause not confirmed by a crash log (unverified). Install 1.4.1 over 1.4; data is kept (same signature)
 

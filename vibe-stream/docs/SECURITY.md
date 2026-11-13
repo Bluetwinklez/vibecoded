@@ -1,5 +1,9 @@
 # Security
 
+> **Vibe Stream fork (1.5.0):** items 1 (partly: local-network check), 2, 3, 7 and the `/restore` and ZIP follow-ups are fixed.
+> Item 7 is now an opt-in setting (default off). Items 1 and 5 remain partly open: the phone pages still use plain HTTP
+> inside the local network. Item 15: report vulnerabilities through a private GitHub security advisory on Bluetwinklez/vibecoded.
+
 Status of known security items and the current security state of IPVIO Stream.
 Source: refactoring audit of 2026-11-11, section 8 (state at commit `b65e838`, tag `V1.3`), updated for T-002.
 File references are to `app/src/main/java/com/ipvio/stream/` unless stated otherwise.
