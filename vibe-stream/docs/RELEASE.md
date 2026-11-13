@@ -1,5 +1,30 @@
 # Releasing a new version
 
+## Vibe Stream fork: releasing from GitHub
+
+The workflow `.github/workflows/vibe-stream-release.yml` builds, signs and publishes everything when a tag is pushed.
+
+One-time: add these repository secrets (GitHub > Settings > Secrets and variables > Actions):
+
+| Secret | Value |
+|---|---|
+| `VIBE_KEYSTORE_BASE64` | the release keystore as base64 (`base64 -w0 vibe-stream-release.jks`) |
+| `VIBE_KEYSTORE_PASSWORD` | `storePassword` |
+| `VIBE_KEY_ALIAS` | `keyAlias` (`vibestream`) |
+| `VIBE_KEY_PASSWORD` | `keyPassword` |
+
+Every release:
+
+1. Raise `versionCode` and `versionName` in `app/build.gradle.kts`, add a `## <versionName>` section to `CHANGELOG.md`.
+2. Merge to `main`, then push the tag: `git tag v1.5.0 && git push origin v1.5.0` (tag = "v" + versionName).
+3. The workflow attaches `Vibe-Stream.apk`, `update.json` (with SHA-256, read by the in-app updater) and
+   `VibeStream-unsigned.ipa` to the release.
+
+Always the same keystore: an APK signed with another key cannot be installed over an existing installation.
+
+The rest of this file is the original IPVIO Stream guide.
+
+
 IPVIO Stream checks the latest GitHub release once a day and offers the update in the bell at the top right.
 It reads `update.json`, a small file you attach to every release (section 3). Without that file it falls back to the GitHub API.
 Android installs an update **over** the old app (and keeps playlists, favorites, history and settings) only if
