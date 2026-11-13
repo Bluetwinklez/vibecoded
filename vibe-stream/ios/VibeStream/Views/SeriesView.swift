@@ -66,11 +66,18 @@ struct SeriesView: View {
             }
             Section {
                 ForEach(detail.episodes(inSeason: season)) { episode in
-                    Button { player.play(episode, of: item) } label: { EpisodeRow(episode: episode, series: item) }
+                    Button { player.play(episode, of: item, following: following(episode)) } label: { EpisodeRow(episode: episode, series: item) }
                         .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    /// All episodes after [episode] across seasons, in viewing order.
+    private func following(_ episode: Episode) -> [Episode] {
+        let all = detail.seasons.flatMap { detail.episodes(inSeason: $0) }
+        guard let i = all.firstIndex(where: { $0.id == episode.id }) else { return [] }
+        return Array(all[(i + 1)...])
     }
 
     private func load() async {

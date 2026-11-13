@@ -67,6 +67,35 @@ final class ContentStore: ObservableObject {
         itemCache = itemCache.filter { !$0.key.hasPrefix(prefix) }
         seriesCache = seriesCache.filter { !$0.key.hasPrefix(prefix) }
         m3uCache[playlist] = nil
+        try? FileManager.default.removeItem(at: Self.m3uCacheFile(playlist))
+    }
+
+    // MARK: - M3U disk cache
+
+    /// A downloaded M3U list is kept for 12 hours, so a large list is not downloaded at every app start.
+    private static let m3uCacheMaxAge: TimeInterval = 12 * 3600
+
+    private struct M3UCacheFile: Codable {
+        var saved: Date
+        var epgURL: String?
+        var entries: [M3UEntry]
+    }
+
+    nonisolated static func m3uCacheFile(_ playlist: UUID) -> URL {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("m3u-\(playlist.uuidString).json")
+    }
+
+    nonisolated private static func readM3UCache(_ playlist: UUID) -> M3UCacheFile? {
+        guard let data = try? Data(contentsOf: m3uCacheFile(playlist)),
+              let file = try? JSONDecoder().decode(M3UCacheFile.self, from: data),
+              Date().timeIntervalSince(file.saved) < m3uCacheMaxAge, !file.entries.isEmpty else { return nil }
+        return file
+    }
+
+    nonisolated private static func writeM3UCache(_ playlist: UUID, entries: [M3UEntry], epgURL: String?) {
+        guard let data = try? JSONEncoder().encode(M3UCacheFile(saved: Date(), epgURL: epgURL, entries: entries)) else { return }
+        try? data.write(to: m3uCacheFile(playlist), options: .atomic)
     }
 
     // MARK: - Login
@@ -162,6 +191,9 @@ final class ContentStore: ObservableObject {
         }
         let playlistID = playlist.id
         let library = try await Task.detached(priority: .userInitiated) { () -> M3ULibrary.Library in
+            if let cached = ContentStore.readM3UCache(playlistID) {
+                return M3ULibrary.build(cached.entries, playlist: playlistID, epgURL: cached.epgURL)
+            }
             // Read line by line: a playlist with 100,000 entries never has to be in memory as one text
             let (bytes, response) = try await Net.session.bytes(for: Net.request(url))
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -173,6 +205,7 @@ final class ContentStore: ObservableObject {
                 if let entry = parser.feed(line) { entries.append(entry) }
             }
             if entries.isEmpty { throw ContentError.notAPlaylist }
+            ContentStore.writeM3UCache(playlistID, entries: entries, epgURL: parser.epgURL)
             return M3ULibrary.build(entries, playlist: playlistID, epgURL: parser.epgURL)
         }.value
         m3uCache[playlist.id] = library

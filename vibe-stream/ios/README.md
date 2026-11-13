@@ -6,12 +6,12 @@ playlists: **Xtream Codes login** and **M3U links**.
 ## What it does
 
 - Live TV, Movies, Series tabs with the provider's categories and search (case and accent insensitive)
-- Series: seasons and episodes, resume position per episode
+- Series: seasons and episodes, resume position per episode, next episode starts by itself
 - Favorites, recently watched, resume for movies and episodes
 - TV guide (now and next) for Xtream channels
 - System player: picture-in-picture, AirPlay, audio and subtitle tracks, background audio
 - Live TV reconnects by itself after short drops; Xtream live channels are played as HLS (`.m3u8`)
-- Several playlists; login data in the iOS Keychain
+- Several playlists; login data in the iOS Keychain; M3U lists cached for 12 hours (pull down to reload)
 - Texts in English, Turkish and German
 
 ## Limits (be aware before you rely on it)

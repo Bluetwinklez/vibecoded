@@ -1,7 +1,7 @@
 import Foundation
 
 /// One entry of an M3U playlist.
-public struct M3UEntry: Hashable, Sendable {
+public struct M3UEntry: Hashable, Codable, Sendable {
     public var name: String
     public var url: String
     public var logo: String?

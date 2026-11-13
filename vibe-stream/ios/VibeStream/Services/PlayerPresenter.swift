@@ -14,6 +14,9 @@ struct PlayRequest {
     var progressKey: String?
     var isLive: Bool
     var startAt: Double?
+    /// Series: the episodes that follow this one (auto-play when it ends).
+    var next: [Episode] = []
+    var series: MediaItem?
 }
 
 struct PlaybackFailure: Identifiable {
@@ -48,6 +51,7 @@ final class PlayerPresenter: NSObject, ObservableObject, AVPlayerViewControllerD
     private var statusObservation: NSKeyValueObservation?
     private var timeObserver: Any?
     private var failObserver: NSObjectProtocol?
+    private var endObserver: NSObjectProtocol?
     private var watchdog: Timer?
 
     private static let maxLiveRetries = 5
@@ -61,21 +65,24 @@ final class PlayerPresenter: NSObject, ObservableObject, AVPlayerViewControllerD
         open(title: item.name, url: url, kind: item.kind, progressKey: key)
     }
 
-    func play(_ episode: Episode, of series: MediaItem) {
+    /// [following] = the episodes after this one, in viewing order; the next starts when this one ends.
+    func play(_ episode: Episode, of series: MediaItem, following: [Episode] = []) {
         LibraryStore.shared.noteWatched(series)
         let title = "\(series.name) · S\(episode.season) E\(episode.number)"
-        open(title: title, url: episode.url, kind: .series, progressKey: Self.progressKey(episode, of: series))
+        open(title: title, url: episode.url, kind: .series, progressKey: Self.progressKey(episode, of: series),
+             next: following, series: series)
     }
 
     static func progressKey(_ episode: Episode, of series: MediaItem) -> String {
         "\(series.id)|\(episode.id)"
     }
 
-    private func open(title: String, url: String, kind: MediaKind, progressKey: String?) {
+    private func open(title: String, url: String, kind: MediaKind, progressKey: String?,
+                      next: [Episode] = [], series: MediaItem? = nil) {
         let candidates = Playback.candidates(for: url, kind: kind).compactMap { URL(string: $0) }
         let startAt = progressKey.flatMap { LibraryStore.shared.resumePosition($0) }
         var req = PlayRequest(title: title, urls: candidates, originalURL: url, progressKey: progressKey,
-                              isLive: kind == .live, startAt: startAt)
+                              isLive: kind == .live, startAt: startAt, next: next, series: series)
         if candidates.isEmpty {
             // mkv, avi, raw MPEG-TS …: AVPlayer cannot open these. Ask instead of failing silently.
             if let direct = URL(string: url) { req.urls = [direct] }
@@ -139,8 +146,34 @@ final class PlayerPresenter: NSObject, ObservableObject, AVPlayerViewControllerD
         failObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.playbackBroke() }
         }
+        if let old = endObserver { NotificationCenter.default.removeObserver(old) }
+        endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.itemEnded() }
+        }
         player.replaceCurrentItem(with: item)
         player.play()
+    }
+
+    /// An episode ended: mark it as watched and continue with the next one in the same player.
+    private func itemEnded() {
+        guard let req = request, !req.isLive else { return }
+        if let key = req.progressKey, let item = player?.currentItem {
+            let d = item.duration.seconds
+            if d.isFinite, d > 0 { LibraryStore.shared.setPosition(key, seconds: d, duration: d) }
+        }
+        guard let series = req.series, let nextEpisode = req.next.first else { return }
+        let candidates = Playback.candidates(for: nextEpisode.url, kind: .series).compactMap { URL(string: $0) }
+        guard !candidates.isEmpty else { return }
+        var nextReq = PlayRequest(title: "\(series.name) · S\(nextEpisode.season) E\(nextEpisode.number)", urls: candidates,
+                                  originalURL: nextEpisode.url, progressKey: Self.progressKey(nextEpisode, of: series),
+                                  isLive: false, startAt: nil)
+        nextReq.next = Array(req.next.dropFirst())
+        nextReq.series = series
+        request = nextReq
+        urlIndex = 0
+        didSeekToStart = true
+        controller?.title = nextReq.title
+        loadCurrentURL()
     }
 
     private func statusChanged(of item: AVPlayerItem) {
@@ -212,6 +245,8 @@ final class PlayerPresenter: NSObject, ObservableObject, AVPlayerViewControllerD
         statusObservation = nil
         if let old = failObserver { NotificationCenter.default.removeObserver(old) }
         failObserver = nil
+        if let old = endObserver { NotificationCenter.default.removeObserver(old) }
+        endObserver = nil
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         if dismiss, let vc = controller, vc.presentingViewController != nil { vc.dismiss(animated: false) }
