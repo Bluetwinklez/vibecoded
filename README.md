@@ -1,11 +1,17 @@
-# vibecoded
+# Vibecoded — project staging area
 
-> **Status: repository scaffold — no application source published on the default branch.**
+> **Status: proposal in review.** The default branch currently contains only this repository overview; it does **not** contain an installable application.
 
-This repository currently contains only its README. There is no runnable application, dependency manifest, documented setup process or release to install from `main`.
+## Proposed project: Vibe Stream
 
-## Getting started
+Development of a cross-platform streaming client is being reviewed in [pull request #1](https://github.com/Bluetwinklez/vibecoded/pull/1). That proposed branch includes Android source, an experimental SwiftUI iOS app, tests and release automation.
 
-There are no installation steps or tests yet. Check the [repository history](https://github.com/Bluetwinklez/vibecoded/commits/main) and [branches](https://github.com/Bluetwinklez/vibecoded/branches) for future work rather than assuming the project is ready to use.
+**Review the pull request, its checks, license and limitations before using any build.** Its description reports that no physical-device tests were performed. Android signing requires repository-specific credentials. Importing GPL-3.0 upstream code comes with corresponding redistribution and source-availability obligations.
 
-For documented, runnable projects, explore the [Bluetwinklez profile](https://github.com/Bluetwinklez).
+## Where to find the code
+
+- [Proposed implementation and discussion](https://github.com/Bluetwinklez/vibecoded/pull/1)
+- [Latest workflow results](https://github.com/Bluetwinklez/vibecoded/actions)
+- [Repository branches](https://github.com/Bluetwinklez/vibecoded/branches)
+
+Cloning the default branch is **not** sufficient to build Vibe Stream. Consult the proposed implementation branch for its setup and platform-specific instructions. This README avoids presenting unmerged work as a released product.
